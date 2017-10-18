@@ -1,0 +1,4 @@
+packages:
+- smos-data
+- smos-data-gen
+resolver: lts-9.9

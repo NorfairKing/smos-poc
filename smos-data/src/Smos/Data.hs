@@ -1,0 +1,2 @@
+module Smos.Data where
+
