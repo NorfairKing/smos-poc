@@ -11,6 +11,10 @@ default-extensions:
 
 dependencies:
 - base >=4.9 && <=5
+- containers >=0.5 && <0.6
+- time >=1.6 && <1.7
+- text
+- unordered-containers >=0.2 && <0.3
   
 library:
   source-dirs: src/
