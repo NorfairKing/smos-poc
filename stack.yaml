@@ -1,4 +1,5 @@
 packages:
+- smos
 - smos-data
 - smos-data-gen
 extra-deps:
