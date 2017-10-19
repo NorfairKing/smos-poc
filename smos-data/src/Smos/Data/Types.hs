@@ -12,11 +12,12 @@ import Data.Text (Text)
 import Data.Time
 import Data.Tree
 
-data SmosFile = SmosFile
+newtype SmosFile = SmosFile
     { smosFileForrest :: Forest Entry
     } deriving (Show, Eq, Generic)
 
 instance Validity SmosFile
+
 instance FromJSON SmosFile
 
 instance ToJSON SmosFile
@@ -30,6 +31,7 @@ data Entry = Entry
     } deriving (Show, Eq, Generic)
 
 instance Validity Entry
+
 instance FromJSON Entry
 
 instance ToJSON Entry
@@ -42,7 +44,16 @@ instance Validity Contents
 
 newtype TimestampName =
     TimestampName Text
-    deriving (Show, Eq, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey, Hashable)
+    deriving ( Show
+             , Eq
+             , Generic
+             , FromJSON
+             , ToJSON
+             , FromJSONKey
+             , ToJSONKey
+             , Hashable
+             )
+
 instance Validity TimestampName
 
 newtype TodoState =
@@ -50,9 +61,11 @@ newtype TodoState =
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 instance Validity TodoState
+
 newtype Tag =
     Tag Text
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
 instance Validity Tag
 
 data Logbook
@@ -65,6 +78,7 @@ data Logbook
     deriving (Show, Eq, Generic)
 
 instance Validity Logbook
+
 instance FromJSON Logbook
 
 instance ToJSON Logbook
