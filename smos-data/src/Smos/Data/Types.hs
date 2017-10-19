@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Smos.Data.Types where
@@ -7,64 +9,116 @@ import Import
 
 import Data.Aeson
 import Data.HashMap.Lazy (HashMap)
+import qualified Data.HashMap.Lazy as HM
 import Data.Hashable
 import Data.Text (Text)
 import Data.Time
-import Data.Tree
 
 newtype SmosFile = SmosFile
-    { smosFileForrest :: Forest Entry
+    { smosFileForest :: SmosForest
     } deriving (Show, Eq, Generic)
 
 instance Validity SmosFile
 
-instance FromJSON SmosFile
+instance FromJSON SmosFile where
+    parseJSON v = SmosFile <$> parseJSON v
 
-instance ToJSON SmosFile
+instance ToJSON SmosFile where
+    toJSON = toJSON . smosFileForest
+
+newtype SmosForest = SmosForest
+    { smosTrees :: [SmosTree]
+    } deriving (Show, Eq, Generic)
+
+instance Validity SmosForest
+
+instance FromJSON SmosForest where
+    parseJSON v = SmosForest <$> parseJSON v
+
+instance ToJSON SmosForest where
+    toJSON = toJSON . smosTrees
+
+data SmosTree = SmosTree
+    { treeEntry :: Entry
+    , treeForest :: SmosForest
+    } deriving (Show, Eq, Generic)
+
+instance Validity SmosTree
+
+instance FromJSON SmosTree where
+    parseJSON =
+        withObject "SmosTree" $ \o ->
+            SmosTree <$> o .: "entry" <*> o .:? "forest" .!= SmosForest []
+
+instance ToJSON SmosTree where
+    toJSON SmosTree {..} = object ["entry" .= treeEntry, "forest" .= treeForest]
 
 data Entry = Entry
-    { entryContents :: Contents
+    { entryHeader :: Header
+    , entryContents :: Maybe Contents
     , entryTimestamps :: HashMap TimestampName UTCTime -- SCHEDULED, DEADLINE, etc.
-    , entryState :: TodoState -- TODO, DONE, etc.
+    , entryState :: Maybe TodoState -- TODO, DONE, etc.
     , entryTags :: [Tag] -- '@home', 'toast', etc.
     , entryLogbook :: Logbook
     } deriving (Show, Eq, Generic)
 
 instance Validity Entry
 
-instance FromJSON Entry
+instance FromJSON Entry where
+    parseJSON =
+        withObject "Entry" $ \o ->
+            Entry <$> o .: "header" <*> o .:? "contents" <*>
+            o .:? "timestamps" .!= HM.empty <*>
+            o .:? "state" <*>
+            o .:? "tags" .!= [] <*>
+            o .:? "logbook" .!= LogEnd
 
-instance ToJSON Entry
+instance ToJSON Entry where
+    toJSON Entry {..} =
+        object
+            [ "header" .= entryHeader
+            , "contents" .= entryContents
+            , "timestamps" .= entryTimestamps
+            , "state" .= entryState
+            , "tags" .= entryTags
+            , "logbook" .= entryLogbook
+            ]
 
-newtype Contents =
-    Contents Text
-    deriving (Show, Eq, Generic, FromJSON, ToJSON)
+newtype Header = Header
+    { headerText :: Text
+    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
+
+instance Validity Header
+
+newtype Contents = Contents
+    { contentsText :: Text
+    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 instance Validity Contents
 
-newtype TimestampName =
-    TimestampName Text
-    deriving ( Show
-             , Eq
-             , Generic
-             , FromJSON
-             , ToJSON
-             , FromJSONKey
-             , ToJSONKey
-             , Hashable
-             )
+newtype TimestampName = TimestampName
+    { timestampNameText :: Text
+    } deriving ( Show
+               , Eq
+               , Generic
+               , FromJSON
+               , ToJSON
+               , FromJSONKey
+               , ToJSONKey
+               , Hashable
+               )
 
 instance Validity TimestampName
 
-newtype TodoState =
-    TodoState Text
-    deriving (Show, Eq, Generic, FromJSON, ToJSON)
+newtype TodoState = TodoState
+    { todoStateText :: Text
+    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 instance Validity TodoState
 
-newtype Tag =
-    Tag Text
-    deriving (Show, Eq, Generic, FromJSON, ToJSON)
+newtype Tag = Tag
+    { tagText :: Text
+    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 instance Validity Tag
 

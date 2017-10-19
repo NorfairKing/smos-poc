@@ -14,6 +14,12 @@ spec = do
     eqSpec @SmosFile
     genValidSpec @SmosFile
     jsonSpecOnValid @SmosFile
+    eqSpec @SmosForest
+    genValidSpec @SmosForest
+    jsonSpecOnValid @SmosForest
+    eqSpec @SmosTree
+    genValidSpec @SmosTree
+    jsonSpecOnValid @SmosTree
     eqSpec @Entry
     genValidSpec @Entry
     jsonSpecOnValid @Entry
