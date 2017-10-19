@@ -16,6 +16,7 @@ data SmosFile = SmosFile
     { smosFileForrest :: Forest Entry
     } deriving (Show, Eq, Generic)
 
+instance Validity SmosFile
 instance FromJSON SmosFile
 
 instance ToJSON SmosFile
@@ -28,6 +29,7 @@ data Entry = Entry
     , entryLogbook :: Logbook
     } deriving (Show, Eq, Generic)
 
+instance Validity Entry
 instance FromJSON Entry
 
 instance ToJSON Entry
@@ -36,17 +38,22 @@ newtype Contents =
     Contents Text
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+instance Validity Contents
+
 newtype TimestampName =
     TimestampName Text
     deriving (Show, Eq, Generic, FromJSON, ToJSON, FromJSONKey, ToJSONKey, Hashable)
+instance Validity TimestampName
 
 newtype TodoState =
     TodoState Text
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
+instance Validity TodoState
 newtype Tag =
     Tag Text
     deriving (Show, Eq, Generic, FromJSON, ToJSON)
+instance Validity Tag
 
 data Logbook
     = LogEnd
@@ -57,6 +64,7 @@ data Logbook
                    Logbook
     deriving (Show, Eq, Generic)
 
+instance Validity Logbook
 instance FromJSON Logbook
 
 instance ToJSON Logbook

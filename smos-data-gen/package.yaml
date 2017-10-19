@@ -13,18 +13,18 @@ default-extensions:
 dependencies:
 - base >=4.9 && <=5
 - smos-data
+- genvalidity
+- genvalidity-time
+- genvalidity-text
+- genvalidity-containers
+- genvalidity-unordered-containers
+- QuickCheck
   
 library:
   source-dirs: src/
   ghc-options: -Wall
   exposed-modules:
   - Smos.Data.Gen
-  dependencies:
-  - genvalidity
-  - genvalidity-time
-  - genvalidity-text
-  - genvalidity-containers
-  - genvalidity-unordered-containers
 
 tests:
   smos-data-test:
@@ -36,6 +36,8 @@ tests:
     - -with-rtsopts=-N
     - -Wall
     dependencies:
-    - smos-data
-    - hspec
     - genvalidity-hspec
+    - genvalidity-hspec-aeson
+    - hspec
+    - smos-data
+    - smos-data-gen
