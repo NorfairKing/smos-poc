@@ -19,6 +19,8 @@ dependencies:
 - validity-text >=0.2 && <0.3
 - validity-time >=0.1 && <0.2
 - validity-unordered-containers >=0.1 && <0.2
+- brick >=0.28 && <0.29
+- vty >=5.18 && <5.19
 
 library:
   source-dirs: src/

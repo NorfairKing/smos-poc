@@ -3,6 +3,7 @@ packages:
 - smos-data
 - smos-data-gen
 extra-deps:
+- brick-0.28
 - genvalidity-0.4.0.0
 - genvalidity-bytestring-0.1.0.0
 - genvalidity-containers-0.3.0.0
@@ -23,4 +24,6 @@ extra-deps:
 - validity-time-0.1.0.0
 - validity-unordered-containers-0.1.0.0
 - validity-uuid-0.0.0.0
+- vty-5.18.1
+- word-wrap-0.4.1
 resolver: lts-9.9
