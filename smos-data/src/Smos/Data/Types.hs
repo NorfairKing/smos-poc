@@ -11,6 +11,7 @@ import Data.Aeson
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import Data.Hashable
+import Data.String
 import Data.Text (Text)
 import Data.Time
 
@@ -86,13 +87,13 @@ instance ToJSON Entry where
 
 newtype Header = Header
     { headerText :: Text
-    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
+    } deriving (Show, Eq, Generic, IsString, FromJSON, ToJSON)
 
 instance Validity Header
 
 newtype Contents = Contents
     { contentsText :: Text
-    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
+    } deriving (Show, Eq, Generic, IsString, FromJSON, ToJSON)
 
 instance Validity Contents
 
@@ -101,6 +102,7 @@ newtype TimestampName = TimestampName
     } deriving ( Show
                , Eq
                , Generic
+               , IsString
                , FromJSON
                , ToJSON
                , FromJSONKey
@@ -112,13 +114,13 @@ instance Validity TimestampName
 
 newtype TodoState = TodoState
     { todoStateText :: Text
-    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
+    } deriving (Show, Eq, Generic, IsString, FromJSON, ToJSON)
 
 instance Validity TodoState
 
 newtype Tag = Tag
     { tagText :: Text
-    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
+    } deriving (Show, Eq, Generic, IsString, FromJSON, ToJSON)
 
 instance Validity Tag
 

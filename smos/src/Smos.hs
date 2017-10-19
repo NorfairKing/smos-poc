@@ -11,10 +11,11 @@ import Data.List
 import System.Environment
 import System.Exit
 
-import Brick.AttrMap
-import Brick.Main
-import Brick.Types
+import Brick.AttrMap as B
+import Brick.Main as B
+import Brick.Types as B
 import Brick.Widgets.Core as B
+import qualified Graphics.Vty as V
 import Graphics.Vty.Attributes
 
 import Smos.Data
@@ -85,8 +86,31 @@ smosDraw SmosState {..} = [smosForest $ smosFileForest smosFile]
 smosChooseCursor :: s -> [CursorLocation n] -> Maybe (CursorLocation n)
 smosChooseCursor = neverShowCursor
 
-smosHandleEvent :: s -> BrickEvent n e -> EventM n (Next s)
-smosHandleEvent = resizeOrQuit
+smosHandleEvent :: SmosState -> BrickEvent n e -> EventM n (Next SmosState)
+smosHandleEvent ss@SmosState {..} (VtyEvent e) =
+    case e of
+        V.EvKey (V.KChar 'h') [] -> do
+            let sff = smosFileForest smosFile
+                e' =
+                    Entry
+                    { entryHeader = "new"
+                    , entryContents = Nothing
+                    , entryTimestamps = HM.empty
+                    , entryState = Nothing
+                    , entryTags = []
+                    , entryLogbook = LogEnd
+                    }
+                st' =
+                    SmosTree
+                    {treeEntry = e', treeForest = SmosForest {smosTrees = []}}
+                sff' = SmosForest {smosTrees = st' : smosTrees sff}
+                sf' = SmosFile sff'
+                ss' = ss {smosFile = sf'}
+            B.continue ss'
+        V.EvKey (V.KChar 'q') [] -> B.halt ss
+        V.EvKey V.KEsc [] -> B.halt ss
+        _ -> B.continue ss
+smosHandleEvent ss _ = B.continue ss
 
 smosStartEvent :: s -> EventM n s
 smosStartEvent = pure
