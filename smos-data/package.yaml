@@ -15,7 +15,9 @@ dependencies:
 - time >=1.6 && <1.7
 - text
 - unordered-containers >=0.2 && <0.3
-  
+- aeson >=1.1 && <1.2
+- hashable  
+- yaml >=0.8 && <0.9
 library:
   source-dirs: src/
   ghc-options: -Wall
