@@ -20,6 +20,7 @@ import Graphics.Vty.Attributes
 
 import Smos.Data
 
+import Smos.Cursor
 import Smos.Types
 
 smos :: IO ()
@@ -35,9 +36,17 @@ smos = do
                     Nothing -> pure Nothing
                     Just (Left err) -> die err
                     Just (Right sf) -> pure $ Just sf
-            let s = SmosState {smosFile = fromMaybe emptySmosFile startF}
+            let s = initState $ fromMaybe emptySmosFile startF
             s' <- defaultMain smosApp s
-            when (startF /= Just (smosFile s')) $ writeSmosFile fp $ smosFile s'
+            let sf' = rebuildSmosFile s'
+            when (startF /= Just sf') $ writeSmosFile fp sf'
+
+initState :: SmosFile -> SmosState
+initState sf = SmosState {smosStateCursor = makeACursor sf}
+
+rebuildSmosFile :: SmosState -> SmosFile
+rebuildSmosFile SmosState {..} =
+    SmosFile {smosFileForest = rebuild smosStateCursor}
 
 smosApp :: App SmosState e ResourceName
 smosApp =
@@ -50,7 +59,7 @@ smosApp =
     }
 
 smosDraw :: SmosState -> [Widget ResourceName]
-smosDraw SmosState {..} = [smosForest $ smosFileForest smosFile]
+smosDraw SmosState {..} = [smosForest $ rebuild smosStateCursor]
   where
     smosForest = padLeft (Pad 2) . B.vBox . map smosTree . smosTrees
     smosTree SmosTree {..} = smosEntry treeEntry <=> smosForest treeForest
@@ -90,8 +99,7 @@ smosHandleEvent :: SmosState -> BrickEvent n e -> EventM n (Next SmosState)
 smosHandleEvent ss@SmosState {..} (VtyEvent e) =
     case e of
         V.EvKey (V.KChar 'h') [] -> do
-            let sff = smosFileForest smosFile
-                e' =
+            let newE =
                     Entry
                     { entryHeader = "new"
                     , entryContents = Nothing
@@ -100,13 +108,15 @@ smosHandleEvent ss@SmosState {..} (VtyEvent e) =
                     , entryTags = []
                     , entryLogbook = LogEnd
                     }
-                st' =
-                    SmosTree
-                    {treeEntry = e', treeForest = SmosForest {smosTrees = []}}
-                sff' = SmosForest {smosTrees = st' : smosTrees sff}
-                sf' = SmosFile sff'
-                ss' = ss {smosFile = sf'}
-            B.continue ss'
+            case smosStateCursor of
+                AForest fc -> do
+                    let fc' = forestCursorInsertAtStart fc newE
+                        ss' = ss {smosStateCursor = AForest fc'}
+                    B.continue ss'
+                ATree tc -> do
+                    let tc' = treeCursorInsertAbove tc newE
+                        ss' = ss {smosStateCursor = ATree tc'}
+                    B.continue ss'
         V.EvKey (V.KChar 'q') [] -> B.halt ss
         V.EvKey V.KEsc [] -> B.halt ss
         _ -> B.continue ss

@@ -7,11 +7,11 @@ import Import
 
 import Data.String
 
-import Smos.Data.Types
+import Smos.Cursor
 
 newtype SmosState = SmosState
-    { smosFile :: SmosFile
-    } deriving (Show, Eq, Generic)
+    { smosStateCursor :: ACursor
+    } deriving (Generic)
 
 newtype ResourceName = ResourceName
     { unResourceName :: String
