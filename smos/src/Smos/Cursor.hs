@@ -4,6 +4,7 @@
 module Smos.Cursor
     ( ACursor(..)
     , makeACursor
+    , makeASelection
     , Rebuild(..)
     , Build(..)
     , ForestCursor
@@ -45,6 +46,14 @@ data ACursor
 
 makeACursor :: SmosFile -> ACursor
 makeACursor SmosFile {..} = AForest $ makeForestCursor smosFileForest
+
+makeASelection :: ACursor -> [Int]
+makeASelection = reverse . go
+  where
+    go (AForest fc) = gof fc
+    go (ATree tc) = got tc
+    gof ForestCursor {..} = maybe [] got forestCursorParent
+    got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
 
 instance Rebuild ACursor where
     rebuild (AForest fc) = rebuild fc
@@ -110,7 +119,7 @@ forestCursorSelectLast fc =
 forestCursorInsertAt :: ForestCursor -> Int -> Entry -> ForestCursor -- TODO change 'Entry' -> 'SmosTree'
 forestCursorInsertAt fc ix e = fc'
   where
-    fc' = forestModifyElems (\els -> prevs els ++ [newTc els] ++ nexts els) fc
+    fc' = forestModifyElems (\els -> prevs els ++ [newTc els] ++ nexts els) fc -- TODO rebuild the neighbors, otherwise this new elment will dissappear if we select a previous or next element.
     ffilter rel = filter ((`rel` ix) . treeCursorIndex)
     prevs = ffilter (<)
     nexts = ffilter (>=)
