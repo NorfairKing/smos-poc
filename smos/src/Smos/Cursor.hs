@@ -119,21 +119,16 @@ forestCursorSelectLast fc =
 forestCursorInsertAt :: ForestCursor -> Int -> Entry -> ForestCursor -- TODO change 'Entry' -> 'SmosTree'
 forestCursorInsertAt fc ix e = fc'
   where
-    fc' = forestModifyElems (\els -> prevs els ++ [newTc els] ++ nexts els) fc -- TODO rebuild the neighbors, otherwise this new elment will dissappear if we select a previous or next element.
+    fc' =
+        forestModifyElems
+            (\els ->
+                 treeElems fc' $
+                 map build (prevs els) ++ [newTree] ++ map build (nexts els))
+            fc -- TODO rebuild the neighbors, otherwise this new elment will dissappear if we select a previous or next element.
     ffilter rel = filter ((`rel` ix) . treeCursorIndex)
     prevs = ffilter (<)
     nexts = ffilter (>=)
-    newTc els =
-        let tc =
-                TreeCursor
-                { treeCursorParent = fc'
-                , treeCursorPrevElemens = reverse $ prevs els
-                , treeCursorNextElemens = nexts els
-                , treeCursorIndex = ix
-                , treeCursorEntry = e
-                , treeCursorForest = forestCursor (Just tc) (SmosForest [])
-                }
-        in tc
+    newTree = SmosTree {treeEntry = e, treeForest = SmosForest []}
 
 forestCursorInsertAtStart :: ForestCursor -> Entry -> ForestCursor
 forestCursorInsertAtStart fc = forestCursorInsertAt fc 0
