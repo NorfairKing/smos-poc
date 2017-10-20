@@ -124,13 +124,17 @@ smosHandleEvent ss@SmosState {..} (VtyEvent e) =
     case e of
         V.EvKey (V.KChar 'h') [] -> do
             let newE =
-                    Entry
-                    { entryHeader = "new"
-                    , entryContents = Nothing
-                    , entryTimestamps = HM.empty
-                    , entryState = Nothing
-                    , entryTags = []
-                    , entryLogbook = LogEnd
+                    SmosTree
+                    { treeEntry =
+                          Entry
+                          { entryHeader = "new"
+                          , entryContents = Nothing
+                          , entryTimestamps = HM.empty
+                          , entryState = Nothing
+                          , entryTags = []
+                          , entryLogbook = LogEnd
+                          }
+                    , treeForest = SmosForest []
                     }
             case smosStateCursor of
                 AForest fc -> do
