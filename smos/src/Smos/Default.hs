@@ -4,10 +4,24 @@ import Import
 
 import qualified Data.Map as M
 
+import qualified Brick.Types as B
+import qualified Graphics.Vty as V
+
 import Smos
+import Smos.Actions
 
 defaultSmos :: IO ()
-defaultSmos = smos defaultConfig
+defaultSmos = smos (defaultConfig :: SmosConfig ())
 
-defaultConfig :: SmosConfig e
-defaultConfig = SmosConfig {keyMap = M.empty}
+defaultConfig :: Ord e => SmosConfig e
+defaultConfig =
+    SmosConfig
+    { keyMap =
+          M.fromList
+              [ (B.VtyEvent (V.EvKey (V.KChar 'h') []), insertHeaderAbove)
+              , (B.VtyEvent (V.EvKey V.KDown []), moveDown)
+              , (B.VtyEvent (V.EvKey V.KUp []), moveUp)
+              , (B.VtyEvent (V.EvKey (V.KChar 'q') []), halt)
+              , (B.VtyEvent (V.EvKey V.KEsc []), halt)
+              ]
+    }

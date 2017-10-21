@@ -33,9 +33,10 @@ library:
   ghc-options: -Wall
   exposed-modules:
   - Smos
+  - Smos.Actions
+  - Smos.Cursor
   - Smos.Default
   - Smos.Types
-  - Smos.Cursor
 
 executables:
   smos:

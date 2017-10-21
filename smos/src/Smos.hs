@@ -11,6 +11,8 @@ import Import
 
 import qualified Data.HashMap.Lazy as HM
 import Data.List
+import Data.Map (Map)
+import qualified Data.Map as M
 
 import System.Environment
 import System.Exit
@@ -28,8 +30,8 @@ import Smos.Data
 import Smos.Cursor
 import Smos.Types
 
-smos :: SmosConfig e -> IO ()
-smos SmosConfig {..} = do
+smos :: Ord e => SmosConfig e -> IO ()
+smos sc@SmosConfig {..} = do
     args <- getArgs
     case args of
         [] -> die "Expected argument file."
@@ -42,7 +44,7 @@ smos SmosConfig {..} = do
                     Just (Left err) -> die err
                     Just (Right sf) -> pure $ Just sf
             let s = initState $ fromMaybe emptySmosFile startF
-            s' <- defaultMain smosApp s
+            s' <- defaultMain (mkSmosApp sc) s
             let sf' = rebuildSmosFile s'
             when (startF /= Just sf') $ writeSmosFile fp sf'
 
@@ -53,12 +55,12 @@ rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =
     SmosFile {smosFileForest = rebuild smosStateCursor}
 
-smosApp :: App SmosState e ResourceName
-smosApp =
+mkSmosApp :: Ord e => SmosConfig e -> App SmosState e ResourceName
+mkSmosApp SmosConfig {..} =
     App
     { appDraw = smosDraw
     , appChooseCursor = smosChooseCursor
-    , appHandleEvent = smosHandleEvent
+    , appHandleEvent = smosHandleEvent keyMap
     , appStartEvent = smosStartEvent
     , appAttrMap = smosAttrMap
     }
@@ -123,75 +125,15 @@ selectedAttr = "selected"
 smosChooseCursor :: s -> [CursorLocation n] -> Maybe (CursorLocation n)
 smosChooseCursor = neverShowCursor
 
-smosHandleEvent :: SmosState -> BrickEvent n e -> EventM n (Next SmosState)
-smosHandleEvent ss@SmosState {..} (VtyEvent e) =
-    case e of
-        V.EvKey (V.KChar 'h') [] -> do
-            let newE =
-                    SmosTree
-                    { treeEntry =
-                          Entry
-                          { entryHeader = "new"
-                          , entryContents = Nothing
-                          , entryTimestamps = HM.empty
-                          , entryState = Nothing
-                          , entryTags = []
-                          , entryLogbook = LogEnd
-                          }
-                    , treeForest = SmosForest []
-                    }
-            case smosStateCursor of
-                AForest fc -> do
-                    let fc' = forestCursorInsertAtStart fc newE
-                        ss' = ss {smosStateCursor = AForest fc'}
-                    B.continue ss'
-                ATree tc -> do
-                    let tc' = treeCursorInsertAbove tc newE
-                        ss' = ss {smosStateCursor = ATree tc'}
-                    B.continue ss'
-        V.EvKey V.KUp [] ->
-            case smosStateCursor of
-                AForest fc -> do
-                    let mfc' = forestCursorSelectLast fc
-                        ss' =
-                            ss
-                            { smosStateCursor =
-                                  case mfc' of
-                                      Nothing -> AForest fc
-                                      Just tc -> ATree tc
-                            }
-                    B.continue ss'
-                ATree tc -> do
-                    let mtc' = treeCursorSelectPrev tc
-                        ss' =
-                            ss
-                            {smosStateCursor = maybe smosStateCursor ATree mtc'}
-                    B.continue ss'
-        V.EvKey V.KDown [] ->
-            case smosStateCursor of
-                AForest fc -> do
-                    let mfc' = forestCursorSelectFirst fc
-                        ss' =
-                            ss
-                            { smosStateCursor =
-                                  case mfc' of
-                                      Nothing -> AForest fc
-                                      Just tc -> ATree tc
-                            }
-                    B.continue ss'
-                ATree tc -> do
-                    let mtc' = treeCursorSelectNext tc
-                        ss' =
-                            ss
-                            {smosStateCursor = maybe smosStateCursor ATree mtc'}
-                    B.continue ss'
-        V.EvKey (V.KChar 'q') [] -> B.halt ss
-        V.EvKey V.KEsc [] -> B.halt ss
-        _ -> B.continue ss
-smosHandleEvent ss _ = B.continue ss
+smosHandleEvent ::
+       Ord e
+    => Map (BrickEvent ResourceName e) (SmosM ())
+    -> BrickEvent ResourceName e
+    -> EventM ResourceName SmosState ()
+smosHandleEvent keyMap e = fromMaybe (pure ()) (M.lookup e keyMap)
 
-smosStartEvent :: s -> EventM n s
-smosStartEvent = pure
+smosStartEvent :: EventM n s ()
+smosStartEvent = pure ()
 
 smosAttrMap :: s -> AttrMap
 smosAttrMap _ = attrMap defAttr [(selectedAttr, fg V.brightWhite)]
