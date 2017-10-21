@@ -1,6 +1,6 @@
 module Main where
 
-import Smos
+import Smos.Default
 
 main :: IO ()
-main = smos
+main = defaultSmos

@@ -1,7 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Smos where
+module Smos
+    ( SmosConfig(..)
+    , SmosState(..)
+    , smos
+    ) where
 
 import Import
 
@@ -24,8 +28,8 @@ import Smos.Data
 import Smos.Cursor
 import Smos.Types
 
-smos :: IO ()
-smos = do
+smos :: SmosConfig e -> IO ()
+smos SmosConfig {..} = do
     args <- getArgs
     case args of
         [] -> die "Expected argument file."
