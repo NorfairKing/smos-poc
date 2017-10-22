@@ -32,6 +32,7 @@ module Smos.Cursor
     , entryCursorParent
     , entryCursorHeader
     , HeaderCursor
+    , headerCursor
     , headerCursorParent
     , headerCursorHeader
     ) where
@@ -289,7 +290,7 @@ entryCursor par Entry {..} =
 
 data HeaderCursor = HeaderCursor
     { headerCursorParent :: EntryCursor
-    , headerCursorHeader :: Header
+    , headerCursorHeader :: TextCursor
     }
 
 instance Rebuild HeaderCursor where
@@ -297,8 +298,11 @@ instance Rebuild HeaderCursor where
 
 instance Build HeaderCursor where
     type Building HeaderCursor = Header
-    build HeaderCursor {..} = headerCursorHeader
+    build HeaderCursor {..} = Header $ rebuildTextCursor headerCursorHeader
 
 headerCursor :: EntryCursor -> Header -> HeaderCursor
 headerCursor par h =
-    HeaderCursor {headerCursorParent = par, headerCursorHeader = h}
+    HeaderCursor
+    { headerCursorParent = par
+    , headerCursorHeader = makeTextCursor $ headerText h
+    }

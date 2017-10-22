@@ -56,7 +56,7 @@ spec = do
                          show tc''
                        , "Final text: " ++ show t'
                        ]
-        it "rebuilds to a text that is one longer" $ do
+        it "rebuilds to a text that is one longer" $
             forAll genValid $ \(t, c) ->
                 let tc = makeTextCursor t
                     tc' = textCursorInsert c tc
