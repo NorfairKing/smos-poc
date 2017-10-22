@@ -28,11 +28,21 @@ module Smos.Cursor
     , treeCursorInsertAbove
     , treeCursorInsertUnder
     , treeCursorDeleteCurrent
+    , EntryCursor
+    , entryCursorParent
+    , entryCursorHeader
+    , HeaderCursor
+    , headerCursorParent
+    , headerCursorHeader
     ) where
 
 import Import
 
+import Data.HashMap.Lazy (HashMap)
+import Data.Time
+
 import Smos.Data
+import Smos.TextCursor
 
 class Rebuild a where
     rebuild :: a -> SmosForest
@@ -44,6 +54,7 @@ class Build a where
 data ACursor
     = AForest ForestCursor
     | ATree TreeCursor
+    | AnEntry EntryCursor
 
 makeACursor :: SmosFile -> ACursor
 makeACursor SmosFile {..} = AForest $ makeForestCursor smosFileForest
@@ -53,12 +64,15 @@ makeASelection = reverse . go
   where
     go (AForest fc) = gof fc
     go (ATree tc) = got tc
-    gof ForestCursor {..} = maybe [] got forestCursorParent
+    go (AnEntry ec) = goe ec
+    gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
+    goe EntryCursor {..} = 0 : got entryCursorParent
 
 instance Rebuild ACursor where
     rebuild (AForest fc) = rebuild fc
     rebuild (ATree tc) = rebuild tc
+    rebuild (AnEntry ec) = rebuild ec
 
 data ForestCursor = ForestCursor
     { forestCursorParent :: Maybe TreeCursor
@@ -142,7 +156,7 @@ data TreeCursor = TreeCursor
     , treeCursorPrevElemens :: [TreeCursor] -- ^ In reverse order, so that the first element is the nearest.
     , treeCursorNextElemens :: [TreeCursor]
     , treeCursorIndex :: Int
-    , treeCursorEntry :: Entry
+    , treeCursorEntry :: EntryCursor
     , treeCursorForest :: ForestCursor
     }
 
@@ -153,9 +167,10 @@ instance Build TreeCursor where
     type Building TreeCursor = SmosTree
     build TreeCursor {..} =
         SmosTree
-        {treeEntry = treeCursorEntry, treeForest = build treeCursorForest}
+        {treeEntry = build treeCursorEntry, treeForest = build treeCursorForest}
 
-treeCursorModifyEntry :: (Entry -> Entry) -> TreeCursor -> TreeCursor
+treeCursorModifyEntry ::
+       (EntryCursor -> EntryCursor) -> TreeCursor -> TreeCursor
 treeCursorModifyEntry func = treeCursorModify func id
 
 treeCursorModifyForest ::
@@ -163,7 +178,7 @@ treeCursorModifyForest ::
 treeCursorModifyForest = treeCursorModify id
 
 treeCursorModify ::
-       (Entry -> Entry)
+       (EntryCursor -> EntryCursor)
     -> (ForestCursor -> ForestCursor)
     -> TreeCursor
     -> TreeCursor
@@ -193,7 +208,7 @@ treeElems fc sts = tcs
                   reverse $ filter ((< i) . treeCursorIndex) tcs
             , treeCursorNextElemens = filter ((> i) . treeCursorIndex) tcs
             , treeCursorIndex = i
-            , treeCursorEntry = treeEntry st
+            , treeCursorEntry = entryCursor cur $ treeEntry st
             , treeCursorForest = fc'
             }
         fc' = forestCursor (Just cur) (treeForest st)
@@ -234,3 +249,56 @@ treeCursorDeleteCurrent tc = tc''
         let ix = treeCursorIndex tc
         in maybe (AForest for) ATree $
            (els `atMay` ix) `mplus` (els `atMay` (ix - 1))
+
+data EntryCursor = EntryCursor
+    { entryCursorParent :: TreeCursor
+    , entryCursorHeader :: Header
+    , entryCursorContents :: Maybe Contents
+    , entryCursorTimestamps :: HashMap TimestampName UTCTime
+    , entryCursorState :: Maybe TodoState
+    , entryCursorTags :: [Tag]
+    , entryCursorLogbook :: Logbook
+    }
+
+instance Rebuild EntryCursor where
+    rebuild = rebuild . entryCursorParent
+
+instance Build EntryCursor where
+    type Building EntryCursor = Entry
+    build EntryCursor {..} =
+        Entry
+        { entryHeader = entryCursorHeader
+        , entryContents = entryCursorContents
+        , entryTimestamps = entryCursorTimestamps
+        , entryState = entryCursorState
+        , entryTags = entryCursorTags
+        , entryLogbook = entryCursorLogbook
+        }
+
+entryCursor :: TreeCursor -> Entry -> EntryCursor
+entryCursor par Entry {..} =
+    EntryCursor
+    { entryCursorParent = par
+    , entryCursorHeader = entryHeader
+    , entryCursorContents = entryContents
+    , entryCursorTimestamps = entryTimestamps
+    , entryCursorState = entryState
+    , entryCursorTags = entryTags
+    , entryCursorLogbook = entryLogbook
+    }
+
+data HeaderCursor = HeaderCursor
+    { headerCursorParent :: EntryCursor
+    , headerCursorHeader :: Header
+    }
+
+instance Rebuild HeaderCursor where
+    rebuild = rebuild . headerCursorParent
+
+instance Build HeaderCursor where
+    type Building HeaderCursor = Header
+    build HeaderCursor {..} = headerCursorHeader
+
+headerCursor :: EntryCursor -> Header -> HeaderCursor
+headerCursor par h =
+    HeaderCursor {headerCursorParent = par, headerCursorHeader = h}
