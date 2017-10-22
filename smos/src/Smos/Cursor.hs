@@ -27,6 +27,7 @@ module Smos.Cursor
     , treeCursorModifyEntry
     , treeCursorInsertAbove
     , treeCursorInsertUnder
+    , treeCursorDeleteCurrent
     ) where
 
 import Import
@@ -221,3 +222,15 @@ treeCursorInsertUnder tc t =
   where
     newIx = treeCursorIndex tc + 1
     newpar = forestCursorInsertAt (treeCursorParent tc) newIx t
+
+treeCursorDeleteCurrent :: TreeCursor -> ACursor
+treeCursorDeleteCurrent tc = tc''
+  where
+    tcs = reverse (treeCursorPrevElemens tc) ++ treeCursorNextElemens tc
+    trees = map build tcs
+    for = forestModifyElems (const els) (treeCursorParent tc)
+    els = treeElems for trees
+    tc'' =
+        let ix = treeCursorIndex tc
+        in maybe (AForest for) ATree $
+           (els `atMay` ix) `mplus` (els `atMay` (ix - 1))
