@@ -37,6 +37,7 @@ insertHeaderAbove =
                ATree tc ->
                    let tc' = treeCursorInsertAbove tc newE
                    in ss {smosStateCursor = ATree tc'}
+               AnEntry _ -> ss
 
 deleteCurrentHeader :: SmosM ()
 deleteCurrentHeader =
@@ -58,6 +59,7 @@ moveUp =
             ATree tc ->
                 let mtc' = treeCursorSelectPrev tc
                 in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
+            AnEntry _ -> ss
 
 moveDown :: SmosM ()
 moveDown =
@@ -74,6 +76,7 @@ moveDown =
             ATree tc ->
                 let mtc' = treeCursorSelectNext tc
                 in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
+            AnEntry _ -> ss
 
 withTreeCursor :: (TreeCursor -> SmosM ()) -> SmosM ()
 withTreeCursor func = do
