@@ -25,20 +25,25 @@ module Smos.Cursor
     , treeCursorForest
     , treeCursorSelectPrev
     , treeCursorSelectNext
-    , treeCursorModifyEntry
+    , treeCursorEntryL
+    , treeCursorForestL
     , treeCursorInsertAbove
     , treeCursorInsertUnder
     , treeCursorDeleteCurrent
     , EntryCursor
     , entryCursorParent
     , entryCursorHeader
-    , entryCursorModifyHeader
+    , entryCursorHeaderL
     , HeaderCursor
     , headerCursor
     , headerCursorParent
     , headerCursorHeader
-    , headerCursorModifyTextCursor
+    , headerCursorTextCursorL
     , headerCursorInsert
+    , headerCursorRemove
+    , headerCursorDelete
+    , headerCursorLeft
+    , headerCursorRight
     ) where
 
 --     , headerCursorLeft
@@ -47,6 +52,8 @@ import Import
 
 import Data.HashMap.Lazy (HashMap)
 import Data.Time
+
+import Lens.Micro
 
 import Smos.Data
 import Smos.TextCursor
@@ -108,20 +115,27 @@ forestCursor mpar sf = fc
         , forestCursorElems = treeElems fc $ smosTrees sf
         }
 
-forestModifyElems ::
-       ([TreeCursor] -> [TreeCursor]) -> ForestCursor -> ForestCursor
-forestModifyElems func ForestCursor {..} = fc'
+forestElemsL ::
+       Functor f
+    => ([TreeCursor] -> f [TreeCursor])
+    -> ForestCursor
+    -> f ForestCursor
+forestElemsL = lens getter setter
   where
-    fc' =
-        ForestCursor
-        { forestCursorParent =
-              rebuildForestParentCursor (const fc') forestCursorParent
-        , forestCursorElems = func forestCursorElems
-        }
+    getter = forestCursorElems
+    setter ForestCursor {..} elems = fc'
+      where
+        fc' =
+            ForestCursor
+            { forestCursorParent =
+                  rebuildForestParentCursor (const fc') forestCursorParent
+            , forestCursorElems = elems
+            }
 
 rebuildForestParentCursor ::
        (ForestCursor -> ForestCursor) -> Maybe TreeCursor -> Maybe TreeCursor
-rebuildForestParentCursor func = fmap $ treeCursorModifyForest func
+rebuildForestParentCursor func mtc =
+    (\tc -> tc & treeCursorForestL %~ func) <$> mtc
 
 forestCursorSelectIx :: ForestCursor -> Int -> Maybe TreeCursor
 forestCursorSelectIx fc = atMay $ forestCursorElems fc
@@ -139,15 +153,14 @@ forestCursorSelectLast fc =
         (tc:_) -> Just tc
 
 forestCursorInsertAt :: ForestCursor -> Int -> SmosTree -> ForestCursor
-forestCursorInsertAt fc ix newTree = fc'
+forestCursorInsertAt fc ix_ newTree = fc'
   where
     fc' =
-        forestModifyElems
-            (\els ->
-                 treeElems fc' $
-                 map build (prevs els) ++ [newTree] ++ map build (nexts els))
-            fc
-    ffilter rel = filter ((`rel` ix) . treeCursorIndex)
+        fc & forestElemsL %~
+        (\els ->
+             treeElems fc' $
+             map build (prevs els) ++ [newTree] ++ map build (nexts els))
+    ffilter rel = filter ((`rel` ix_) . treeCursorIndex)
     prevs = ffilter (<)
     nexts = ffilter (>=)
 
@@ -176,13 +189,22 @@ instance Build TreeCursor where
         SmosTree
         {treeEntry = build treeCursorEntry, treeForest = build treeCursorForest}
 
-treeCursorModifyEntry ::
-       (EntryCursor -> EntryCursor) -> TreeCursor -> TreeCursor
-treeCursorModifyEntry func = treeCursorModify func id
+treeCursorEntryL ::
+       Functor f => (EntryCursor -> f EntryCursor) -> TreeCursor -> f TreeCursor
+treeCursorEntryL = lens getter setter
+  where
+    getter = treeCursorEntry
+    setter tc ec = treeCursorModify (const ec) id tc
 
-treeCursorModifyForest ::
-       (ForestCursor -> ForestCursor) -> TreeCursor -> TreeCursor
-treeCursorModifyForest = treeCursorModify id
+treeCursorForestL ::
+       Functor f
+    => (ForestCursor -> f ForestCursor)
+    -> TreeCursor
+    -> f TreeCursor
+treeCursorForestL = lens getter setter
+  where
+    getter = treeCursorForest
+    setter tc fc = treeCursorModify id (const fc) tc
 
 treeCursorModify ::
        (EntryCursor -> EntryCursor)
@@ -199,7 +221,8 @@ treeCursorModify efunc ffunc tc = tc''
     tcs =
         reverse (treeCursorPrevElemens tc) ++ [tc'] ++ treeCursorNextElemens tc
     trees = map build tcs
-    els = treeElems (forestModifyElems (const els) (treeCursorParent tc)) trees
+    fc = treeCursorParent tc & forestElemsL .~ els
+    els = treeElems fc trees
     tc'' = els !! treeCursorIndex tc
 
 treeElems :: ForestCursor -> [SmosTree] -> [TreeCursor]
@@ -250,12 +273,12 @@ treeCursorDeleteCurrent tc = tc''
   where
     tcs = reverse (treeCursorPrevElemens tc) ++ treeCursorNextElemens tc
     trees = map build tcs
-    for = forestModifyElems (const els) (treeCursorParent tc)
+    for = treeCursorParent tc & forestElemsL .~ els
     els = treeElems for trees
     tc'' =
-        let ix = treeCursorIndex tc
+        let ix_ = treeCursorIndex tc
         in maybe (Left for) Right $
-           (els `atMay` ix) `mplus` (els `atMay` (ix - 1))
+           (els `atMay` ix_) `mplus` (els `atMay` (ix_ - 1))
 
 data EntryCursor = EntryCursor
     { entryCursorParent :: TreeCursor
@@ -296,16 +319,21 @@ entryCursor par Entry {..} = ec
         , entryCursorLogbook = entryLogbook
         }
 
-entryCursorModifyHeader ::
-       (HeaderCursor -> HeaderCursor) -> EntryCursor -> EntryCursor
-entryCursorModifyHeader func ec@EntryCursor {..} = ec'
+entryCursorHeaderL ::
+       Functor f
+    => (HeaderCursor -> f HeaderCursor)
+    -> EntryCursor
+    -> f EntryCursor
+entryCursorHeaderL = lens getter setter
   where
-    ec' =
-        ec
-        { entryCursorParent =
-              treeCursorModifyEntry (const ec') entryCursorParent
-        , entryCursorHeader = func entryCursorHeader
-        }
+    getter = entryCursorHeader
+    setter ec hc = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorHeader = hc
+            }
 
 data HeaderCursor = HeaderCursor
     { headerCursorParent :: EntryCursor
@@ -327,21 +355,33 @@ headerCursor par h =
     }
 
 headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
-headerCursorInsert = headerCursorModifyTextCursor . textCursorInsert
+headerCursorInsert c hc = hc & headerCursorTextCursorL %~ textCursorInsert c
 
--- headerCursorLeft :: HeaderCursor -> Maybe HeaderCursor
--- headerCursorLeft = headerCursorModifyTextCursor textCursorSelectPrev
---
--- headerCursorRight :: HeaderCursor -> Maybe HeaderCursor
--- headerCursorRight = headerCursorModifyTextCursor textCursorSelectNext
---
-headerCursorModifyTextCursor ::
-       (TextCursor -> TextCursor) -> HeaderCursor -> HeaderCursor
-headerCursorModifyTextCursor func HeaderCursor {..} = hc
+headerCursorRemove :: HeaderCursor -> Maybe HeaderCursor
+headerCursorRemove = headerCursorTextCursorL textCursorRemove
+
+headerCursorDelete :: HeaderCursor -> Maybe HeaderCursor
+headerCursorDelete = headerCursorTextCursorL textCursorDelete
+
+headerCursorLeft :: HeaderCursor -> Maybe HeaderCursor
+headerCursorLeft = headerCursorTextCursorL textCursorSelectPrev
+
+headerCursorRight :: HeaderCursor -> Maybe HeaderCursor
+headerCursorRight = headerCursorTextCursorL textCursorSelectNext
+
+headerCursorTextCursorL ::
+       Functor f
+    => (TextCursor -> f TextCursor)
+    -> HeaderCursor
+    -> f HeaderCursor
+headerCursorTextCursorL = lens getter setter
   where
-    hc =
-        HeaderCursor
-        { headerCursorParent =
-              entryCursorModifyHeader (const hc) headerCursorParent
-        , headerCursorHeader = func headerCursorHeader
-        }
+    getter = headerCursorHeader
+    setter hc tc = hc'
+      where
+        hc' =
+            HeaderCursor
+            { headerCursorParent =
+                  headerCursorParent hc & entryCursorHeaderL .~ hc'
+            , headerCursorHeader = tc
+            }

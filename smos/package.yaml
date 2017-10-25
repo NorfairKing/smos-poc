@@ -28,6 +28,7 @@ dependencies:
 - validity-time >=0.1 && <0.2
 - validity-unordered-containers >=0.1 && <0.2
 - vty >=5.18 && <5.19
+- microlens >=0.4 && <0.5
 
 library:
   source-dirs: src/

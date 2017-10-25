@@ -7,9 +7,17 @@ module Smos.Actions
     , deleteCurrentHeader
     , moveUp
     , moveDown
+    -- * Header actions
     , enterHeader
     , headerInsert
+    , headerRemove
+    , headerDelete
+    , headerLeft
+    , headerRight
+    , exitHeader
     -- * Helper functions to define your own actions
+    , modifyHeaderM
+    , modifyHeader
     , modifyCursor
     , modifyMCursor
     , withEntryCursor
@@ -93,10 +101,35 @@ enterHeader =
             _ -> cur
 
 headerInsert :: Char -> SmosM ()
-headerInsert c =
+headerInsert c = modifyHeader $ \hc -> headerCursorInsert c hc
+
+headerRemove :: SmosM ()
+headerRemove = modifyHeaderM headerCursorRemove
+
+headerDelete :: SmosM ()
+headerDelete = modifyHeaderM headerCursorDelete
+
+headerLeft :: SmosM ()
+headerLeft = modifyHeaderM headerCursorLeft
+
+headerRight :: SmosM ()
+headerRight = modifyHeaderM headerCursorRight
+
+exitHeader :: SmosM ()
+exitHeader =
     modifyCursor $ \cur ->
         case cur of
-            AHeader h -> AHeader $ headerCursorInsert c h
+            AHeader hc -> AnEntry $ headerCursorParent hc
+            _ -> cur
+
+modifyHeaderM :: (HeaderCursor -> Maybe HeaderCursor) -> SmosM ()
+modifyHeaderM func = modifyHeader $ \hc -> fromMaybe hc $ func hc
+
+modifyHeader :: (HeaderCursor -> HeaderCursor) -> SmosM ()
+modifyHeader func =
+    modifyCursor $ \cur ->
+        case cur of
+            AHeader h -> AHeader $ func h
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()

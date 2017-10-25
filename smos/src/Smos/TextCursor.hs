@@ -15,6 +15,8 @@ module Smos.TextCursor
     , textCursorSelectStart
     , textCursorSelectEnd
     , textCursorInsert
+    , textCursorRemove
+    , textCursorDelete
     ) where
 
 import Import
@@ -86,3 +88,15 @@ textCursorInsert :: Char -> TextCursor -> TextCursor
 textCursorInsert c tc =
     TextCursor
     {textCursorPrev = c : textCursorPrev tc, textCursorNext = textCursorNext tc}
+
+textCursorRemove :: TextCursor -> Maybe TextCursor
+textCursorRemove tc =
+    case textCursorPrev tc of
+        [] -> Nothing
+        (_:prev) -> Just $ tc {textCursorPrev = prev}
+
+textCursorDelete :: TextCursor -> Maybe TextCursor
+textCursorDelete tc =
+    case textCursorNext tc of
+        [] -> Nothing
+        (_:next) -> Just $ tc {textCursorNext = next}

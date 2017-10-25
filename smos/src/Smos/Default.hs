@@ -24,7 +24,15 @@ defaultConfig =
                     , matchKey KDown moveDown
                     , matchKey KUp moveUp
                     ]
-              , inHeader $ mconcat [onChar headerInsert]
+              , inHeader $
+                mconcat
+                    [ onChar headerInsert
+                    , matchKey KBS headerRemove
+                    , matchKey KDel headerDelete
+                    , matchKey KLeft headerLeft
+                    , matchKey KRight headerRight
+                    , matchKey KEnter exitHeader
+                    ]
               , matchChar 'q' stop
               , matchKey KEsc stop
               ]
