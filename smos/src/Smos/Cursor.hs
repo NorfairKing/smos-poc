@@ -28,7 +28,10 @@ module Smos.Cursor
     , treeCursorEntryL
     , treeCursorForestL
     , treeCursorInsertAbove
-    , treeCursorInsertUnder
+    , treeCursorInsertBelow
+    , treeCursorInsertChildAt
+    , treeCursorInsertChildAtStart
+    , treeCursorInsertChildAtEnd
     , treeCursorDeleteCurrent
     , EntryCursor
     , entryCursorParent
@@ -152,8 +155,8 @@ forestCursorSelectLast fc =
         [] -> Nothing
         (tc:_) -> Just tc
 
-forestCursorInsertAt :: ForestCursor -> Int -> SmosTree -> ForestCursor
-forestCursorInsertAt fc ix_ newTree = fc'
+forestCursorInsertAt :: Int -> SmosTree -> ForestCursor -> ForestCursor
+forestCursorInsertAt ix_ newTree fc = fc'
   where
     fc' =
         fc & forestElemsL %~
@@ -164,12 +167,12 @@ forestCursorInsertAt fc ix_ newTree = fc'
     prevs = ffilter (<)
     nexts = ffilter (>=)
 
-forestCursorInsertAtStart :: ForestCursor -> SmosTree -> ForestCursor
-forestCursorInsertAtStart fc = forestCursorInsertAt fc 0
+forestCursorInsertAtStart :: SmosTree -> ForestCursor -> ForestCursor
+forestCursorInsertAtStart = forestCursorInsertAt 0
 
 forestCursorInsertAtEnd :: ForestCursor -> SmosTree -> ForestCursor
-forestCursorInsertAtEnd fc =
-    forestCursorInsertAt fc $ length $ forestCursorElems fc
+forestCursorInsertAtEnd fc t =
+    forestCursorInsertAt (length $ forestCursorElems fc) t fc
 
 data TreeCursor = TreeCursor
     { treeCursorParent :: ForestCursor
@@ -259,14 +262,28 @@ treeCursorInsertAbove :: TreeCursor -> SmosTree -> TreeCursor
 treeCursorInsertAbove tc t = fromJust $ forestCursorSelectIx newpar newIx
   where
     newIx = treeCursorIndex tc
-    newpar = forestCursorInsertAt (treeCursorParent tc) newIx t
+    newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
 
-treeCursorInsertUnder :: TreeCursor -> SmosTree -> TreeCursor
-treeCursorInsertUnder tc t =
+treeCursorInsertBelow :: TreeCursor -> SmosTree -> TreeCursor
+treeCursorInsertBelow tc t =
     fromJust $ forestCursorSelectIx newpar $ treeCursorIndex tc + 1
   where
     newIx = treeCursorIndex tc + 1
-    newpar = forestCursorInsertAt (treeCursorParent tc) newIx t
+    newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
+
+treeCursorInsertChildAt :: Int -> SmosTree -> TreeCursor -> TreeCursor
+treeCursorInsertChildAt ix_ t tc =
+    tc & treeCursorForestL %~ forestCursorInsertAt ix_ t
+
+treeCursorInsertChildAtStart :: SmosTree -> TreeCursor -> TreeCursor
+treeCursorInsertChildAtStart = treeCursorInsertChildAt 0
+
+treeCursorInsertChildAtEnd :: SmosTree -> TreeCursor -> TreeCursor
+treeCursorInsertChildAtEnd t tc =
+    treeCursorInsertChildAt
+        (length $ forestCursorElems $ treeCursorForest tc)
+        t
+        tc
 
 treeCursorDeleteCurrent :: TreeCursor -> Either ForestCursor TreeCursor
 treeCursorDeleteCurrent tc = tc''

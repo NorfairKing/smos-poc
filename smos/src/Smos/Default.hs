@@ -17,6 +17,7 @@ defaultConfig =
               [ inEntry $
                 mconcat
                     [ matchChar 'h' insertTreeAbove
+                    , matchChar 'H' insertTreeChild
                     , matchChar 'd' deleteCurrentHeader
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
