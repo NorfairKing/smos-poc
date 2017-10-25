@@ -71,7 +71,10 @@ insertTreeChild =
                 let tc = entryCursorParent ec
                     tc' = treeCursorInsertChildAtStart emptyTree tc
                     ec' = treeCursorEntry tc'
-                in Just $ AnEntry ec'
+                    fc' = treeCursorForest tc'
+                    mtc' = forestCursorSelectFirst fc'
+                    mec' = treeCursorEntry <$> mtc'
+                in Just $ maybe (AnEntry ec') AnEntry mec'
             _ -> mcur
 
 deleteCurrentHeader :: SmosM ()
