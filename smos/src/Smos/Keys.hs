@@ -5,7 +5,12 @@ module Smos.Keys
     , matchKey
     , onChar
     , satisfyKey
+    , inEntry
+    , inHeader
+    -- * Raw building blocks
+    , filterKeymap
     , rawKeymap
+    -- * Re-exports
     , V.Key(..)
     , Monoid(..)
     ) where
@@ -15,6 +20,7 @@ import Import
 import qualified Brick.Types as B
 import qualified Graphics.Vty as V
 
+import Smos.Cursor
 import Smos.Types
 
 matchChar :: Char -> SmosM () -> Keymap e
@@ -43,3 +49,17 @@ satisfyKey pred_ func =
         case ev of
             B.VtyEvent (V.EvKey ek []) -> when (pred_ ek) func
             _ -> pure ()
+
+inEntry :: Keymap e -> Keymap e
+inEntry =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Just (AnEntry _) -> True
+            _ -> False
+
+inHeader :: Keymap e -> Keymap e
+inHeader =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Just (AHeader _) -> True
+            _ -> False

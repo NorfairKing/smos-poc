@@ -14,14 +14,17 @@ defaultConfig =
     SmosConfig
     { keyMap =
           mconcat
-              [ matchChar 'h' insertTreeAbove
-              , matchChar 'd' deleteCurrentHeader
-              , matchChar 'j' moveDown
-              , matchChar 'k' moveUp
-              , onChar headerInsert
-              , matchChar 'i' enterHeader
-              , matchKey KDown moveDown
-              , matchKey KUp moveUp
+              [ inEntry $
+                mconcat
+                    [ matchChar 'h' insertTreeAbove
+                    , matchChar 'd' deleteCurrentHeader
+                    , matchChar 'j' moveDown
+                    , matchChar 'k' moveUp
+                    , matchChar 'i' enterHeader
+                    , matchKey KDown moveDown
+                    , matchKey KUp moveUp
+                    ]
+              , inHeader $ mconcat [onChar headerInsert]
               , matchChar 'q' stop
               , matchKey KEsc stop
               ]

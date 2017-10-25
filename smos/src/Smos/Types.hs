@@ -27,11 +27,20 @@ newtype SmosConfig e = SmosConfig
     } deriving (Generic)
 
 newtype Keymap e = Keymap
-    { unKeymap :: SmosEvent e -> SmosM ()
+    { unKeymap :: SmosState -> SmosEvent e -> SmosM ()
     } deriving (Generic)
 
+-- TODO explain how this is not the current state, but the state at the start of
+-- the handler
+filterKeymap :: (SmosState -> Bool) -> Keymap e -> Keymap e
+filterKeymap pred_ (Keymap km) =
+    Keymap $ \s e ->
+        if pred_ s
+            then km s e
+            else pure ()
+
 rawKeymap :: (SmosEvent e -> SmosM ()) -> Keymap e
-rawKeymap = Keymap
+rawKeymap = Keymap . const
 
 -- | This instance is the most important for implementors.
 --
@@ -40,11 +49,11 @@ rawKeymap = Keymap
 -- Note that all handlers will be executed, not just the first one to be
 -- selected.
 instance Monoid (Keymap e) where
-    mempty = Keymap $ const $ pure ()
+    mempty = Keymap $ \_ _ -> pure ()
     mappend (Keymap km1) (Keymap km2) =
-        Keymap $ \e -> do
-            km1 e
-            km2 e
+        Keymap $ \s e -> do
+            km1 s e
+            km2 s e
 
 type SmosEvent e = BrickEvent ResourceName e
 

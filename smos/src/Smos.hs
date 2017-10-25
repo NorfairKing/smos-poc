@@ -134,7 +134,7 @@ smosHandleEvent ::
     -> BrickEvent ResourceName e
     -> EventM ResourceName (Next SmosState)
 smosHandleEvent km s e = do
-    (mkHalt, s') <- runSmosM s $ unKeymap km e
+    (mkHalt, s') <- runSmosM s $ unKeymap km s e
     case mkHalt of
         Stop -> B.halt s'
         Continue () -> B.continue s'
