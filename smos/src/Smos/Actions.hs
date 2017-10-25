@@ -3,14 +3,14 @@
 module Smos.Actions
     ( halt
     -- * Ready-made actions
-    , insertHeaderAbove
+    , insertTreeAbove
     , deleteCurrentHeader
     , moveUp
     , moveDown
     -- * Helper functions to define your own actions
     , modify
-    , withForestCursor
-    , withTreeCursor
+    , withEntryCursor
+    , withHeaderCursor
     ) where
 
 import Import
@@ -24,70 +24,98 @@ import Smos.Data
 import Smos.Cursor
 import Smos.Types
 
-insertHeaderAbove :: SmosM ()
-insertHeaderAbove =
+insertTreeAbove :: SmosM ()
+insertTreeAbove =
     modify $ \ss ->
-        let newE =
+        let newT =
                 SmosTree
                 {treeEntry = newEntry "NEW HEADER", treeForest = SmosForest []}
         in case smosStateCursor ss of
-               AForest fc ->
-                   let fc' = forestCursorInsertAtStart fc newE
-                   in ss {smosStateCursor = AForest fc'}
-               ATree tc ->
-                   let tc' = treeCursorInsertAbove tc newE
-                   in ss {smosStateCursor = ATree tc'}
-               AnEntry _ -> ss
+               Nothing ->
+                   let fc = makeForestCursor $ SmosForest []
+                       fc' = forestCursorInsertAtStart fc newT
+                       mtc' = forestCursorSelectFirst fc'
+                   in ss
+                      {smosStateCursor = (AnEntry . treeCursorEntry) <$> mtc'}
+               Just (AnEntry ec) ->
+                   let tc = entryCursorParent ec
+                       tc' = treeCursorInsertAbove tc newT
+                       ec' = treeCursorEntry tc'
+                   in ss {smosStateCursor = Just $ AnEntry ec'}
+               _ -> ss
 
 deleteCurrentHeader :: SmosM ()
 deleteCurrentHeader =
-    withTreeCursor $ \tc ->
-        modify (\ss -> ss {smosStateCursor = treeCursorDeleteCurrent tc})
+    withEntryCursor $ \ec ->
+        let tc = entryCursorParent ec
+            eft = treeCursorDeleteCurrent tc
+            mec' =
+                case eft of
+                    Left fc ->
+                        case forestCursorParent fc of
+                            Nothing -> Nothing
+                            Just tc_ -> Just $ treeCursorEntry tc_
+                    Right tc_ -> Just $ treeCursorEntry tc_
+        in modify (\ss -> ss {smosStateCursor = AnEntry <$> mec'})
 
 moveUp :: SmosM ()
 moveUp =
     modify $ \ss ->
         case smosStateCursor ss of
-            AForest fc ->
-                let mfc' = forestCursorSelectLast fc
-                in ss
-                   { smosStateCursor =
-                         case mfc' of
-                             Nothing -> AForest fc
-                             Just tc -> ATree tc
-                   }
-            ATree tc ->
-                let mtc' = treeCursorSelectPrev tc
-                in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
-            AnEntry _ -> ss
+            Just (AnEntry ec) ->
+                let tc = entryCursorParent ec
+                    tc' = fromMaybe tc $ treeCursorSelectPrev tc
+                    ec' = treeCursorEntry tc'
+                in ss {smosStateCursor = Just $ AnEntry ec'}
+            _ -> ss
+            -- AForest fc ->
+            --     let mfc' = forestCursorSelectLast fc
+            --     in ss
+            --        { smosStateCursor =
+            --              case mfc' of
+            --                  Nothing -> AForest fc
+            --                  Just tc -> ATree tc
+            --        }
+            -- ATree tc ->
+            --     let mtc' = treeCursorSelectPrev tc
+            --     in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
+            -- AnEntry _ -> ss
 
 moveDown :: SmosM ()
 moveDown =
     modify $ \ss ->
         case smosStateCursor ss of
-            AForest fc ->
-                let mfc' = forestCursorSelectFirst fc
-                in ss
-                   { smosStateCursor =
-                         case mfc' of
-                             Nothing -> AForest fc
-                             Just tc -> ATree tc
-                   }
-            ATree tc ->
-                let mtc' = treeCursorSelectNext tc
-                in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
-            AnEntry _ -> ss
+            Just (AnEntry ec) ->
+                let tc = entryCursorParent ec
+                    tc' = fromMaybe tc $ treeCursorSelectNext tc
+                    ec' = treeCursorEntry tc'
+                in ss {smosStateCursor = Just (AnEntry ec')}
+            _ -> ss
+    -- modify $ \ss ->
+    --     case smosStateCursor ss of
+    --         AForest fc ->
+    --             let mfc' = forestCursorSelectFirst fc
+    --             in ss
+    --                { smosStateCursor =
+    --                      case mfc' of
+    --                          Nothing -> AForest fc
+    --                          Just tc -> ATree tc
+    --                }
+    --         ATree tc ->
+    --             let mtc' = treeCursorSelectNext tc
+    --             in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
+    --         AnEntry _ -> ss
 
-withTreeCursor :: (TreeCursor -> SmosM ()) -> SmosM ()
-withTreeCursor func = do
+withEntryCursor :: (EntryCursor -> SmosM ()) -> SmosM ()
+withEntryCursor func = do
     ss <- get
     case smosStateCursor ss of
-        ATree tc -> func tc
+        Just (AnEntry fc) -> func fc
         _ -> pure ()
 
-withForestCursor :: (ForestCursor -> SmosM ()) -> SmosM ()
-withForestCursor func = do
+withHeaderCursor :: (HeaderCursor -> SmosM ()) -> SmosM ()
+withHeaderCursor func = do
     ss <- get
     case smosStateCursor ss of
-        AForest fc -> func fc
+        Just (AHeader fc) -> func fc
         _ -> pure ()

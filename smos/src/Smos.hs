@@ -53,7 +53,8 @@ initState sf = SmosState {smosStateCursor = makeACursor sf}
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =
-    SmosFile {smosFileForest = rebuild smosStateCursor}
+    SmosFile
+    {smosFileForest = fromMaybe (SmosForest []) $ rebuild <$> smosStateCursor}
 
 mkSmosApp :: Ord e => SmosConfig e -> App SmosState e ResourceName
 mkSmosApp SmosConfig {..} =
@@ -66,7 +67,8 @@ mkSmosApp SmosConfig {..} =
     }
 
 smosDraw :: SmosState -> [Widget ResourceName]
-smosDraw SmosState {..} = [renderForest smosStateCursor]
+smosDraw SmosState {..} =
+    [fromMaybe (str "NO CONTENT") $ renderForest <$> smosStateCursor]
   where
     renderForest cur = smosForest (Just $ makeASelection cur) (rebuild cur)
     smosForest msel SmosForest {..} =

@@ -18,7 +18,7 @@ defaultConfig =
     SmosConfig
     { keyMap =
           M.fromList
-              [ (B.VtyEvent (V.EvKey (V.KChar 'h') []), insertHeaderAbove)
+              [ (B.VtyEvent (V.EvKey (V.KChar 'h') []), insertTreeAbove)
               , (B.VtyEvent (V.EvKey (V.KChar 'd') []), deleteCurrentHeader)
               , (B.VtyEvent (V.EvKey (V.KChar 'j') []), moveDown)
               , (B.VtyEvent (V.EvKey (V.KChar 'k') []), moveUp)

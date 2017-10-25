@@ -17,7 +17,7 @@ newtype SmosConfig e = SmosConfig
     } deriving (Generic)
 
 newtype SmosState = SmosState
-    { smosStateCursor :: ACursor
+    { smosStateCursor :: Maybe ACursor
     } deriving (Generic)
 
 newtype ResourceName = ResourceName
