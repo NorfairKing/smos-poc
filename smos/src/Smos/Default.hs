@@ -24,7 +24,7 @@ defaultConfig =
               , (B.VtyEvent (V.EvKey (V.KChar 'k') []), moveUp)
               , (B.VtyEvent (V.EvKey V.KDown []), moveDown)
               , (B.VtyEvent (V.EvKey V.KUp []), moveUp)
-              , (B.VtyEvent (V.EvKey (V.KChar 'q') []), halt)
-              , (B.VtyEvent (V.EvKey V.KEsc []), halt)
+              , (B.VtyEvent (V.EvKey (V.KChar 'q') []), stop)
+              , (B.VtyEvent (V.EvKey V.KEsc []), stop)
               ]
     }

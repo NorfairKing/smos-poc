@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Smos.Actions
-    ( halt
+    ( stop
     -- * Ready-made actions
     , insertTreeAbove
     , deleteCurrentHeader
@@ -17,12 +17,13 @@ import Import
 
 import Control.Monad.State
 
-import Brick.Main as B
-
 import Smos.Data
 
 import Smos.Cursor
 import Smos.Types
+
+stop :: SmosM a
+stop = MkSmosM $ NextT $ pure Stop
 
 insertTreeAbove :: SmosM ()
 insertTreeAbove =

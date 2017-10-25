@@ -130,12 +130,18 @@ smosChooseCursor = neverShowCursor
 smosHandleEvent ::
        Ord e
     => Map (BrickEvent ResourceName e) (SmosM ())
+    -> SmosState
     -> BrickEvent ResourceName e
-    -> EventM ResourceName SmosState ()
-smosHandleEvent keyMap e = fromMaybe (pure ()) (M.lookup e keyMap)
+    -> EventM ResourceName (Next SmosState)
+smosHandleEvent keyMap s e = do
+    let func = fromMaybe (pure ()) (M.lookup e keyMap)
+    (mkHalt, s') <- runSmosM s func
+    case mkHalt of
+        Stop -> B.halt s'
+        Continue () -> B.continue s'
 
-smosStartEvent :: EventM n s ()
-smosStartEvent = pure ()
+smosStartEvent :: s -> EventM n s
+smosStartEvent = pure
 
 smosAttrMap :: s -> AttrMap
 smosAttrMap _ = attrMap defAttr [(selectedAttr, fg V.brightWhite)]
