@@ -7,10 +7,14 @@ module Smos.Actions
     , deleteCurrentHeader
     , moveUp
     , moveDown
+    , enterHeader
+    , headerInsert
     -- * Helper functions to define your own actions
-    , modify
+    , modifyCursor
+    , modifyMCursor
     , withEntryCursor
     , withHeaderCursor
+    , modify
     ) where
 
 import Import
@@ -80,6 +84,27 @@ moveDown =
                     ec' = treeCursorEntry tc'
                 in ss {smosStateCursor = Just (AnEntry ec')}
             _ -> ss
+
+enterHeader :: SmosM ()
+enterHeader =
+    modifyCursor $ \cur ->
+        case cur of
+            AnEntry ec -> AHeader $ entryCursorHeader ec
+            _ -> cur
+
+headerInsert :: Char -> SmosM ()
+headerInsert c =
+    modifyCursor $ \cur ->
+        case cur of
+            AHeader h -> AHeader $ headerCursorInsert c h
+            _ -> cur
+
+modifyCursor :: (ACursor -> ACursor) -> SmosM ()
+modifyCursor func = modifyMCursor $ \mc -> func <$> mc
+
+modifyMCursor :: (Maybe ACursor -> Maybe ACursor) -> SmosM ()
+modifyMCursor func =
+    modify $ \ss -> ss {smosStateCursor = func $ smosStateCursor ss}
 
 withEntryCursor :: (EntryCursor -> SmosM ()) -> SmosM ()
 withEntryCursor func = do

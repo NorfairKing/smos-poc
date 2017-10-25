@@ -18,6 +18,8 @@ defaultConfig =
               , matchChar 'd' deleteCurrentHeader
               , matchChar 'j' moveDown
               , matchChar 'k' moveUp
+              , onChar headerInsert
+              , matchChar 'i' enterHeader
               , matchKey KDown moveDown
               , matchKey KUp moveUp
               , matchChar 'q' stop

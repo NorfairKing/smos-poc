@@ -38,8 +38,11 @@ module Smos.Cursor
     , headerCursorParent
     , headerCursorHeader
     , headerCursorModifyTextCursor
+    , headerCursorInsert
     ) where
 
+--     , headerCursorLeft
+--     , headerCursorRight
 import Import
 
 import Data.HashMap.Lazy (HashMap)
@@ -323,6 +326,15 @@ headerCursor par h =
     , headerCursorHeader = makeTextCursor $ headerText h
     }
 
+headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
+headerCursorInsert = headerCursorModifyTextCursor . textCursorInsert
+
+-- headerCursorLeft :: HeaderCursor -> Maybe HeaderCursor
+-- headerCursorLeft = headerCursorModifyTextCursor textCursorSelectPrev
+--
+-- headerCursorRight :: HeaderCursor -> Maybe HeaderCursor
+-- headerCursorRight = headerCursorModifyTextCursor textCursorSelectNext
+--
 headerCursorModifyTextCursor ::
        (TextCursor -> TextCursor) -> HeaderCursor -> HeaderCursor
 headerCursorModifyTextCursor func HeaderCursor {..} = hc
