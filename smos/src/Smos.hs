@@ -76,7 +76,8 @@ smosDraw SmosState {..} =
         flip map (zip [0 ..] smosTrees) $ \(ix, st) ->
             smosTree (drillSel msel ix) st
     smosTree msel SmosTree {..} =
-        smosEntry msel treeEntry <=> smosForest msel treeForest
+        smosEntry (drillSel msel 0) treeEntry <=>
+        smosForest (drillSel msel 1) treeForest
     smosEntry msel Entry {..} =
         withSel msel $
         B.vBox
@@ -85,7 +86,7 @@ smosDraw SmosState {..} =
                   (B.txt " ")
                   [ B.txt ">"
                   , mayW entryState $ B.txt . todoStateText
-                  , B.txt $ headerText entryHeader
+                  , smosHeader (drillSel msel 0) entryHeader
                   , B.hBox $
                     intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
                   ]
@@ -99,6 +100,7 @@ smosDraw SmosState {..} =
                       ]
             , smosLogbook entryLogbook
             ]
+    smosHeader mself Header {..} = B.txt headerText
     smosLogbook LogEnd = B.emptyWidget
     smosLogbook (LogEntry b e l) =
         B.hBox [smosTimestamp b, smosTimestamp e] <=> smosLogbook l
