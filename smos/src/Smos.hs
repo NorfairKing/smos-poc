@@ -11,8 +11,6 @@ import Import
 
 import qualified Data.HashMap.Lazy as HM
 import Data.List
-import Data.Map (Map)
-import qualified Data.Map as M
 
 import System.Environment
 import System.Exit
@@ -100,7 +98,7 @@ smosDraw SmosState {..} =
                       ]
             , smosLogbook entryLogbook
             ]
-    smosHeader mself Header {..} = B.txt headerText
+    smosHeader msel Header {..} = withSel msel $ B.txt headerText
     smosLogbook LogEnd = B.emptyWidget
     smosLogbook (LogEntry b e l) =
         B.hBox [smosTimestamp b, smosTimestamp e] <=> smosLogbook l
@@ -131,13 +129,12 @@ smosChooseCursor = neverShowCursor
 
 smosHandleEvent ::
        Ord e
-    => Map (BrickEvent ResourceName e) (SmosM ())
+    => Keymap e
     -> SmosState
     -> BrickEvent ResourceName e
     -> EventM ResourceName (Next SmosState)
-smosHandleEvent keyMap s e = do
-    let func = fromMaybe (pure ()) (M.lookup e keyMap)
-    (mkHalt, s') <- runSmosM s func
+smosHandleEvent km s e = do
+    (mkHalt, s') <- runSmosM s $ unKeymap km e
     case mkHalt of
         Stop -> B.halt s'
         Continue () -> B.continue s'

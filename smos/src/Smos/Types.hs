@@ -9,7 +9,6 @@ module Smos.Types where
 
 import Import
 
-import Data.Map (Map)
 import Data.String
 
 import Control.Monad.State
@@ -24,8 +23,30 @@ deriving instance Ord Location
 deriving instance (Ord n, Ord e) => Ord (BrickEvent n e)
 
 newtype SmosConfig e = SmosConfig
-    { keyMap :: Map (BrickEvent ResourceName e) (SmosM ())
+    { keyMap :: Keymap e
     } deriving (Generic)
+
+newtype Keymap e = Keymap
+    { unKeymap :: SmosEvent e -> SmosM ()
+    } deriving (Generic)
+
+rawKeymap :: (SmosEvent e -> SmosM ()) -> Keymap e
+rawKeymap = Keymap
+
+-- | This instance is the most important for implementors.
+--
+-- It means you can 'combine keymaps'.
+--
+-- Note that all handlers will be executed, not just the first one to be
+-- selected.
+instance Monoid (Keymap e) where
+    mempty = Keymap $ const $ pure ()
+    mappend (Keymap km1) (Keymap km2) =
+        Keymap $ \e -> do
+            km1 e
+            km2 e
+
+type SmosEvent e = BrickEvent ResourceName e
 
 type SmosM = MkSmosM ResourceName SmosState
 

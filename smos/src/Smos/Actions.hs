@@ -69,18 +69,6 @@ moveUp =
                     ec' = treeCursorEntry tc'
                 in ss {smosStateCursor = Just $ AnEntry ec'}
             _ -> ss
-            -- AForest fc ->
-            --     let mfc' = forestCursorSelectLast fc
-            --     in ss
-            --        { smosStateCursor =
-            --              case mfc' of
-            --                  Nothing -> AForest fc
-            --                  Just tc -> ATree tc
-            --        }
-            -- ATree tc ->
-            --     let mtc' = treeCursorSelectPrev tc
-            --     in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
-            -- AnEntry _ -> ss
 
 moveDown :: SmosM ()
 moveDown =
@@ -92,20 +80,6 @@ moveDown =
                     ec' = treeCursorEntry tc'
                 in ss {smosStateCursor = Just (AnEntry ec')}
             _ -> ss
-    -- modify $ \ss ->
-    --     case smosStateCursor ss of
-    --         AForest fc ->
-    --             let mfc' = forestCursorSelectFirst fc
-    --             in ss
-    --                { smosStateCursor =
-    --                      case mfc' of
-    --                          Nothing -> AForest fc
-    --                          Just tc -> ATree tc
-    --                }
-    --         ATree tc ->
-    --             let mtc' = treeCursorSelectNext tc
-    --             in ss {smosStateCursor = maybe (smosStateCursor ss) ATree mtc'}
-    --         AnEntry _ -> ss
 
 withEntryCursor :: (EntryCursor -> SmosM ()) -> SmosM ()
 withEntryCursor func = do
