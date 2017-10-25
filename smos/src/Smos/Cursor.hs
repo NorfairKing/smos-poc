@@ -85,7 +85,9 @@ makeASelection = reverse . go
     gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
     goe EntryCursor {..} = 0 : got entryCursorParent
-    goh HeaderCursor {..} = 0 : goe headerCursorParent
+    goh HeaderCursor {..} =
+        gotxt headerCursorHeader : 0 : goe headerCursorParent
+    gotxt = length . textCursorPrev
 
 instance Rebuild ACursor where
     rebuild (AnEntry ec) = rebuild ec

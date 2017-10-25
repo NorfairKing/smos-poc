@@ -98,7 +98,7 @@ smosDraw SmosState {..} =
                       ]
             , smosLogbook entryLogbook
             ]
-    smosHeader msel Header {..} = withSel msel $ B.txt headerText
+    smosHeader msel Header {..} = withTextSel msel headerText
     smosLogbook LogEnd = B.emptyWidget
     smosLogbook (LogEntry b e l) =
         B.hBox [smosTimestamp b, smosTimestamp e] <=> smosLogbook l
@@ -120,12 +120,24 @@ smosDraw SmosState {..} =
             Nothing -> id
             Just [] -> withAttr selectedAttr
             Just _ -> id
+    withTextSel :: Maybe [Int] -> Text -> Widget ResourceName
+    withTextSel msel t =
+        case msel of
+            Nothing -> B.txt t
+            Just [ix_] ->
+                withAttr selectedAttr $
+                B.showCursor headerCursorName (B.Location (ix_, 0)) $ B.txt t
+            Just _ -> B.txt t
 
 selectedAttr :: AttrName
 selectedAttr = "selected"
 
-smosChooseCursor :: s -> [CursorLocation n] -> Maybe (CursorLocation n)
-smosChooseCursor = neverShowCursor
+headerCursorName :: ResourceName
+headerCursorName = "header-cursor"
+
+smosChooseCursor ::
+       s -> [CursorLocation ResourceName] -> Maybe (CursorLocation ResourceName)
+smosChooseCursor _ = showCursorNamed headerCursorName
 
 smosHandleEvent ::
        Ord e
