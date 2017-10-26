@@ -19,11 +19,15 @@ defaultConfig =
               , inEntry $
                 mconcat
                     [ matchChar 'd' deleteCurrentHeader
+                    , matchChar 'i' enterHeader
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
-                    , matchChar 'i' enterHeader
+                    , matchChar 'h' moveLeft
+                    , matchChar 'l' moveRight
                     , matchKey KDown moveDown
                     , matchKey KUp moveUp
+                    , matchKey KLeft moveLeft
+                    , matchKey KRight moveRight
                     ]
               , inHeader $
                 mconcat

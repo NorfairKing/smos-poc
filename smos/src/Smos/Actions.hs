@@ -8,6 +8,8 @@ module Smos.Actions
     , deleteCurrentHeader
     , moveUp
     , moveDown
+    , moveLeft
+    , moveRight
     -- * Header actions
     , enterHeader
     , headerInsert
@@ -113,6 +115,23 @@ moveDown =
                 case forestCursorElems $ treeCursorForest tc of
                     [] -> fromMaybe tc $ treeCursorSelectNext tc
                     (tc_:_) -> tc_
+            ec' = treeCursorEntry tc'
+        in ec'
+
+moveLeft :: SmosM ()
+moveLeft =
+    modifyEntry $ \ec ->
+        let tc = entryCursorParent ec
+            tc' = fromMaybe tc $ forestCursorParent $ treeCursorParent tc
+            ec' = treeCursorEntry tc'
+        in ec'
+
+moveRight :: SmosM ()
+moveRight =
+    modifyEntry $ \ec ->
+        let tc = entryCursorParent ec
+            fc = treeCursorForest tc
+            tc' = fromMaybe tc $ forestCursorSelectFirst fc
             ec' = treeCursorEntry tc'
         in ec'
 
