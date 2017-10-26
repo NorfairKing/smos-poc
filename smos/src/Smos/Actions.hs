@@ -102,10 +102,25 @@ moveUp :: SmosM ()
 moveUp =
     modifyEntry $ \ec ->
         let tc = entryCursorParent ec
+            -- First try to go to the last element recursively of the previous node
+            recursivelyDeepestOf t =
+                let fc = treeCursorForest t
+                in case forestCursorSelectLast fc
+                    -- Then try to go to the directly previous node
+                         of
+                       Nothing -> t
+                       Just t_ -> recursivelyDeepestOf t_
             tc' =
-                fromMaybe
-                    (fromMaybe tc $ forestCursorParent $ treeCursorParent tc)
-                    (treeCursorSelectPrev tc)
+                case treeCursorSelectPrev tc of
+                    Just t_ -> recursivelyDeepestOf t_
+                    Nothing -- Then try to go up
+                     ->
+                        let fc = treeCursorParent tc
+                        in case forestCursorParent fc
+                        -- If all else fails, stay where we are
+                                 of
+                               Nothing -> tc
+                               Just tc_ -> tc_
             ec' = treeCursorEntry tc'
         in ec'
 
@@ -113,18 +128,24 @@ moveDown :: SmosM ()
 moveDown =
     modifyEntry $ \ec ->
         let tc = entryCursorParent ec
+            -- First try to go down the current tree's forrest
             goNextViaDown t =
                 case forestCursorElems $ treeCursorForest t of
                     [] -> Nothing
                     (tc_:_) -> Just tc_
-            goNextViaUp t =
+            goNextViaUp t
+                -- Then try to go to the direct next element
+             =
                 case treeCursorSelectNext t of
                     Just tc_ -> tc_
-                    Nothing ->
+                    Nothing
+                        -- Then try to go recursively upward until there is a next element
+                     ->
                         let fc = treeCursorParent t
                         in case forestCursorParent fc of
-                               Nothing -> tc -- CHECKME
                                Just tc_ -> goNextViaUp tc_
+                               -- If all else fails, stay where we are
+                               Nothing -> tc -- CHECKME
             tc' =
                 case goNextViaDown tc of
                     Nothing -> goNextViaUp tc
