@@ -18,7 +18,8 @@ defaultConfig =
               , matchChar 'H' insertTreeChild
               , inEntry $
                 mconcat
-                    [ matchChar 'd' deleteCurrentHeader
+                    [ matchChar 'u' undo
+                    , matchChar 'd' deleteCurrentHeader
                     , matchChar 'i' $ enterHeader >> headerStart
                     , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 't' enterTodoState

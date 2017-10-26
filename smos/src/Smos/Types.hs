@@ -62,8 +62,9 @@ type SmosM = MkSmosM ResourceName SmosState
 runSmosM :: SmosState -> SmosM a -> EventM ResourceName (MStop a, SmosState)
 runSmosM = runMkSmosM
 
-newtype SmosState = SmosState
+data SmosState = SmosState
     { smosStateCursor :: Maybe ACursor
+    , smosStateUndoStack :: [SmosState]
     } deriving (Generic)
 
 newtype ResourceName = ResourceName

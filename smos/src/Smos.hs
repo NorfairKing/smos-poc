@@ -47,7 +47,8 @@ smos sc@SmosConfig {..} = do
             when (startF /= Just sf') $ writeSmosFile fp sf'
 
 initState :: SmosFile -> SmosState
-initState sf = SmosState {smosStateCursor = makeACursor sf}
+initState sf =
+    SmosState {smosStateCursor = makeACursor sf, smosStateUndoStack = []}
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =
@@ -147,9 +148,10 @@ smosHandleEvent ::
     -> EventM ResourceName (Next SmosState)
 smosHandleEvent km s e = do
     (mkHalt, s') <- runSmosM s $ unKeymap km s e
+    let s'' = s' {smosStateUndoStack = s' : smosStateUndoStack s'}
     case mkHalt of
-        Stop -> B.halt s'
-        Continue () -> B.continue s'
+        Stop -> B.halt s''
+        Continue () -> B.continue s''
 
 smosStartEvent :: s -> EventM n s
 smosStartEvent = pure

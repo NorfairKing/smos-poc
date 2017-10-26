@@ -2,6 +2,7 @@
 
 module Smos.Actions
     ( stop
+    , undo
     -- * Ready-made actions
     , insertTreeAbove
     , insertTreeChild
@@ -54,6 +55,13 @@ import Smos.Types
 
 stop :: SmosM a
 stop = MkSmosM $ NextT $ pure Stop
+
+undo :: SmosM ()
+undo =
+    modify $ \ss ->
+        case smosStateUndoStack ss of
+            (_:ss':_) -> ss'
+            _ -> ss
 
 emptyTree :: SmosTree
 emptyTree = SmosTree {treeEntry = newEntry "", treeForest = SmosForest []}
