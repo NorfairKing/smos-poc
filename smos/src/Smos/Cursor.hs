@@ -50,6 +50,8 @@ module Smos.Cursor
     , headerCursorDelete
     , headerCursorLeft
     , headerCursorRight
+    , headerCursorStart
+    , headerCursorEnd
     , StateCursor
     , stateCursor
     , stateCursorParent
@@ -401,7 +403,7 @@ headerCursor par h =
     }
 
 headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
-headerCursorInsert c hc = hc & headerCursorTextCursorL %~ textCursorInsert c
+headerCursorInsert c = headerCursorTextCursorL %~ textCursorInsert c
 
 headerCursorRemove :: HeaderCursor -> Maybe HeaderCursor
 headerCursorRemove = headerCursorTextCursorL textCursorRemove
@@ -414,6 +416,12 @@ headerCursorLeft = headerCursorTextCursorL textCursorSelectPrev
 
 headerCursorRight :: HeaderCursor -> Maybe HeaderCursor
 headerCursorRight = headerCursorTextCursorL textCursorSelectNext
+
+headerCursorStart :: HeaderCursor -> HeaderCursor
+headerCursorStart = headerCursorTextCursorL %~ textCursorSelectStart
+
+headerCursorEnd :: HeaderCursor -> HeaderCursor
+headerCursorEnd = headerCursorTextCursorL %~ textCursorSelectEnd
 
 headerCursorTextCursorL ::
        Functor f

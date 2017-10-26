@@ -17,6 +17,8 @@ module Smos.Actions
     , headerDelete
     , headerLeft
     , headerRight
+    , headerStart
+    , headerEnd
     , exitHeader
     -- * Todo state actions
     , enterTodoState
@@ -200,6 +202,12 @@ headerLeft = modifyHeaderM headerCursorLeft
 
 headerRight :: SmosM ()
 headerRight = modifyHeaderM headerCursorRight
+
+headerStart :: SmosM ()
+headerStart = modifyHeader headerCursorStart
+
+headerEnd :: SmosM ()
+headerEnd = modifyHeader headerCursorEnd
 
 exitHeader :: SmosM ()
 exitHeader =

@@ -19,7 +19,8 @@ defaultConfig =
               , inEntry $
                 mconcat
                     [ matchChar 'd' deleteCurrentHeader
-                    , matchChar 'i' enterHeader
+                    , matchChar 'i' $ enterHeader >> headerStart
+                    , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 't' enterTodoState
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
