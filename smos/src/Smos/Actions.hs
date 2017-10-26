@@ -98,7 +98,10 @@ moveUp :: SmosM ()
 moveUp =
     modifyEntry $ \ec ->
         let tc = entryCursorParent ec
-            tc' = fromMaybe tc $ treeCursorSelectPrev tc
+            tc' =
+                fromMaybe
+                    (fromMaybe tc $ forestCursorParent $ treeCursorParent tc)
+                    (treeCursorSelectPrev tc)
             ec' = treeCursorEntry tc'
         in ec'
 
@@ -106,7 +109,10 @@ moveDown :: SmosM ()
 moveDown =
     modifyEntry $ \ec ->
         let tc = entryCursorParent ec
-            tc' = fromMaybe tc $ treeCursorSelectNext tc
+            tc' =
+                case forestCursorElems $ treeCursorForest tc of
+                    [] -> fromMaybe tc $ treeCursorSelectNext tc
+                    (tc_:_) -> tc_
             ec' = treeCursorEntry tc'
         in ec'
 

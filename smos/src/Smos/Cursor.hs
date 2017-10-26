@@ -21,6 +21,7 @@ module Smos.Cursor
     , treeCursorParent
     , treeCursorPrevElemens
     , treeCursorNextElemens
+    , treeCursorIndex
     , treeCursorEntry
     , treeCursorForest
     , treeCursorSelectPrev
