@@ -39,6 +39,8 @@ import Smos.Data
 import Smos.Cursor
 import Smos.Types
 
+{-# ANN module ("HLint: ignore Use fromMaybe" :: String) #-}
+
 stop :: SmosM a
 stop = MkSmosM $ NextT $ pure Stop
 
@@ -111,10 +113,22 @@ moveDown :: SmosM ()
 moveDown =
     modifyEntry $ \ec ->
         let tc = entryCursorParent ec
+            goNextViaDown t =
+                case forestCursorElems $ treeCursorForest t of
+                    [] -> Nothing
+                    (tc_:_) -> Just tc_
+            goNextViaUp t =
+                case treeCursorSelectNext t of
+                    Just tc_ -> tc_
+                    Nothing ->
+                        let fc = treeCursorParent t
+                        in case forestCursorParent fc of
+                               Nothing -> tc -- CHECKME
+                               Just tc_ -> goNextViaUp tc_
             tc' =
-                case forestCursorElems $ treeCursorForest tc of
-                    [] -> fromMaybe tc $ treeCursorSelectNext tc
-                    (tc_:_) -> tc_
+                case goNextViaDown tc of
+                    Nothing -> goNextViaUp tc
+                    Just tc_ -> tc_
             ec' = treeCursorEntry tc'
         in ec'
 
