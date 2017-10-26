@@ -5,8 +5,10 @@ module Smos.Keys
     , matchKey
     , onChar
     , satisfyKey
+    -- * Filters
     , inEntry
     , inHeader
+    , inTodoState
     -- * Raw building blocks
     , filterKeymap
     , rawKeymap
@@ -62,4 +64,11 @@ inHeader =
     filterKeymap $ \s ->
         case smosStateCursor s of
             Just (AHeader _) -> True
+            _ -> False
+
+inTodoState :: Keymap e -> Keymap e
+inTodoState =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Just (AState _) -> True
             _ -> False

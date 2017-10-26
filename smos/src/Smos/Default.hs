@@ -20,6 +20,7 @@ defaultConfig =
                 mconcat
                     [ matchChar 'd' deleteCurrentHeader
                     , matchChar 'i' enterHeader
+                    , matchChar 't' enterTodoState
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
                     , matchChar 'h' moveLeft
@@ -37,6 +38,12 @@ defaultConfig =
                     , matchKey KLeft headerLeft
                     , matchKey KRight headerRight
                     , matchKey KEnter exitHeader
+                    ]
+              , inTodoState $
+                mconcat
+                    [ matchChar ' ' todoStateClear
+                    , matchChar 't' $ todoStateSet "TODO" >> exitTodoState
+                    , matchChar 'd' $ todoStateSet "DONE" >> exitTodoState
                     ]
               , matchChar 'q' stop
               , matchKey KEsc stop

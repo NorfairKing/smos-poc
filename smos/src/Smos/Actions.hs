@@ -18,21 +18,30 @@ module Smos.Actions
     , headerLeft
     , headerRight
     , exitHeader
+    -- * Todo state actions
+    , enterTodoState
+    , todoStateClear
+    , todoStateSet
+    , exitTodoState
     -- * Helper functions to define your own actions
     , modifyEntryM
     , modifyEntry
     , modifyHeaderM
     , modifyHeader
+    , modifyTodoState
     , modifyCursor
     , modifyMCursor
     , withEntryCursor
     , withHeaderCursor
+    , withStateCursor
     , modify
     ) where
 
 import Import
 
 import Control.Monad.State
+
+import qualified Data.Text as T
 
 import Smos.Data
 
@@ -199,6 +208,26 @@ exitHeader =
             AHeader hc -> AnEntry $ headerCursorParent hc
             _ -> cur
 
+enterTodoState :: SmosM ()
+enterTodoState =
+    modifyCursor $ \cur ->
+        case cur of
+            AnEntry ec -> AState $ entryCursorState ec
+            _ -> cur
+
+todoStateClear :: SmosM ()
+todoStateClear = modifyTodoState stateCursorClear
+
+todoStateSet :: String -> SmosM ()
+todoStateSet = modifyTodoState . stateCursorSetState . TodoState . T.pack
+
+exitTodoState :: SmosM ()
+exitTodoState =
+    modifyCursor $ \cur ->
+        case cur of
+            AState hc -> AnEntry $ stateCursorParent hc
+            _ -> cur
+
 modifyEntryM :: (EntryCursor -> Maybe EntryCursor) -> SmosM ()
 modifyEntryM func = modifyEntry $ \hc -> fromMaybe hc $ func hc
 
@@ -217,6 +246,13 @@ modifyHeader func =
     modifyCursor $ \cur ->
         case cur of
             AHeader h -> AHeader $ func h
+            _ -> cur
+
+modifyTodoState :: (StateCursor -> StateCursor) -> SmosM ()
+modifyTodoState func =
+    modifyCursor $ \cur ->
+        case cur of
+            AState h -> AState $ func h
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()
@@ -238,4 +274,11 @@ withHeaderCursor func = do
     ss <- get
     case smosStateCursor ss of
         Just (AHeader fc) -> func fc
+        _ -> pure ()
+
+withStateCursor :: (StateCursor -> SmosM ()) -> SmosM ()
+withStateCursor func = do
+    ss <- get
+    case smosStateCursor ss of
+        Just (AState fc) -> func fc
         _ -> pure ()

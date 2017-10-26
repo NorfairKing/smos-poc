@@ -37,7 +37,9 @@ module Smos.Cursor
     , EntryCursor
     , entryCursorParent
     , entryCursorHeader
+    , entryCursorState
     , entryCursorHeaderL
+    , entryCursorStateL
     , HeaderCursor
     , headerCursor
     , headerCursorParent
@@ -48,10 +50,14 @@ module Smos.Cursor
     , headerCursorDelete
     , headerCursorLeft
     , headerCursorRight
+    , StateCursor
+    , stateCursor
+    , stateCursorParent
+    , stateCursorState
+    , stateCursorClear
+    , stateCursorSetState
     ) where
 
---     , headerCursorLeft
---     , headerCursorRight
 import Import
 
 import Data.HashMap.Lazy (HashMap)
@@ -72,6 +78,7 @@ class Build a where
 data ACursor
     = AnEntry EntryCursor
     | AHeader HeaderCursor
+    | AState StateCursor
 
 makeACursor :: SmosFile -> Maybe ACursor
 makeACursor SmosFile {..} =
@@ -82,17 +89,20 @@ makeASelection :: ACursor -> [Int]
 makeASelection = reverse . go
   where
     go (AnEntry ec) = goe ec
-    go (AHeader ec) = goh ec
+    go (AHeader hc) = goh hc
+    go (AState sc) = gos sc
     gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
     goe EntryCursor {..} = 0 : got entryCursorParent
     goh HeaderCursor {..} =
         gotxt headerCursorHeader : 0 : goe headerCursorParent
+    gos StateCursor {..} = 1 : goe stateCursorParent
     gotxt = length . textCursorPrev
 
 instance Rebuild ACursor where
     rebuild (AnEntry ec) = rebuild ec
-    rebuild (AHeader ec) = rebuild ec
+    rebuild (AHeader hc) = rebuild hc
+    rebuild (AState sc) = rebuild sc
 
 data ForestCursor = ForestCursor
     { forestCursorParent :: Maybe TreeCursor
@@ -305,7 +315,7 @@ data EntryCursor = EntryCursor
     , entryCursorHeader :: HeaderCursor
     , entryCursorContents :: Maybe Contents
     , entryCursorTimestamps :: HashMap TimestampName UTCTime
-    , entryCursorState :: Maybe TodoState
+    , entryCursorState :: StateCursor
     , entryCursorTags :: [Tag]
     , entryCursorLogbook :: Logbook
     }
@@ -320,7 +330,7 @@ instance Build EntryCursor where
         { entryHeader = build entryCursorHeader
         , entryContents = entryCursorContents
         , entryTimestamps = entryCursorTimestamps
-        , entryState = entryCursorState
+        , entryState = build entryCursorState
         , entryTags = entryCursorTags
         , entryLogbook = entryCursorLogbook
         }
@@ -334,7 +344,7 @@ entryCursor par Entry {..} = ec
         , entryCursorHeader = headerCursor ec entryHeader
         , entryCursorContents = entryContents
         , entryCursorTimestamps = entryTimestamps
-        , entryCursorState = entryState
+        , entryCursorState = stateCursor ec entryState
         , entryCursorTags = entryTags
         , entryCursorLogbook = entryLogbook
         }
@@ -353,6 +363,22 @@ entryCursorHeaderL = lens getter setter
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
             , entryCursorHeader = hc
+            }
+
+entryCursorStateL ::
+       Functor f
+    => (StateCursor -> f StateCursor)
+    -> EntryCursor
+    -> f EntryCursor
+entryCursorStateL = lens getter setter
+  where
+    getter = entryCursorState
+    setter ec hc = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorState = hc
             }
 
 data HeaderCursor = HeaderCursor
@@ -405,3 +431,41 @@ headerCursorTextCursorL = lens getter setter
                   headerCursorParent hc & entryCursorHeaderL .~ hc'
             , headerCursorHeader = tc
             }
+
+data StateCursor = StateCursor
+    { stateCursorParent :: EntryCursor
+    , stateCursorState :: Maybe TodoState
+    }
+
+instance Rebuild StateCursor where
+    rebuild = rebuild . stateCursorParent
+
+instance Build StateCursor where
+    type Building StateCursor = Maybe TodoState
+    build StateCursor {..} = stateCursorState
+
+stateCursor :: EntryCursor -> Maybe TodoState -> StateCursor
+stateCursor = StateCursor
+
+stateCursorStateL ::
+       Functor f
+    => (Maybe TodoState -> f (Maybe TodoState))
+    -> StateCursor
+    -> f StateCursor
+stateCursorStateL = lens getter setter
+  where
+    getter = stateCursorState
+    setter sc ts = sc'
+      where
+        sc' =
+            StateCursor
+            { stateCursorParent =
+                  stateCursorParent sc & entryCursorStateL .~ sc'
+            , stateCursorState = ts
+            }
+
+stateCursorClear :: StateCursor -> StateCursor
+stateCursorClear sc = sc & stateCursorStateL .~ Nothing
+
+stateCursorSetState :: TodoState -> StateCursor -> StateCursor
+stateCursorSetState ts sc = sc & stateCursorStateL .~ Just ts
