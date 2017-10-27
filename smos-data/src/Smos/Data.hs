@@ -1,13 +1,17 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Smos.Data
     ( module Smos.Data.Types
     , readSmosFile
     , writeSmosFile
     , emptySmosFile
+    , prettySmosForest
     ) where
 
 import Import
 
 import qualified Data.ByteString as SB
+import qualified Data.Text as T
 import Data.Yaml as Yaml
 
 import Smos.Data.Types
@@ -27,3 +31,13 @@ writeSmosFile fp sf =
 
 emptySmosFile :: SmosFile
 emptySmosFile = SmosFile $ SmosForest []
+
+prettySmosForest :: SmosForest -> String
+prettySmosForest (SmosForest ts) = unlines $ map prettySmosTree ts
+
+prettySmosTree :: SmosTree -> String
+prettySmosTree SmosTree {..} =
+    unlines [prettySmosEntry treeEntry, prettySmosForest treeForest]
+
+prettySmosEntry :: Entry -> String
+prettySmosEntry Entry {..} = T.unpack $ headerText entryHeader

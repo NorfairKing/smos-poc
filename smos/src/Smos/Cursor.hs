@@ -111,6 +111,18 @@ data ForestCursor = ForestCursor
     , forestCursorElems :: [TreeCursor]
     }
 
+instance Validity ForestCursor where
+    isValid = isValid . rebuild
+    validate = validate . rebuild
+
+instance Show ForestCursor where
+    show ForestCursor {..} =
+        unlines
+            $(case forestCursorParent of
+                  Nothing -> "Nothing"
+                  Just _ -> "Just [..]") :
+        map ((" -" ++) . show) forestCursorElems
+
 instance Rebuild ForestCursor where
     rebuild fc =
         case forestCursorParent fc of
@@ -198,8 +210,31 @@ data TreeCursor = TreeCursor
     , treeCursorForest :: ForestCursor
     }
 
+instance Validity TreeCursor where
+    isValid = isValid . rebuild
+    validate = validate . rebuild
+
 instance Rebuild TreeCursor where
     rebuild = rebuild . treeCursorParent
+
+instance Show TreeCursor where
+    show TreeCursor {..} =
+        unlines
+            ("[..]" :
+             map
+                 (" - " ++)
+                 (concat
+                      [ map (const "tree") treeCursorPrevElemens
+                      , [ "---"
+                        , unwords
+                              [ show treeCursorIndex
+                              , show $ build treeCursorEntry
+                              , show $ build treeCursorForest
+                              ]
+                        , "---"
+                        ]
+                      , map (const "tree") treeCursorNextElemens
+                      ]))
 
 instance Build TreeCursor where
     type Building TreeCursor = SmosTree

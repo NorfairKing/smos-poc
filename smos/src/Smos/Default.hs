@@ -14,7 +14,13 @@ defaultConfig =
     SmosConfig
     { keyMap =
           mconcat
-              [ inEntry $
+              [ inEmpty $
+                mconcat
+                    [ matchChar 'h' $ insertTreeBelow >> enterHeader
+                    , matchChar 'q' stop
+                    , matchKey KEsc stop
+                    ]
+              , inEntry $
                 mconcat
                     [ matchChar 'h' $ insertTreeBelow >> enterHeader
                     , matchChar 'H' $ insertTreeChild >> enterHeader

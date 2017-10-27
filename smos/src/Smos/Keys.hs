@@ -6,6 +6,7 @@ module Smos.Keys
     , onChar
     , satisfyKey
     -- * Filters
+    , inEmpty
     , inEntry
     , inHeader
     , inTodoState
@@ -51,6 +52,13 @@ satisfyKey pred_ func =
         case ev of
             B.VtyEvent (V.EvKey ek []) -> when (pred_ ek) func
             _ -> pure ()
+
+inEmpty :: Keymap e -> Keymap e
+inEmpty =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Nothing -> True
+            _ -> False
 
 inEntry :: Keymap e -> Keymap e
 inEntry =
