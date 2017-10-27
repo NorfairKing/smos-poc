@@ -14,11 +14,11 @@ defaultConfig =
     SmosConfig
     { keyMap =
           mconcat
-              [ matchChar 'h' insertTreeAbove
-              , matchChar 'H' insertTreeChild
-              , inEntry $
+              [ inEntry $
                 mconcat
-                    [ matchChar 'd' deleteCurrentHeader
+                    [ matchChar 'h' $ insertTreeBelow >> enterHeader
+                    , matchChar 'H' $ insertTreeChild >> enterHeader
+                    , matchChar 'd' deleteCurrentHeader
                     , matchChar 'i' $ enterHeader >> headerStart
                     , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 't' enterTodoState
@@ -30,6 +30,8 @@ defaultConfig =
                     , matchKey KUp moveUp
                     , matchKey KLeft moveLeft
                     , matchKey KRight moveRight
+                    , matchChar 'q' stop
+                    , matchKey KEsc stop
                     ]
               , inHeader $
                 mconcat
@@ -39,6 +41,7 @@ defaultConfig =
                     , matchKey KLeft headerLeft
                     , matchKey KRight headerRight
                     , matchKey KEnter exitHeader
+                    , matchKey KEsc exitHeader
                     ]
               , inTodoState $
                 mconcat
@@ -46,7 +49,5 @@ defaultConfig =
                     , matchChar 't' $ todoStateSet "TODO" >> exitTodoState
                     , matchChar 'd' $ todoStateSet "DONE" >> exitTodoState
                     ]
-              , matchChar 'q' stop
-              , matchKey KEsc stop
               ]
     }

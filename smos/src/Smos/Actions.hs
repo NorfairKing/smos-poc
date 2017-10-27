@@ -4,6 +4,7 @@ module Smos.Actions
     ( stop
     -- * Ready-made actions
     , insertTreeAbove
+    , insertTreeBelow
     , insertTreeChild
     , deleteCurrentHeader
     , moveUp
@@ -73,6 +74,18 @@ insertTreeAbove =
             Just (AnEntry ec) ->
                 let tc = entryCursorParent ec
                     tc' = treeCursorInsertAbove tc emptyTree
+                    ec' = treeCursorEntry tc'
+                in Just $ AnEntry ec'
+            _ -> mcur
+
+insertTreeBelow :: SmosM ()
+insertTreeBelow =
+    modifyMCursor $ \mcur ->
+        case mcur of
+            Nothing -> initEntryCursor
+            Just (AnEntry ec) ->
+                let tc = entryCursorParent ec
+                    tc' = treeCursorInsertBelow tc emptyTree
                     ec' = treeCursorEntry tc'
                 in Just $ AnEntry ec'
             _ -> mcur
