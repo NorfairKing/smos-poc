@@ -197,8 +197,8 @@ forestCursorInsertAt ix_ newTree fc = fc'
 forestCursorInsertAtStart :: SmosTree -> ForestCursor -> ForestCursor
 forestCursorInsertAtStart = forestCursorInsertAt 0
 
-forestCursorInsertAtEnd :: ForestCursor -> SmosTree -> ForestCursor
-forestCursorInsertAtEnd fc t =
+forestCursorInsertAtEnd :: SmosTree -> ForestCursor -> ForestCursor
+forestCursorInsertAtEnd t fc =
     forestCursorInsertAt (length $ forestCursorElems fc) t fc
 
 data TreeCursor = TreeCursor
@@ -357,6 +357,24 @@ data EntryCursor = EntryCursor
     , entryCursorLogbook :: Logbook
     }
 
+instance Validity EntryCursor where
+    isValid = isValid . rebuild
+    validate = validate . rebuild
+
+instance Show EntryCursor where
+    show EntryCursor {..} =
+        unlines
+            ("[Tree]" :
+             map
+                 (" -" ++)
+                 [ "[Header]"
+                 , show entryCursorContents
+                 , show entryCursorTimestamps
+                 , "[State]"
+                 , show entryCursorTags
+                 , show entryCursorLogbook
+                 ])
+
 instance Rebuild EntryCursor where
     rebuild = rebuild . entryCursorParent
 
@@ -423,6 +441,15 @@ data HeaderCursor = HeaderCursor
     , headerCursorHeader :: TextCursor
     }
 
+instance Validity HeaderCursor where
+    isValid = isValid . rebuild
+    validate = validate . rebuild
+
+instance Show HeaderCursor where
+    show HeaderCursor {..} =
+        unlines
+            ["[Entry]", " |-" ++ show (rebuildTextCursor headerCursorHeader)]
+
 instance Rebuild HeaderCursor where
     rebuild = rebuild . headerCursorParent
 
@@ -479,6 +506,13 @@ data StateCursor = StateCursor
     { stateCursorParent :: EntryCursor
     , stateCursorState :: Maybe TodoState
     }
+
+instance Validity StateCursor where
+    isValid = isValid . rebuild
+    validate = validate . rebuild
+
+instance Show StateCursor where
+    show StateCursor {..} = unlines ["[Entry]", " |-" ++ show stateCursorState]
 
 instance Rebuild StateCursor where
     rebuild = rebuild . stateCursorParent
