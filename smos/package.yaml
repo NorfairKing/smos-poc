@@ -38,6 +38,7 @@ library:
   - Smos.Actions
   - Smos.Cursor
   - Smos.Default
+  - Smos.Style
   - Smos.TextCursor
   - Smos.Types
 

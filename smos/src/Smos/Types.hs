@@ -9,10 +9,9 @@ module Smos.Types where
 
 import Import
 
-import Data.String
-
 import Control.Monad.State
 
+import Brick.AttrMap as B
 import Brick.Types as B hiding (Next)
 
 import Smos.Cursor
@@ -22,8 +21,9 @@ deriving instance Ord Location
 
 deriving instance (Ord n, Ord e) => Ord (BrickEvent n e)
 
-newtype SmosConfig e = SmosConfig
-    { keyMap :: Keymap e
+data SmosConfig e = SmosConfig
+    { configKeyMap :: Keymap e
+    , configAttrMap :: SmosState -> B.AttrMap
     } deriving (Generic)
 
 newtype Keymap e = Keymap

@@ -10,6 +10,7 @@ import GHC.Generics as X
 import Data.ByteString as X (ByteString)
 import Data.Maybe as X
 import Data.Monoid as X
+import Data.String as X
 import Data.Text as X (Text)
 import Data.Validity as X
 import Data.Validity.Containers as X ()

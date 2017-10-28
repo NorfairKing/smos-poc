@@ -5,6 +5,7 @@ import Import
 import Smos
 import Smos.Actions
 import Smos.Keys
+import Smos.Style
 
 defaultSmos :: IO ()
 defaultSmos = smos (defaultConfig :: SmosConfig ())
@@ -12,7 +13,7 @@ defaultSmos = smos (defaultConfig :: SmosConfig ())
 defaultConfig :: Ord e => SmosConfig e
 defaultConfig =
     SmosConfig
-    { keyMap =
+    { configKeyMap =
           mconcat
               [ inEmpty $
                 mconcat
@@ -56,4 +57,11 @@ defaultConfig =
                     , matchChar 'd' $ todoStateSet "DONE" >> exitTodoState
                     ]
               ]
+    , configAttrMap =
+          applyAttrMappings
+              [ (todoStateSpecificAttr "TODO", fg red)
+              , (todoStateSpecificAttr "DONE", fg green)
+              , (todoStateAttr, bg white)
+              ] .
+          defaultAttrMap
     }

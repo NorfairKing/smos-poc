@@ -11,21 +11,19 @@ import Import
 
 import qualified Data.HashMap.Lazy as HM
 import Data.List
+import qualified Data.Text as T
 
 import System.Environment
 import System.Exit
 
-import Brick.AttrMap as B
 import Brick.Main as B
 import Brick.Types as B
-import Brick.Util as B (fg)
 import Brick.Widgets.Core as B
-import qualified Graphics.Vty as V
-import Graphics.Vty.Attributes
 
 import Smos.Data
 
 import Smos.Cursor
+import Smos.Style
 import Smos.Types
 
 smos :: Ord e => SmosConfig e -> IO ()
@@ -59,9 +57,9 @@ mkSmosApp SmosConfig {..} =
     App
     { appDraw = smosDraw
     , appChooseCursor = smosChooseCursor
-    , appHandleEvent = smosHandleEvent keyMap
+    , appHandleEvent = smosHandleEvent configKeyMap
     , appStartEvent = smosStartEvent
-    , appAttrMap = smosAttrMap
+    , appAttrMap = smosAttrMap configAttrMap
     }
 
 smosDraw :: SmosState -> [Widget ResourceName]
@@ -84,7 +82,13 @@ smosDraw SmosState {..} =
               [B.txt ">"] ++
               (case entryState of
                    Nothing -> []
-                   Just ts -> [B.txt $ todoStateText ts]) ++
+                   Just ts ->
+                       [ withAttr todoStateAttr $
+                         withAttr
+                             (todoStateSpecificAttr
+                                  (T.unpack $ todoStateText ts)) $
+                         B.txt $ todoStateText ts
+                       ]) ++
               [ smosHeader (drillSel msel 0) entryHeader
               , B.hBox $
                 intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
@@ -99,7 +103,8 @@ smosDraw SmosState {..} =
                       ]
             , smosLogbook entryLogbook
             ]
-    smosHeader msel Header {..} = withTextSel msel headerText
+    smosHeader msel Header {..} =
+        withAttr headerAttr $ withTextSel msel headerText
     smosLogbook LogEnd = B.emptyWidget
     smosLogbook (LogEntry b e l) =
         B.hBox [smosTimestamp b, smosTimestamp e] <=> smosLogbook l
@@ -130,12 +135,6 @@ smosDraw SmosState {..} =
                 B.showCursor headerCursorName (B.Location (ix_, 0)) $ B.txt t
             Just _ -> B.txt t
 
-selectedAttr :: AttrName
-selectedAttr = "selected"
-
-headerCursorName :: ResourceName
-headerCursorName = "header-cursor"
-
 smosChooseCursor ::
        s -> [CursorLocation ResourceName] -> Maybe (CursorLocation ResourceName)
 smosChooseCursor _ = showCursorNamed headerCursorName
@@ -155,5 +154,5 @@ smosHandleEvent km s e = do
 smosStartEvent :: s -> EventM n s
 smosStartEvent = pure
 
-smosAttrMap :: s -> AttrMap
-smosAttrMap _ = attrMap defAttr [(selectedAttr, fg V.brightWhite)]
+smosAttrMap :: a -> a
+smosAttrMap = id
