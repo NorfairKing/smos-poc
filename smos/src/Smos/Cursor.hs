@@ -222,7 +222,7 @@ instance Show TreeCursor where
         unlines
             ("[..]" :
              map
-                 (" - " ++)
+                 (" |-" ++)
                  (concat
                       [ map (const "tree") treeCursorPrevElemens
                       , [ "---"
@@ -366,11 +366,11 @@ instance Show EntryCursor where
         unlines
             ("[Tree]" :
              map
-                 (" -" ++)
-                 [ "[Header]"
+                 (" |- " ++)
+                 [ "[Header]: " ++ show (build entryCursorHeader)
                  , show entryCursorContents
                  , show entryCursorTimestamps
-                 , "[State]"
+                 , "[State]: " ++ show (build entryCursorState)
                  , show entryCursorTags
                  , show entryCursorLogbook
                  ])
@@ -418,6 +418,7 @@ entryCursorHeaderL = lens getter setter
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
             , entryCursorHeader = hc
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             }
 
 entryCursorStateL ::
@@ -433,6 +434,8 @@ entryCursorStateL = lens getter setter
         ec' =
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorState = hc
             }
 

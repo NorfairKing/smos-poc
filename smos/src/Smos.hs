@@ -80,14 +80,15 @@ smosDraw SmosState {..} =
         withSel msel $
         B.vBox
             [ B.hBox $
-              intersperse
-                  (B.txt " ")
-                  [ B.txt ">"
-                  , mayW entryState $ B.txt . todoStateText
-                  , smosHeader (drillSel msel 0) entryHeader
-                  , B.hBox $
-                    intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
-                  ]
+              intersperse (B.txt " ") $
+              [B.txt ">"] ++
+              (case entryState of
+                   Nothing -> []
+                   Just ts -> [B.txt $ todoStateText ts]) ++
+              [ smosHeader (drillSel msel 0) entryHeader
+              , B.hBox $
+                intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
+              ]
             , mayW entryContents $ B.txt . contentsText
             , B.vBox $
               flip map (HM.toList entryTimestamps) $ \(k, ts) ->

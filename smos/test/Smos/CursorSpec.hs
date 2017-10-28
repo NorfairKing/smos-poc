@@ -9,6 +9,8 @@ import TestImport
 
 import qualified Data.Text as T
 
+import Lens.Micro
+
 import Smos.Cursor
 import Smos.Cursor.Gen ()
 import Smos.Data
@@ -53,9 +55,9 @@ spec = do
             forAll genValid $ \st -> rebuildsToValid (treeCursorInsertBelow st)
         describe "treeCursorInsertChildAt" $
             it "rebuilds to something valid" $
-            forAll genUnchecked $ \ix ->
+            forAll genUnchecked $ \ix_ ->
                 forAll genValid $ \st ->
-                    rebuildsToValid (treeCursorInsertChildAt ix st)
+                    rebuildsToValid (treeCursorInsertChildAt ix_ st)
         describe "treeCursorInsertChildAtStart" $
             it "rebuilds to something valid" $
             forAll genValid $ \st ->
@@ -75,6 +77,19 @@ spec = do
             it "rebuilds to the same" $ rebuildsToTheSame entryCursorParent
         describe "entryCursorHeader" $
             it "rebuilds to the same" $ rebuildsToTheSame entryCursorHeader
+        describe "entryCursorHeaderL and entryCursorStateL" $
+            it
+                "has the same state after setting the state and then changing the header" $
+            forAll genValid $ \ts ->
+                forAll genValid $ \c ->
+                    forAll genValid $ \ec ->
+                        let ec' =
+                                ec & entryCursorStateL %~ stateCursorSetState ts
+                            hc = entryCursorHeader ec'
+                            hc' = headerCursorInsert c hc
+                            ec'' = headerCursorParent hc'
+                        in build (entryCursorState ec'') `shouldBe`
+                           build (entryCursorState ec')
     describe "HeaderCursor" $ do
         describe "headerCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorParent
