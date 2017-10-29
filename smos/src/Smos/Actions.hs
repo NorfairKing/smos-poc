@@ -2,7 +2,7 @@
 
 module Smos.Actions
     ( stop
-    -- * Ready-made actions
+    -- * Entry and tree actions
     , insertTreeAbove
     , insertTreeBelow
     , insertTreeChild
@@ -11,6 +11,7 @@ module Smos.Actions
     , moveDown
     , moveLeft
     , moveRight
+    , clockIn
     -- * Header actions
     , enterHeader
     , headerInsert
@@ -194,6 +195,9 @@ moveRight =
             ec' = treeCursorEntry tc'
         in ec'
 
+clockIn :: SmosM ()
+clockIn = pure ()
+
 enterHeader :: SmosM ()
 enterHeader =
     modifyCursor $ \cur ->
@@ -303,3 +307,5 @@ withStateCursor func = do
     case smosStateCursor ss of
         Just (AState fc) -> func fc
         _ -> pure ()
+-- withFullMod :: (SmosForest -> SmosForest) ->  SmosM ()
+-- withFullMod func = do

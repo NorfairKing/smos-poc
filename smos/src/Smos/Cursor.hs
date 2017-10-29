@@ -1,10 +1,15 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor
-    ( ACursor(..)
-    , makeACursor
+    ( AnyCursor(..)
+    , makeAnyCursor
     , makeASelection
+    , reselect
+    , ACursor(..)
+    , selectACursor
+    , selectAnyCursor
     , Rebuild(..)
     , Build(..)
     , ForestCursor
@@ -77,22 +82,47 @@ class Build a where
     type Building a :: *
     build :: a -> Building a
 
+data AnyCursor
+    = AnyForest ForestCursor
+    | AnyTree TreeCursor
+    | AnyEntry EntryCursor
+    | AnyHeader HeaderCursor
+    | AnyState StateCursor
+    deriving (Show, Eq, Generic)
+
+instance Validity AnyCursor
+
+instance Rebuild AnyCursor where
+    rebuild (AnyForest fc) = rebuild fc
+    rebuild (AnyTree tc) = rebuild tc
+    rebuild (AnyEntry ec) = rebuild ec
+    rebuild (AnyHeader hc) = rebuild hc
+    rebuild (AnyState sc) = rebuild sc
+
 data ACursor
     = AnEntry EntryCursor
     | AHeader HeaderCursor
     | AState StateCursor
+    deriving (Show, Eq, Generic)
 
-makeACursor :: SmosFile -> Maybe ACursor
-makeACursor SmosFile {..} =
-    (AnEntry . treeCursorEntry) <$>
-    forestCursorSelectFirst (makeForestCursor smosFileForest)
+instance Validity ACursor
 
-makeASelection :: ACursor -> [Int]
+instance Rebuild ACursor where
+    rebuild (AnEntry ec) = rebuild ec
+    rebuild (AHeader hc) = rebuild hc
+    rebuild (AState sc) = rebuild sc
+
+makeAnyCursor :: SmosFile -> AnyCursor
+makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor smosFileForest
+
+makeASelection :: AnyCursor -> [Int]
 makeASelection = reverse . go
   where
-    go (AnEntry ec) = goe ec
-    go (AHeader hc) = goh hc
-    go (AState sc) = gos sc
+    go (AnyForest fc) = gof fc
+    go (AnyTree tc) = got tc
+    go (AnyEntry ec) = goe ec
+    go (AnyHeader hc) = goh hc
+    go (AnyState sc) = gos sc
     gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
     goe EntryCursor {..} = 0 : got entryCursorParent
@@ -101,10 +131,53 @@ makeASelection = reverse . go
     gos StateCursor {..} = 1 : goe stateCursorParent
     gotxt = length . textCursorPrev
 
-instance Rebuild ACursor where
-    rebuild (AnEntry ec) = rebuild ec
-    rebuild (AHeader hc) = rebuild hc
-    rebuild (AState sc) = rebuild sc
+reselect :: [Int] -> SmosFile -> AnyCursor
+reselect s = go s . makeAnyCursor
+  where
+    go sel (AnyForest fc) = gof sel fc
+    go sel (AnyTree tc) = got sel tc
+    go sel (AnyEntry ec) = goe sel ec
+    go sel (AnyHeader hc) = goh sel hc
+    go sel (AnyState sc) = gos sel sc
+    gof sel fc =
+        withSel sel (AnyForest fc) $ \ix_ sel_ ->
+            fromMaybe (AnyForest fc) $
+            got sel_ <$> forestCursorElems fc `atMay` ix_
+    got sel tc =
+        withSel sel (AnyTree tc) $ \ix_ sel_ ->
+            case ix_ of
+                0 -> goe sel_ $ treeCursorEntry tc
+                1 -> gof sel_ $ treeCursorForest tc
+                _ -> AnyTree tc
+    goe sel e =
+        withSel sel (AnyEntry e) $ \ix_ sel_ ->
+            case ix_ of
+                0 -> goh sel_ $ entryCursorHeader e
+                1 -> gos sel_ $ entryCursorState e
+                _ -> AnyEntry e
+    goh _ = AnyHeader
+    gos _ = AnyState
+    withSel :: [Int] -> a -> (Int -> [Int] -> a) -> a
+    withSel sel a func =
+        case sel of
+            [] -> a
+            (ix_:rest) -> func ix_ rest
+
+selectACursor :: AnyCursor -> Maybe ACursor
+selectACursor ac =
+    case ac of
+        AnyForest fc -> AnEntry . treeCursorEntry <$> forestCursorSelectFirst fc
+        AnyTree tc -> Just $ AnEntry $ treeCursorEntry tc
+        AnyEntry ec -> Just $ AnEntry ec
+        AnyHeader hc -> Just $ AHeader hc
+        AnyState sc -> Just $ AState sc
+
+selectAnyCursor :: ACursor -> AnyCursor
+selectAnyCursor ac =
+    case ac of
+        AnEntry hc -> AnyEntry hc
+        AHeader hc -> AnyHeader hc
+        AState hc -> AnyState hc
 
 data ForestCursor = ForestCursor
     { forestCursorParent :: Maybe TreeCursor
@@ -112,8 +185,8 @@ data ForestCursor = ForestCursor
     }
 
 instance Validity ForestCursor where
-    isValid = isValid . rebuild
-    validate = validate . rebuild
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show ForestCursor where
     show ForestCursor {..} =
@@ -122,6 +195,9 @@ instance Show ForestCursor where
                   Nothing -> "Nothing"
                   Just _ -> "Just [..]") :
         map ((" -" ++) . show) forestCursorElems
+
+instance Eq ForestCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild ForestCursor where
     rebuild fc =
@@ -211,8 +287,11 @@ data TreeCursor = TreeCursor
     }
 
 instance Validity TreeCursor where
-    isValid = isValid . rebuild
-    validate = validate . rebuild
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+instance Eq TreeCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TreeCursor where
     rebuild = rebuild . treeCursorParent
@@ -358,8 +437,8 @@ data EntryCursor = EntryCursor
     }
 
 instance Validity EntryCursor where
-    isValid = isValid . rebuild
-    validate = validate . rebuild
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show EntryCursor where
     show EntryCursor {..} =
@@ -374,6 +453,9 @@ instance Show EntryCursor where
                  , show entryCursorTags
                  , show entryCursorLogbook
                  ])
+
+instance Eq EntryCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild EntryCursor where
     rebuild = rebuild . entryCursorParent
@@ -445,13 +527,16 @@ data HeaderCursor = HeaderCursor
     }
 
 instance Validity HeaderCursor where
-    isValid = isValid . rebuild
-    validate = validate . rebuild
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show HeaderCursor where
     show HeaderCursor {..} =
         unlines
             ["[Entry]", " |-" ++ show (rebuildTextCursor headerCursorHeader)]
+
+instance Eq HeaderCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild HeaderCursor where
     rebuild = rebuild . headerCursorParent
@@ -511,11 +596,14 @@ data StateCursor = StateCursor
     }
 
 instance Validity StateCursor where
-    isValid = isValid . rebuild
-    validate = validate . rebuild
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show StateCursor where
     show StateCursor {..} = unlines ["[Entry]", " |-" ++ show stateCursorState]
+
+instance Eq StateCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild StateCursor where
     rebuild = rebuild . stateCursorParent
@@ -549,3 +637,6 @@ stateCursorClear sc = sc & stateCursorStateL .~ Nothing
 
 stateCursorSetState :: TodoState -> StateCursor -> StateCursor
 stateCursorSetState ts sc = sc & stateCursorStateL .~ Just ts
+
+(&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
+(&&&) op1 op2 a b = op1 a b && op2 a b

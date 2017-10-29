@@ -41,7 +41,7 @@ smos sc@SmosConfig {..} = do
             when (startF /= Just sf') $ writeSmosFile fp sf'
 
 initState :: SmosFile -> SmosState
-initState sf = SmosState {smosStateCursor = makeACursor sf}
+initState sf = SmosState {smosStateCursor = selectACursor $ makeAnyCursor sf}
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =

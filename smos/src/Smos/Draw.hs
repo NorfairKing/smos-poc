@@ -24,9 +24,13 @@ import Smos.Types
 
 smosDraw :: SmosState -> [Widget ResourceName]
 smosDraw SmosState {..} =
-    [fromMaybe drawNoContent $ renderForest <$> smosStateCursor]
+    [fromMaybe drawNoContent $ renderCursor <$> smosStateCursor]
   where
-    renderForest cur = drawForest (Just $ makeASelection cur) (rebuild cur)
+    renderCursor :: ACursor -> Widget ResourceName
+    renderCursor cur = drawForest sel for
+      where
+        sel = Just $ makeASelection $ selectAnyCursor cur
+        for = rebuild cur
 
 drawNoContent :: Widget n
 drawNoContent =

@@ -7,6 +7,14 @@ import TestImport
 import Smos.Cursor
 import Smos.Data.Gen ()
 
+instance GenUnchecked AnyCursor
+
+instance GenValid AnyCursor
+
+instance GenUnchecked ACursor
+
+instance GenValid ACursor
+
 instance GenUnchecked ForestCursor where
     genUnchecked = makeForestCursor <$> genUnchecked
     shrinkUnchecked = shrinkNothing

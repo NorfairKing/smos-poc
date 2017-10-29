@@ -18,6 +18,13 @@ import Smos.Data.Gen ()
 
 spec :: Spec
 spec = do
+    describe "ACursor" $
+        describe "reselect" $
+        it "selects the cursor that was handed to makeASelection" $
+        forAll genValid $ \ac ->
+            let sel = makeASelection ac
+                sf = rebuild ac
+            in reselect sel (SmosFile sf) `shouldBe` ac
     describe "ForestCursor" $ do
         describe "makeForestCurser" $
             it "is the inverse of 'build'" $
