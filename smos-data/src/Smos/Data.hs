@@ -6,12 +6,15 @@ module Smos.Data
     , writeSmosFile
     , emptySmosFile
     , prettySmosForest
+    , clockInAt
+    , clockOutAt
     ) where
 
 import Import
 
 import qualified Data.ByteString as SB
 import qualified Data.Text as T
+import Data.Time
 import Data.Yaml as Yaml
 
 import Smos.Data.Types
@@ -41,3 +44,17 @@ prettySmosTree SmosTree {..} =
 
 prettySmosEntry :: Entry -> String
 prettySmosEntry Entry {..} = T.unpack $ headerText entryHeader
+
+clockInAt :: UTCTime -> Logbook -> Maybe Logbook
+clockInAt now lb =
+    case lb of
+        LogEnd -> Just $ LogOpenEntry now LogEnd
+        LogEntry {} -> Just $ LogOpenEntry now lb
+        LogOpenEntry {} -> Nothing
+
+clockOutAt :: UTCTime -> Logbook -> Maybe Logbook
+clockOutAt now lb =
+    case lb of
+        LogEnd -> Nothing
+        LogEntry {} -> Nothing
+        LogOpenEntry start lb' -> Just $ LogEntry start now lb'

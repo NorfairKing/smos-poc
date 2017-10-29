@@ -45,6 +45,8 @@ module Smos.Cursor
     , entryCursorState
     , entryCursorHeaderL
     , entryCursorStateL
+    , entryCursorLogbookL
+    , entryCursorClockIn
     , HeaderCursor
     , headerCursor
     , headerCursorParent
@@ -520,6 +522,25 @@ entryCursorStateL = lens getter setter
                   (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorState = hc
             }
+
+entryCursorLogbookL ::
+       Functor f => (Logbook -> f Logbook) -> EntryCursor -> f EntryCursor
+entryCursorLogbookL = lens getter setter
+  where
+    getter = entryCursorLogbook
+    setter ec lb = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorLogbook = lb
+            }
+
+entryCursorClockIn :: UTCTime -> EntryCursor -> Maybe EntryCursor
+entryCursorClockIn now = entryCursorLogbookL $ clockInAt now
 
 data HeaderCursor = HeaderCursor
     { headerCursorParent :: EntryCursor

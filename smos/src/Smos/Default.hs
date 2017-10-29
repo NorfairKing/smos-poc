@@ -30,6 +30,7 @@ defaultConfig =
                     , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 't' enterTodoState
                     , matchChar 'c' clockIn
+                    , matchChar 'o' clockOut
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
                     , matchChar 'h' moveLeft

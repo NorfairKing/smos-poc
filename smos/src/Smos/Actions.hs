@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Smos.Actions
     ( stop
@@ -12,6 +13,7 @@ module Smos.Actions
     , moveLeft
     , moveRight
     , clockIn
+    , clockOut
     -- * Header actions
     , enterHeader
     , headerInsert
@@ -38,6 +40,7 @@ module Smos.Actions
     , withEntryCursor
     , withHeaderCursor
     , withStateCursor
+    , withFullMod
     , modify
     ) where
 
@@ -46,6 +49,7 @@ import Import
 import Control.Monad.State
 
 import qualified Data.Text as T
+import Data.Time
 
 import Smos.Data
 
@@ -196,7 +200,27 @@ moveRight =
         in ec'
 
 clockIn :: SmosM ()
-clockIn = pure ()
+clockIn = do
+    now <- liftIO getCurrentTime
+    withFullMod $ clockOutMod now
+    modifyEntryM $ entryCursorClockIn now
+
+clockOut :: SmosM ()
+clockOut = do
+    now <- liftIO getCurrentTime
+    withFullMod $ clockOutMod now
+
+clockOutMod :: UTCTime -> (SmosFile -> SmosFile)
+clockOutMod now = SmosFile . gof . smosFileForest
+  where
+    gof sf = SmosForest {smosTrees = map got $ smosTrees sf}
+    got SmosTree {..} =
+        SmosTree {treeEntry = goe treeEntry, treeForest = gof treeForest}
+    goe e =
+        e
+        { entryLogbook =
+              fromMaybe (entryLogbook e) $ clockOutAt now $ entryLogbook e
+        }
 
 enterHeader :: SmosM ()
 enterHeader =
@@ -307,5 +331,15 @@ withStateCursor func = do
     case smosStateCursor ss of
         Just (AState fc) -> func fc
         _ -> pure ()
--- withFullMod :: (SmosForest -> SmosForest) ->  SmosM ()
--- withFullMod func = do
+
+withFullMod :: (SmosFile -> SmosFile) -> SmosM ()
+withFullMod func =
+    modify $ \ss ->
+        case smosStateCursor ss of
+            Nothing -> ss
+            Just cur ->
+                let for = rebuild cur
+                    sf = SmosFile for
+                    sf' = func sf
+                    cur' = selectACursor $ makeAnyCursor sf'
+                in ss {smosStateCursor = cur'}

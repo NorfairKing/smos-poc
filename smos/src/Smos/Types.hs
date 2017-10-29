@@ -78,6 +78,9 @@ instance MonadState s (MkSmosM n s) where
     get = MkSmosM $ lift get
     put = MkSmosM . lift . put
 
+instance MonadIO (MkSmosM n s) where
+    liftIO = MkSmosM . liftIO
+
 runMkSmosM :: s -> MkSmosM n s a -> EventM n (MStop a, s)
 runMkSmosM initState act = runStateT (runNextT (unMkSmosM act)) initState
 
@@ -117,3 +120,6 @@ instance Monad m => Monad (NextT m) where
 
 instance MonadTrans NextT where
     lift func = NextT $ Continue <$> func
+
+instance MonadIO m => MonadIO (NextT m) where
+    liftIO = lift . liftIO
