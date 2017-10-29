@@ -9,20 +9,16 @@ module Smos
 
 import Import
 
-import qualified Data.HashMap.Lazy as HM
-import Data.List
-import qualified Data.Text as T
-
 import System.Environment
 import System.Exit
 
 import Brick.Main as B
 import Brick.Types as B
-import Brick.Widgets.Core as B
 
 import Smos.Data
 
 import Smos.Cursor
+import Smos.Draw
 import Smos.Style
 import Smos.Types
 
@@ -62,82 +58,9 @@ mkSmosApp SmosConfig {..} =
     , appAttrMap = smosAttrMap configAttrMap
     }
 
-smosDraw :: SmosState -> [Widget ResourceName]
-smosDraw SmosState {..} =
-    [fromMaybe (str "NO CONTENT") $ renderForest <$> smosStateCursor]
-  where
-    renderForest cur = smosForest (Just $ makeASelection cur) (rebuild cur)
-    smosForest msel SmosForest {..} =
-        padLeft (Pad 2) . B.vBox $
-        flip map (zip [0 ..] smosTrees) $ \(ix, st) ->
-            smosTree (drillSel msel ix) st
-    smosTree msel SmosTree {..} =
-        smosEntry (drillSel msel 0) treeEntry <=>
-        smosForest (drillSel msel 1) treeForest
-    smosEntry msel Entry {..} =
-        withSel msel $
-        B.vBox
-            [ B.hBox $
-              intersperse (B.txt " ") $
-              [B.txt ">"] ++
-              (case entryState of
-                   Nothing -> []
-                   Just ts ->
-                       [ withAttr todoStateAttr $
-                         withAttr
-                             (todoStateSpecificAttr
-                                  (T.unpack $ todoStateText ts)) $
-                         B.txt $ todoStateText ts
-                       ]) ++
-              [ smosHeader (drillSel msel 0) entryHeader
-              , B.hBox $
-                intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
-              ]
-            , mayW entryContents $ B.txt . contentsText
-            , B.vBox $
-              flip map (HM.toList entryTimestamps) $ \(k, ts) ->
-                  B.hBox
-                      [ B.txt $ timestampNameText k
-                      , B.txt ": "
-                      , smosTimestamp ts
-                      ]
-            , smosLogbook entryLogbook
-            ]
-    smosHeader msel Header {..} =
-        withAttr headerAttr $ withTextSel msel headerText
-    smosLogbook LogEnd = B.emptyWidget
-    smosLogbook (LogEntry b e l) =
-        B.hBox [smosTimestamp b, smosTimestamp e] <=> smosLogbook l
-    smosLogbook (LogOpenEntry b l) =
-        B.hBox [smosTimestamp b, B.txt "present"] <=> smosLogbook l
-    smosTimestamp = B.str . show
-    mayW mw func = maybe emptyWidget func mw
-    drillSel msel ix =
-        case msel of
-            Nothing -> Nothing
-            Just [] -> Nothing
-            Just (x:xs) ->
-                if x == ix
-                    then Just xs
-                    else Nothing
-    withSel :: Maybe [Int] -> Widget n -> Widget n
-    withSel msel =
-        case msel of
-            Nothing -> id
-            Just [] -> withAttr selectedAttr
-            Just _ -> id
-    withTextSel :: Maybe [Int] -> Text -> Widget ResourceName
-    withTextSel msel t =
-        case msel of
-            Nothing -> B.txt t
-            Just [ix_] ->
-                withAttr selectedAttr $
-                B.showCursor headerCursorName (B.Location (ix_, 0)) $ B.txt t
-            Just _ -> B.txt t
-
 smosChooseCursor ::
        s -> [CursorLocation ResourceName] -> Maybe (CursorLocation ResourceName)
-smosChooseCursor _ = showCursorNamed headerCursorName
+smosChooseCursor _ = showCursorNamed textCursorName
 
 smosHandleEvent ::
        Ord e

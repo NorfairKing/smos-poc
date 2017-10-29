@@ -7,7 +7,7 @@ module Smos.Style
     , todoStateAttr
     , todoStateSpecificAttr
     -- * Names of widgets
-    , headerCursorName
+    , textCursorName
     -- * Re-exports
     , applyAttrMappings
     , fg
@@ -40,5 +40,5 @@ todoStateAttr = "todostate"
 todoStateSpecificAttr :: String -> AttrName
 todoStateSpecificAttr tss = fromString $ "todostate-" ++ tss
 
-headerCursorName :: ResourceName
-headerCursorName = "header-cursor"
+textCursorName :: ResourceName
+textCursorName = "text-cursor"
