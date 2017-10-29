@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import Data.Time
 
 import Brick.Types as B
+import Brick.Widgets.Center as B
 import Brick.Widgets.Core as B
 
 import Smos.Data
@@ -23,9 +24,21 @@ import Smos.Types
 
 smosDraw :: SmosState -> [Widget ResourceName]
 smosDraw SmosState {..} =
-    [fromMaybe (str "NO CONTENT") $ renderForest <$> smosStateCursor]
+    [fromMaybe drawNoContent $ renderForest <$> smosStateCursor]
   where
     renderForest cur = drawForest (Just $ makeASelection cur) (rebuild cur)
+
+drawNoContent :: Widget n
+drawNoContent =
+    B.vCenterLayer $
+    B.vBox $
+    map B.hCenterLayer
+        [ str "SMOS"
+        , str " "
+        , str "version 0.0.0"
+        , str "by Tom Sydney Kerckhove"
+        , str "Smos is open source and freely distributable"
+        ]
 
 drawForest :: Maybe [Int] -> SmosForest -> Widget ResourceName
 drawForest msel SmosForest {..} =
