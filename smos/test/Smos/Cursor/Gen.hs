@@ -16,27 +16,62 @@ instance GenUnchecked ACursor
 instance GenValid ACursor
 
 instance GenUnchecked ForestCursor where
-    genUnchecked = makeForestCursor <$> genUnchecked
+    genUnchecked = do
+        fc <- makeForestCursor <$> genUnchecked
+        let go fc_ = do
+                b <- genUnchecked
+                if b
+                    then pure fc_
+                    else case forestCursorElems fc_ of
+                             [] -> pure fc_
+                             els -> do
+                                 tc <- elements els
+                                 go $ treeCursorForest tc
+        go fc
     shrinkUnchecked = shrinkNothing
 
 instance GenValid ForestCursor where
-    genValid = makeForestCursor <$> genValid
+    genValid = do
+        fc <- makeForestCursor <$> genValid
+        let go fc_ = do
+                b <- genUnchecked
+                if b
+                    then pure fc_
+                    else case forestCursorElems fc_ of
+                             [] -> pure fc_
+                             els -> do
+                                 tc <- elements els
+                                 go $ treeCursorForest tc
+        go fc
 
 instance GenUnchecked TreeCursor where
     genUnchecked = do
         sf <- genUnchecked
-        -- TODO don't juts select the first.
-        case forestCursorSelectFirst $ makeForestCursor sf of
-            Nothing -> genUnchecked
-            Just tc -> pure tc
+        let go tc = do
+                b <- genUnchecked
+                if b
+                    then pure tc
+                    else case forestCursorElems $ treeCursorForest tc of
+                             [] -> pure tc
+                             els -> elements els >>= go
+        case forestCursorElems sf of
+            [] -> genUnchecked
+            els -> elements els >>= go
     shrinkUnchecked = shrinkNothing
 
 instance GenValid TreeCursor where
     genValid = do
         sf <- genValid
-        case forestCursorSelectFirst $ makeForestCursor sf of
-            Nothing -> genValid
-            Just tc -> pure tc
+        let go tc = do
+                b <- genUnchecked
+                if b
+                    then pure tc
+                    else case forestCursorElems $ treeCursorForest tc of
+                             [] -> pure tc
+                             els -> elements els >>= go
+        case forestCursorElems sf of
+            [] -> genValid
+            els -> elements els >>= go
 
 instance GenUnchecked EntryCursor where
     genUnchecked = treeCursorEntry <$> genUnchecked

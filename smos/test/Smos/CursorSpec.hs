@@ -16,15 +16,70 @@ import Smos.Cursor.Gen ()
 import Smos.Data
 import Smos.Data.Gen ()
 
+{-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
+
 spec :: Spec
 spec = do
-    describe "ACursor" $
-        describe "reselect" $
-        it "selects the cursor that was handed to makeASelection" $
-        forAll genValid $ \ac ->
-            let sel = makeASelection ac
-                sf = rebuild ac
-            in reselect sel (SmosFile sf) `shouldBe` ac
+    describe "ACursor" $ do
+        describe "makeASelection" $ do
+            it "returns the empty selection in a forest without a parent" $
+                forAll genValid $ \sf ->
+                    let fc = makeForestCursor sf
+                        cur = AnyForest fc
+                    in makeASelection cur `shouldBe` []
+            it "returns the index of the tree we zoom in on" $ do
+                let gen = do
+                        sf <- genValid
+                        let fc = makeForestCursor sf
+                        case forestCursorElems fc of
+                            [] -> gen
+                            els -> elements els
+                forAll gen $ \tc ->
+                    let cur = AnyTree tc
+                    in makeASelection cur `shouldBe` [treeCursorIndex tc]
+            it "returns the index of the tree we zoom in on, then a 1" $ do
+                let gen = do
+                        sf <- genValid
+                        let fc = makeForestCursor sf
+                        case forestCursorElems fc of
+                            [] -> gen
+                            els -> do
+                                tc <- elements els
+                                pure (treeCursorForest tc, treeCursorIndex tc)
+                forAll gen $ \(fc, ix_) ->
+                    let cur = AnyForest fc
+                    in makeASelection cur `shouldBe` [ix_, 1]
+        describe "reselect" $ do
+            it "selects the top level forrest for an empty list" $
+                forAll genValid $ \sf ->
+                    reselect [] sf `shouldBe` makeAnyCursor sf
+            it "selects the tree with the right index for a singleton selection" $ do
+                let gen = do
+                        sf <- genValid
+                        let fc = makeForestCursor sf
+                        case forestCursorElems fc of
+                            [] -> gen
+                            els -> elements els
+                forAll gen $ \tc ->
+                    reselect [treeCursorIndex tc] (SmosFile $ rebuild tc) `shouldBe`
+                    AnyTree tc
+            it "returns the index of the tree we zoom in on, then a 1" $ do
+                let gen = do
+                        sf <- genValid
+                        let fc = makeForestCursor sf
+                        case forestCursorElems fc of
+                            [] -> gen
+                            els -> do
+                                tc <- elements els
+                                pure (treeCursorForest tc, treeCursorIndex tc)
+                forAll gen $ \(fc, ix_) ->
+                    reselect [ix_, 1] (SmosFile $ rebuild fc) `shouldBe`
+                    AnyForest fc
+            it "selects the cursor that was handed to makeASelection" $
+                forAll genValid $ \ac ->
+                    let sel = makeASelection ac
+                        sf = rebuild ac
+                    in reselect sel (SmosFile sf) `shouldBe` ac
     describe "ForestCursor" $ do
         describe "makeForestCurser" $
             it "is the inverse of 'build'" $

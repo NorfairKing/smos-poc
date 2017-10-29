@@ -81,7 +81,7 @@ drawEntry msel Entry {..} =
         ]
 
 drawTimestamp :: UTCTime -> Widget n
-drawTimestamp = B.str . show
+drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
 drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
 drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
@@ -89,9 +89,10 @@ drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
 drawLogbook :: Logbook -> Widget n
 drawLogbook LogEnd = B.emptyWidget
 drawLogbook (LogEntry b e l) =
-    B.hBox [drawTimestamp b, drawTimestamp e] <=> drawLogbook l
+    B.hBox [str "[", drawTimestamp b, str "]--[", drawTimestamp e, str "]"] <=>
+    drawLogbook l
 drawLogbook (LogOpenEntry b l) =
-    B.hBox [drawTimestamp b, B.txt "present"] <=> drawLogbook l
+    B.hBox [str "[", drawTimestamp b, str "]"] <=> drawLogbook l
 
 drillSel :: Maybe [Int] -> Int -> Maybe [Int]
 drillSel msel ix =

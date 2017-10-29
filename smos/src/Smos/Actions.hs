@@ -339,7 +339,8 @@ withFullMod func =
             Nothing -> ss
             Just cur ->
                 let for = rebuild cur
+                    sel = makeASelection $ selectAnyCursor cur
                     sf = SmosFile for
                     sf' = func sf
-                    cur' = selectACursor $ makeAnyCursor sf'
+                    cur' = selectACursor $ reselect sel sf'
                 in ss {smosStateCursor = cur'}
