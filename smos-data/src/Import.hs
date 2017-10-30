@@ -11,6 +11,7 @@ import Data.Monoid as X
 import Data.Validity as X
 import Data.Validity.Containers as X ()
 import Data.Validity.HashMap as X ()
+import Data.Validity.Path as X ()
 import Data.Validity.Text as X ()
 import Data.Validity.Time as X ()
 

@@ -12,19 +12,21 @@ default-extensions:
 
 dependencies:
 - base >=4.9 && <=5
-- smos-data
-- genvalidity
-- genvalidity-time
-- genvalidity-text
-- genvalidity-containers
-- genvalidity-unordered-containers
 - QuickCheck
+- genvalidity
+- genvalidity-containers
+- genvalidity-path
+- genvalidity-text
+- genvalidity-time
+- genvalidity-unordered-containers
+- smos-data
   
 library:
   source-dirs: src/
   ghc-options: -Wall
   exposed-modules:
   - Smos.Data.Gen
+  - Smos.Report.Gen
 
 tests:
   smos-data-test:

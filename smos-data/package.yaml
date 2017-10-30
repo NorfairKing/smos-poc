@@ -10,8 +10,8 @@ default-extensions:
 - NoImplicitPrelude
 
 dependencies:
-- base >=4.9 && <=5
 - aeson >=1.1 && <1.2
+- base >=4.9 && <=5
 - bytestring >=0.10 && <0.11
 - containers >=0.5 && <0.6
 - hashable  
@@ -22,6 +22,7 @@ dependencies:
 - unordered-containers >=0.2 && <0.3
 - validity >=0.4 && <0.5
 - validity-containers >=0.2 && <0.3
+- validity-path >=0.2 && <0.3
 - validity-text >=0.2 && <0.3
 - validity-time >=0.1 && <0.2
 - validity-unordered-containers >=0.1 && <0.2
@@ -32,3 +33,4 @@ library:
   exposed-modules:
   - Smos.Data
   - Smos.Data.Types
+  - Smos.Report
