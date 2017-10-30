@@ -1,5 +1,4 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Smos
     ( SmosConfig(..)
@@ -9,7 +8,6 @@ module Smos
 
 import Import
 
-import System.Environment
 import System.Exit
 
 import Brick.Main as B
@@ -19,26 +17,23 @@ import Smos.Data
 
 import Smos.Cursor
 import Smos.Draw
+import Smos.OptParse
 import Smos.Style
 import Smos.Types
 
 smos :: Ord e => SmosConfig e -> IO ()
 smos sc@SmosConfig {..} = do
-    args <- getArgs
-    case args of
-        [] -> die "Expected argument file."
-        (f:_) -> do
-            fp <- resolveFile' f
-            errOrSF <- readSmosFile fp
-            startF <-
-                case errOrSF of
-                    Nothing -> pure Nothing
-                    Just (Left err) -> die err
-                    Just (Right sf) -> pure $ Just sf
-            let s = initState $ fromMaybe emptySmosFile startF
-            s' <- defaultMain (mkSmosApp sc) s
-            let sf' = rebuildSmosFile s'
-            when (startF /= Just sf') $ writeSmosFile fp sf'
+    (DispatchEdit p, Settings) <- getInstructions
+    errOrSF <- readSmosFile p
+    startF <-
+        case errOrSF of
+            Nothing -> pure Nothing
+            Just (Left err) -> die err
+            Just (Right sf) -> pure $ Just sf
+    let s = initState $ fromMaybe emptySmosFile startF
+    s' <- defaultMain (mkSmosApp sc) s
+    let sf' = rebuildSmosFile s'
+    when (startF /= Just sf') $ writeSmosFile p sf'
 
 initState :: SmosFile -> SmosState
 initState sf = SmosState {smosStateCursor = selectACursor $ makeAnyCursor sf}
