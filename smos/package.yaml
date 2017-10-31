@@ -41,6 +41,7 @@ library:
   - Smos.Cursor.Class
   - Smos.Cursor.List
   - Smos.Cursor.Text
+  - Smos.Cursor.TextField
   - Smos.Default
   - Smos.Style
   - Smos.Types

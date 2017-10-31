@@ -8,6 +8,8 @@ import TestImport
 
 import qualified Data.Text as T
 
+import Smos.Cursor.List.Gen ()
+import Smos.Cursor.TestUtils
 import Smos.Cursor.Text
 
 spec :: Spec
@@ -62,36 +64,3 @@ spec = do
                     tc' = textCursorInsert c tc
                     t' = rebuildTextCursor tc'
                 in T.length t' `shouldBe` T.length t + 1
-
-rebuildsToTheSame :: (TextCursor -> TextCursor) -> Property
-rebuildsToTheSame func =
-    forAll genValid $ \t ->
-        let tc = makeTextCursor t
-            tc' = func tc
-            t' = rebuildTextCursor tc'
-        in unless (t' == t) $
-           expectationFailure $
-           unlines
-               [ "Initial text: " ++ show t
-               , "built text cursor: " ++ show tc
-               , "changed text cursor: " ++ show tc'
-               , "Final text: " ++ show t'
-               ]
-
-rebuildsToTheSameIfSuceeds :: (TextCursor -> Maybe TextCursor) -> Property
-rebuildsToTheSameIfSuceeds func =
-    forAll genValid $ \t ->
-        let tc = makeTextCursor t
-            mtc' = func tc
-        in case mtc' of
-               Nothing -> pure ()
-               Just tc' ->
-                   let t' = rebuildTextCursor tc'
-                   in unless (rebuildTextCursor tc == t) $
-                      expectationFailure $
-                      unlines
-                          [ "Initial text: " ++ show t
-                          , "built text cursor: " ++ show tc
-                          , "changed text cursor: " ++ show tc'
-                          , "Final text: " ++ show t'
-                          ]

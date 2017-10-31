@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor.List
     ( ListCursor
@@ -20,10 +21,14 @@ module Smos.Cursor.List
 
 import Import
 
+import Smos.Cursor.Class
+
 data ListCursor a = ListCursor
     { listCursorPrev :: [a]
     , listCursorNext :: [a]
-    } deriving (Generic)
+    } deriving (Eq, Generic)
+
+instance Validity a => Validity (ListCursor a)
 
 instance Show a => Show (ListCursor a) where
     show ListCursor {..} =
@@ -34,6 +39,10 @@ instance Show a => Show (ListCursor a) where
             , show listCursorNext
             , "-|"
             ]
+
+instance Rebuild (ListCursor a) where
+    type ReBuilding (ListCursor a) = [a]
+    rebuild = rebuildListCursor
 
 emptyListCursor :: ListCursor a
 emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}
