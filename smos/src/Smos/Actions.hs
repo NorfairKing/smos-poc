@@ -2,7 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Smos.Actions
-    ( stop
+    ( save
+    , stop
     -- * Entry and tree actions
     , insertTreeAbove
     , insertTreeBelow
@@ -69,6 +70,17 @@ initEntryCursor =
         fc' = forestCursorInsertAtStart emptyTree fc
         mtc' = forestCursorSelectFirst fc'
     in (AnEntry . treeCursorEntry) <$> mtc'
+
+save :: SmosM ()
+save = do
+    file <- gets smosStateFilePath
+    mcur <- gets smosStateCursor
+    let sf =
+            SmosFile $
+            case mcur of
+                Nothing -> SmosForest []
+                Just cur -> rebuild cur
+    writeSmosFile file sf
 
 insertTreeAbove :: SmosM ()
 insertTreeAbove =

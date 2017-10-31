@@ -12,7 +12,7 @@ import Smos.Report.Config
 import Smos.Report.Entry.Pretty
 
 defaultSmosReport :: IO ()
-defaultSmosReport = pure ()
+defaultSmosReport = smosReport defaultReportConfig
 
 defaultReportConfig :: SmosReportConfig
 defaultReportConfig =

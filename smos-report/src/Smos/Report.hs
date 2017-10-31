@@ -16,13 +16,15 @@ import Import
 
 import Data.Yaml
 
-import Text.PrettyPrint.ANSI.Leijen (Doc, putDoc)
+import Text.PrettyPrint.ANSI.Leijen (putDoc)
 
 import Smos.Data
 import Smos.Report.Config
+import Smos.Report.OptParse
 
-smosReport :: SmosReportConfig -> ([(Path Abs File, SmosFile)] -> Doc) -> IO ()
-smosReport SmosReportConfig {..} reportFunc = do
+smosReport :: SmosReportConfig -> IO ()
+smosReport src@SmosReportConfig {..} = do
+    Instructions reportFunc Settings <- getInstructions src
     afs <- reportConfigAgendaFiles
     sfs <-
         fmap catMaybes $
