@@ -1,4 +1,4 @@
-name: smos-data
+name: smos-report
 version: '0.0.0.0'
 category: Tool
 author: Tom Sydney Kerckhove
@@ -10,16 +10,12 @@ default-extensions:
 - NoImplicitPrelude
 
 dependencies:
-- aeson >=1.1 && <1.2
+- ansi-wl-pprint >=0.6 && <=0.7
 - base >=4.9 && <=5
-- bytestring >=0.10 && <0.11
-- containers >=0.5 && <0.6
-- hashable  
 - path >=0.5 && <0.6
 - path-io >=1.2 && <1.3
-- text
-- time >=1.6 && <1.7
-- unordered-containers >=0.2 && <0.3
+- smos-data >=0.0 && <0.1
+- text >=1.2 && <1.3
 - validity >=0.4 && <0.5
 - validity-containers >=0.2 && <0.3
 - validity-path >=0.2 && <0.3
@@ -27,9 +23,33 @@ dependencies:
 - validity-time >=0.1 && <0.2
 - validity-unordered-containers >=0.1 && <0.2
 - yaml >=0.8 && <0.9
+
 library:
   source-dirs: src/
   ghc-options: -Wall
   exposed-modules:
-  - Smos.Data
-  - Smos.Data.Types
+  - Smos.Report
+  - Smos.Report.Entry.Pretty
+
+tests:
+  smos-report-test:
+    main: Spec.hs
+    source-dirs: test/
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    dependencies:
+    - QuickCheck
+    - genvalidity
+    - genvalidity-containers
+    - genvalidity-hspec
+    - genvalidity-hspec-aeson
+    - genvalidity-text
+    - genvalidity-time
+    - genvalidity-unordered-containers
+    - hspec
+    - smos-data
+    - smos-data-gen
+    - smos-report

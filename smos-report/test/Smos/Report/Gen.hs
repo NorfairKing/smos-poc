@@ -2,7 +2,7 @@
 
 module Smos.Report.Gen where
 
-import Import
+import TestImport
 
 import Smos.Data.Gen ()
 import Smos.Report

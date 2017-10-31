@@ -26,7 +26,6 @@ library:
   ghc-options: -Wall
   exposed-modules:
   - Smos.Data.Gen
-  - Smos.Report.Gen
 
 tests:
   smos-data-test:
