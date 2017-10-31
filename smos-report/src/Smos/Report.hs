@@ -3,7 +3,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Smos.Report
-    ( EntryReport(..)
+    ( smosReport
+    , EntryReport(..)
     , entryReport
     , stateIs
     , hasTag
@@ -15,7 +16,35 @@ import Import
 
 import Data.Yaml
 
+import Text.PrettyPrint.ANSI.Leijen (Doc, putDoc)
+
 import Smos.Data
+import Smos.Report.Config
+
+smosReport :: SmosReportConfig -> ([(Path Abs File, SmosFile)] -> Doc) -> IO ()
+smosReport SmosReportConfig {..} reportFunc = do
+    afs <- configAgendaFiles
+    sfs <-
+        fmap catMaybes $
+        forM afs $ \af -> do
+            errOrSf <- readSmosFile af
+            case errOrSf of
+                Nothing -> do
+                    putStrLn $
+                        unwords ["WARNING:", "File not found:", toFilePath af]
+                    pure Nothing
+                Just (Left err) -> do
+                    putStrLn $
+                        unwords
+                            [ "WARNING:"
+                            , "Error while reading file"
+                            , toFilePath af ++ ":"
+                            , err
+                            ]
+                    pure Nothing
+                Just (Right sf) -> pure $ Just (af, sf)
+    let doc = reportFunc sfs
+    putDoc doc
 
 -- | A report of entries, made by filtering using an element-wise predicate
 newtype EntryReport = EntryReport

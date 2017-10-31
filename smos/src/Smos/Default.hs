@@ -7,11 +7,7 @@ import Import
 import Smos
 import Smos.Actions
 import Smos.Keys
-import Smos.Report
 import Smos.Style
-import Smos.Types
-
-import Smos.Report.Entry.Pretty
 
 defaultSmos :: IO ()
 defaultSmos = smos (defaultConfig :: SmosConfig ())
@@ -72,10 +68,4 @@ defaultConfig =
               , (todoStateAttr, bg white)
               ] .
           defaultAttrMap
-    , configAgendaFiles =
-          do home <- getHomeDir
-             d <- resolveDir home "smos"
-             fromMaybe [] <$> forgivingAbsence (snd <$> listDirRecur d)
-    , configReports =
-          [rawReport "todo" $ prettyEntryReport . entryReport (stateIs "TODO")]
     }

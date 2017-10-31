@@ -23,13 +23,29 @@ dependencies:
 - validity-time >=0.1 && <0.2
 - validity-unordered-containers >=0.1 && <0.2
 - yaml >=0.8 && <0.9
+- optparse-applicative >=0.13 && <0.14
 
 library:
   source-dirs: src/
   ghc-options: -Wall
   exposed-modules:
   - Smos.Report
+  - Smos.Report.Default
   - Smos.Report.Entry.Pretty
+
+executables:
+  smos-report:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - base
+    - smos-report
+    default-extensions:
+    - ImplicitPrelude
 
 tests:
   smos-report-test:

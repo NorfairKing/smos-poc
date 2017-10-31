@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Smos.OptParse
+module Smos.Report.OptParse
     ( getInstructions
     , Instructions(..)
     , Settings(..)
@@ -9,23 +9,30 @@ module Smos.OptParse
 import Import
 
 import System.Environment (getArgs)
+import System.Exit
 
 import Options.Applicative
 
-import Smos.OptParse.Types
-import Smos.Types
+import Smos.Report.Config
+import Smos.Report.OptParse.Types
 
-getInstructions :: SmosConfig e -> IO Instructions
+getInstructions :: SmosReportConfig -> IO Instructions
 getInstructions conf = do
     args <- getArguments
     config <- getConfiguration args
     combineToInstructions conf args config
 
 combineToInstructions ::
-       SmosConfig e -> Arguments -> Configuration -> IO Instructions
-combineToInstructions SmosConfig {..} (Arguments fp Flags) Configuration = do
-    p <- resolveFile' fp
-    pure $ Instructions p Settings
+       SmosReportConfig -> Arguments -> Configuration -> IO Instructions
+combineToInstructions SmosReportConfig {..} (Arguments name Flags) Configuration =
+    case lookup name configReports of
+        Nothing ->
+            die $
+            unlines
+                [ "Unknown report name: " ++ name
+                , "known options are: " ++ unwords (map fst configReports)
+                ]
+        Just r -> pure $ Instructions r Settings
 
 getConfiguration :: Arguments -> IO Configuration
 getConfiguration _ = pure Configuration
@@ -50,13 +57,14 @@ argParser :: ParserInfo Arguments
 argParser = info (helper <*> parseArgs) help_
   where
     help_ = fullDesc <> progDesc description
-    description = "Smos editor"
+    description = "Smos reports"
 
 parseArgs :: Parser Arguments
-parseArgs = Arguments <$> editParser <*> parseFlags
+parseArgs = Arguments <$> parseReportName <*> parseFlags
 
-editParser :: Parser FilePath
-editParser = strArgument (mconcat [metavar "FILE", help "the file to edit"])
+parseReportName :: Parser String
+parseReportName =
+    strArgument (mconcat [metavar "REPORT", help "the report to make"])
 
 parseFlags :: Parser Flags
 parseFlags = pure Flags

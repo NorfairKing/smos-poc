@@ -13,8 +13,6 @@ import System.Exit
 import Brick.Main as B
 import Brick.Types as B
 
-import Text.PrettyPrint.ANSI.Leijen (putDoc)
-
 import Smos.Data
 
 import Smos.Cursor
@@ -24,16 +22,8 @@ import Smos.Style
 import Smos.Types
 
 smos :: Ord e => SmosConfig e -> IO ()
-smos sc = do
-    (disp, Settings) <- getInstructions sc
-    dispatch disp sc
-
-dispatch :: Ord e => Dispatch -> SmosConfig e -> IO ()
-dispatch (DispatchEdit p) = edit p
-dispatch (DispatchReport rep) = report rep
-
-edit :: Ord e => Path Abs File -> SmosConfig e -> IO ()
-edit p sc@SmosConfig {..} = do
+smos sc@SmosConfig {..} = do
+    Instructions p Settings <- getInstructions sc
     errOrSF <- readSmosFile p
     startF <-
         case errOrSF of
@@ -84,28 +74,3 @@ smosStartEvent = pure
 
 smosAttrMap :: a -> a
 smosAttrMap = id
-
-report :: Report -> SmosConfig e -> IO ()
-report Report {..} SmosConfig {..} = do
-    afs <- configAgendaFiles
-    sfs <-
-        fmap catMaybes $
-        forM afs $ \af -> do
-            errOrSf <- readSmosFile af
-            case errOrSf of
-                Nothing -> do
-                    putStrLn $
-                        unwords ["WARNING:", "File not found:", toFilePath af]
-                    pure Nothing
-                Just (Left err) -> do
-                    putStrLn $
-                        unwords
-                            [ "WARNING:"
-                            , "Error while reading file"
-                            , toFilePath af ++ ":"
-                            , err
-                            ]
-                    pure Nothing
-                Just (Right sf) -> pure $ Just (af, sf)
-    let doc = reportFunc sfs
-    putDoc doc

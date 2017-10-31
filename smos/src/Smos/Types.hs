@@ -10,19 +10,14 @@ import Import
 
 import Control.Monad.State
 
-import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
-
 import Brick.AttrMap as B
 import Brick.Types as B hiding (Next)
 
 import Smos.Cursor
-import Smos.Data
 
 data SmosConfig e = SmosConfig
     { configKeyMap :: Keymap e
     , configAttrMap :: SmosState -> B.AttrMap
-    , configAgendaFiles :: IO [Path Abs File]
-    , configReports :: [Report]
     } deriving (Generic)
 
 newtype Keymap e = Keymap
@@ -122,11 +117,3 @@ instance MonadTrans NextT where
 
 instance MonadIO m => MonadIO (NextT m) where
     liftIO = lift . liftIO
-
-data Report = Report
-    { reportName :: String
-    , reportFunc :: [(Path Abs File, SmosFile)] -> Doc
-    } deriving (Generic)
-
-rawReport :: String -> ([(Path Abs File, SmosFile)] -> Doc) -> Report
-rawReport = Report
