@@ -48,7 +48,6 @@ import Import
 
 import Control.Monad.State
 
-import qualified Data.Text as T
 import Data.Time
 
 import Smos.Data
@@ -267,8 +266,8 @@ enterTodoState =
 todoStateClear :: SmosM ()
 todoStateClear = modifyTodoState stateCursorClear
 
-todoStateSet :: String -> SmosM ()
-todoStateSet = modifyTodoState . stateCursorSetState . TodoState . T.pack
+todoStateSet :: TodoState -> SmosM ()
+todoStateSet = modifyTodoState . stateCursorSetState
 
 exitTodoState :: SmosM ()
 exitTodoState =

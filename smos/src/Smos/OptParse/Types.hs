@@ -6,12 +6,15 @@ module Smos.OptParse.Types where
 
 import Import
 
+import Smos.Types
+
 type Arguments = (Command, Flags)
 
 type Instructions = (Dispatch, Settings)
 
-newtype Command =
-    CommandEdit FilePath
+data Command
+    = CommandEdit FilePath
+    | CommandReport String
     deriving (Show, Eq)
 
 data Flags =
@@ -25,6 +28,6 @@ data Configuration =
 data Settings =
     Settings
 
-newtype Dispatch =
-    DispatchEdit (Path Abs File)
-    deriving (Show, Eq)
+data Dispatch
+    = DispatchEdit (Path Abs File)
+    | DispatchReport Report

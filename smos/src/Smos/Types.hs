@@ -1,6 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -11,19 +10,19 @@ import Import
 
 import Control.Monad.State
 
+import Text.PrettyPrint.ANSI.Leijen hiding ((<$>))
+
 import Brick.AttrMap as B
 import Brick.Types as B hiding (Next)
 
 import Smos.Cursor
-
--- TODO remove these once they're in the library.
-deriving instance Ord Location
-
-deriving instance (Ord n, Ord e) => Ord (BrickEvent n e)
+import Smos.Data
 
 data SmosConfig e = SmosConfig
     { configKeyMap :: Keymap e
     , configAttrMap :: SmosState -> B.AttrMap
+    , configAgendaFiles :: IO [Path Abs File]
+    , configReports :: [Report]
     } deriving (Generic)
 
 newtype Keymap e = Keymap
@@ -123,3 +122,11 @@ instance MonadTrans NextT where
 
 instance MonadIO m => MonadIO (NextT m) where
     liftIO = lift . liftIO
+
+data Report = Report
+    { reportName :: String
+    , reportFunc :: [(Path Abs File, SmosFile)] -> Doc
+    } deriving (Generic)
+
+rawReport :: String -> ([(Path Abs File, SmosFile)] -> Doc) -> Report
+rawReport = Report

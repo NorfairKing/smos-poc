@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Smos.OptParse
     ( getInstructions
     , Instructions
@@ -8,21 +10,36 @@ module Smos.OptParse
 import Import
 
 import System.Environment (getArgs)
+import System.Exit
 
 import Options.Applicative
 
 import Smos.OptParse.Types
+import Smos.Types
 
-getInstructions :: IO Instructions
-getInstructions = do
+getInstructions :: SmosConfig e -> IO Instructions
+getInstructions conf = do
     (cmd, flags) <- getArguments
     config <- getConfiguration cmd flags
-    combineToInstructions cmd flags config
+    combineToInstructions conf cmd flags config
 
-combineToInstructions :: Command -> Flags -> Configuration -> IO Instructions
-combineToInstructions (CommandEdit fp) Flags Configuration = do
-    p <- resolveFile' fp
-    pure (DispatchEdit p, Settings)
+combineToInstructions ::
+       SmosConfig e -> Command -> Flags -> Configuration -> IO Instructions
+combineToInstructions SmosConfig {..} cmd Flags Configuration =
+    case cmd of
+        CommandEdit fp -> do
+            p <- resolveFile' fp
+            pure (DispatchEdit p, Settings)
+        CommandReport name ->
+            case find ((== name) . reportName) configReports of
+                Nothing ->
+                    die $
+                    unlines
+                        [ "Unknown report name: " ++ name
+                        , "known options are: " ++
+                          unwords (map reportName configReports)
+                        ]
+                Just r -> pure (DispatchReport r, Settings)
 
 getConfiguration :: Command -> Flags -> IO Configuration
 getConfiguration _ _ = pure Configuration
@@ -54,7 +71,11 @@ parseArgs = (,) <$> parseCommand <*> parseFlags
 
 parseCommand :: Parser Command
 parseCommand =
-    hsubparser (mconcat [command "edit" parseCommandEdit]) <|> editParser
+    hsubparser
+        (mconcat
+             [ command "edit" parseCommandEdit
+             , command "report" parseCommandReport
+             ])
 
 parseCommandEdit :: ParserInfo Command
 parseCommandEdit = info parser modifier
@@ -66,6 +87,14 @@ editParser :: Parser Command
 editParser =
     CommandEdit <$>
     strArgument (mconcat [metavar "FILE", help "the file to edit"])
+
+parseCommandReport :: ParserInfo Command
+parseCommandReport = info parser modifier
+  where
+    parser =
+        CommandReport <$>
+        strArgument (mconcat [metavar "REPORT", help "the report to make"])
+    modifier = fullDesc <> progDesc "Make a report."
 
 parseFlags :: Parser Flags
 parseFlags = pure Flags

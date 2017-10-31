@@ -9,6 +9,7 @@ import GHC.Generics as X
 
 import Data.ByteString as X (ByteString)
 import Data.Function as X
+import Data.List as X
 import Data.Maybe as X
 import Data.Monoid as X
 import Data.String as X

@@ -30,8 +30,8 @@ instance FromJSON EntryReport where
 instance ToJSON EntryReport where
     toJSON EntryReport {..} = object ["entries" .= entryReportEntries]
 
-entryReport :: [(Path Abs File, SmosFile)] -> (Entry -> Bool) -> EntryReport
-entryReport fs p =
+entryReport :: (Entry -> Bool) -> [(Path Abs File, SmosFile)] -> EntryReport
+entryReport p fs =
     EntryReport {entryReportEntries = [(f, go sf) | (f, sf) <- fs]}
   where
     go :: SmosFile -> [Entry]

@@ -17,11 +17,14 @@ module Smos.Style
 
 import Import
 
+import qualified Data.Text as T
+
 import Brick.AttrMap as B
 import Brick.Util as B
 import qualified Graphics.Vty as V
 import Graphics.Vty.Attributes
 
+import Smos.Data
 import Smos.Types
 
 defaultAttrMap :: s -> AttrMap
@@ -37,8 +40,9 @@ headerAttr = "header"
 todoStateAttr :: AttrName
 todoStateAttr = "todostate"
 
-todoStateSpecificAttr :: String -> AttrName
-todoStateSpecificAttr tss = fromString $ "todostate-" ++ tss
+todoStateSpecificAttr :: TodoState -> AttrName
+todoStateSpecificAttr tss =
+    fromString $ "todostate-" ++ T.unpack (todoStateText tss)
 
 textCursorName :: ResourceName
 textCursorName = "text-cursor"

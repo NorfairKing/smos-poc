@@ -10,6 +10,7 @@ default-extensions:
 - NoImplicitPrelude
 
 dependencies:
+- ansi-wl-pprint >=0.6 && <0.7
 - base >=4.9 && <=5
 - brick >=0.28 && <0.29
 - bytestring >=0.10 && <0.11

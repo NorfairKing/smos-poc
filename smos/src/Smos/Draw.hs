@@ -8,8 +8,6 @@ module Smos.Draw
 import Import
 
 import qualified Data.HashMap.Lazy as HM
-import Data.List
-import qualified Data.Text as T
 import Data.Time
 
 import Brick.Types as B
@@ -66,8 +64,7 @@ drawEntry msel Entry {..} =
                Nothing -> []
                Just ts ->
                    [ withAttr todoStateAttr $
-                     withAttr
-                         (todoStateSpecificAttr (T.unpack $ todoStateText ts)) $
+                     withAttr (todoStateSpecificAttr ts) $
                      B.txt $ todoStateText ts
                    ]) ++
           [ drawHeader (drillSel msel 0) entryHeader
