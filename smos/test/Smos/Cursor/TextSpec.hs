@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Smos.TextCursorSpec
+module Smos.Cursor.TextSpec
     ( spec
     ) where
 
@@ -8,7 +8,7 @@ import TestImport
 
 import qualified Data.Text as T
 
-import Smos.TextCursor
+import Smos.Cursor.Text
 
 spec :: Spec
 spec = do

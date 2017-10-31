@@ -76,9 +76,8 @@ save = do
     file <- gets smosStateFilePath
     mcur <- gets smosStateCursor
     let sf =
-            SmosFile $
             case mcur of
-                Nothing -> SmosForest []
+                Nothing -> SmosFile $ SmosForest []
                 Just cur -> rebuild cur
     writeSmosFile file sf
 
@@ -350,9 +349,8 @@ withFullMod func =
         case smosStateCursor ss of
             Nothing -> ss
             Just cur ->
-                let for = rebuild cur
+                let sf = rebuild cur
                     sel = makeASelection $ selectAnyCursor cur
-                    sf = SmosFile for
                     sf' = func sf
                     cur' = selectACursor $ reselect sel sf'
                 in ss {smosStateCursor = cur'}

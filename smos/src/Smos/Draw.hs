@@ -28,7 +28,7 @@ smosDraw SmosState {..} =
     renderCursor cur = drawForest sel for
       where
         sel = Just $ makeASelection $ selectAnyCursor cur
-        for = rebuild cur
+        for = smosFileForest $ rebuild cur
 
 drawNoContent :: Widget n
 drawNoContent =

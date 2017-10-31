@@ -42,8 +42,7 @@ initState p sf =
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =
-    SmosFile
-    {smosFileForest = fromMaybe (SmosForest []) $ rebuild <$> smosStateCursor}
+    fromMaybe (SmosFile $ SmosForest []) $ rebuild <$> smosStateCursor
 
 mkSmosApp :: SmosConfig -> App SmosState () ResourceName
 mkSmosApp sc@SmosConfig {..} =

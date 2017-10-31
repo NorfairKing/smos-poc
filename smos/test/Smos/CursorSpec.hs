@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Smos.CursorSpec
     ( spec
@@ -61,7 +62,7 @@ spec = do
                             [] -> gen
                             els -> elements els
                 forAll gen $ \tc ->
-                    reselect [treeCursorIndex tc] (SmosFile $ rebuild tc) `shouldBe`
+                    reselect [treeCursorIndex tc] (rebuild tc) `shouldBe`
                     AnyTree tc
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
@@ -73,13 +74,12 @@ spec = do
                                 tc <- elements els
                                 pure (treeCursorForest tc, treeCursorIndex tc)
                 forAll gen $ \(fc, ix_) ->
-                    reselect [ix_, 1] (SmosFile $ rebuild fc) `shouldBe`
-                    AnyForest fc
+                    reselect [ix_, 1] (rebuild fc) `shouldBe` AnyForest fc
             it "selects the cursor that was handed to makeASelection" $
                 forAll genValid $ \ac ->
                     let sel = makeASelection ac
                         sf = rebuild ac
-                    in reselect sel (SmosFile sf) `shouldBe` ac
+                    in reselect sel sf `shouldBe` ac
     describe "ForestCursor" $ do
         describe "makeForestCurser" $
             it "is the inverse of 'build'" $
@@ -206,7 +206,15 @@ spec = do
                     build (stateCursorSetState ts sc) `shouldBe` Just ts
 
 rebuildsToTheSame ::
-       (Show a, Show b, GenValid a, Rebuild a, Rebuild b)
+       ( Show a
+       , Show b
+       , GenValid a
+       , Rebuild a
+       , Rebuild b
+       , ReBuilding a ~ ReBuilding b
+       , Show (ReBuilding a)
+       , Eq (ReBuilding a)
+       )
     => (a -> b)
     -> Property
 rebuildsToTheSame func =
@@ -224,7 +232,15 @@ rebuildsToTheSame func =
                ]
 
 rebuildsToTheSameIfSuceeds ::
-       (Show a, Show b, GenValid a, Rebuild a, Rebuild b)
+       ( Show a
+       , Show b
+       , GenValid a
+       , Rebuild a
+       , Rebuild b
+       , ReBuilding a ~ ReBuilding b
+       , Show (ReBuilding a)
+       , Eq (ReBuilding a)
+       )
     => (a -> Maybe b)
     -> Property
 rebuildsToTheSameIfSuceeds func =

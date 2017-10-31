@@ -38,9 +38,11 @@ library:
   - Smos
   - Smos.Actions
   - Smos.Cursor
+  - Smos.Cursor.Class
+  - Smos.Cursor.List
+  - Smos.Cursor.Text
   - Smos.Default
   - Smos.Style
-  - Smos.TextCursor
   - Smos.Types
 
 executables:

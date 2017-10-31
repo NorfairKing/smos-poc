@@ -74,15 +74,9 @@ import Data.Time
 
 import Lens.Micro
 
+import Smos.Cursor.Class
+import Smos.Cursor.Text
 import Smos.Data
-import Smos.TextCursor
-
-class Rebuild a where
-    rebuild :: a -> SmosForest
-
-class Build a where
-    type Building a :: *
-    build :: a -> Building a
 
 data AnyCursor
     = AnyForest ForestCursor
@@ -95,6 +89,7 @@ data AnyCursor
 instance Validity AnyCursor
 
 instance Rebuild AnyCursor where
+    type ReBuilding AnyCursor = SmosFile
     rebuild (AnyForest fc) = rebuild fc
     rebuild (AnyTree tc) = rebuild tc
     rebuild (AnyEntry ec) = rebuild ec
@@ -110,6 +105,7 @@ data ACursor
 instance Validity ACursor
 
 instance Rebuild ACursor where
+    type ReBuilding ACursor = SmosFile
     rebuild (AnEntry ec) = rebuild ec
     rebuild (AHeader hc) = rebuild hc
     rebuild (AState sc) = rebuild sc
@@ -129,9 +125,8 @@ makeASelection = reverse . go
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
     goe EntryCursor {..} = 0 : got entryCursorParent
     goh HeaderCursor {..} =
-        gotxt headerCursorHeader : 0 : goe headerCursorParent
+        textCursorIndex headerCursorHeader : 0 : goe headerCursorParent
     gos StateCursor {..} = 1 : goe stateCursorParent
-    gotxt = length . textCursorPrev
 
 reselect :: [Int] -> SmosFile -> AnyCursor
 reselect s = go s . makeAnyCursor
@@ -202,9 +197,10 @@ instance Eq ForestCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild ForestCursor where
+    type ReBuilding ForestCursor = SmosFile
     rebuild fc =
         case forestCursorParent fc of
-            Nothing -> build fc
+            Nothing -> SmosFile $ build fc
             Just pc -> rebuild pc
 
 instance Build ForestCursor where
@@ -296,6 +292,7 @@ instance Eq TreeCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TreeCursor where
+    type ReBuilding TreeCursor = SmosFile
     rebuild = rebuild . treeCursorParent
 
 instance Show TreeCursor where
@@ -460,6 +457,7 @@ instance Eq EntryCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild EntryCursor where
+    type ReBuilding EntryCursor = SmosFile
     rebuild = rebuild . entryCursorParent
 
 instance Build EntryCursor where
@@ -560,6 +558,7 @@ instance Eq HeaderCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild HeaderCursor where
+    type ReBuilding HeaderCursor = SmosFile
     rebuild = rebuild . headerCursorParent
 
 instance Build HeaderCursor where
@@ -627,6 +626,7 @@ instance Eq StateCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild StateCursor where
+    type ReBuilding StateCursor = SmosFile
     rebuild = rebuild . stateCursorParent
 
 instance Build StateCursor where
