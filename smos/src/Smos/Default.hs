@@ -58,16 +58,29 @@ defaultConfig =
                 mconcat
                     [ matchChar ' ' todoStateClear
                     , matchChar 't' $ todoStateSet "TODO" >> exitTodoState
+                    , matchChar 'n' $ todoStateSet "NEXT" >> exitTodoState
+                    , matchChar 's' $ todoStateSet "STARTED" >> exitTodoState
+                    , matchChar 'r' $ todoStateSet "READY" >> exitTodoState
+                    , matchChar 'w' $ todoStateSet "WAITING" >> exitTodoState
                     , matchChar 'd' $ todoStateSet "DONE" >> exitTodoState
+                    , matchChar 'c' $ todoStateSet "CANCELLED" >> exitTodoState
                     ]
               ]
     , configAttrMap =
-          applyAttrMappings
-              [ (todoStateSpecificAttr "TODO", fg red)
-              , (todoStateSpecificAttr "DONE", fg green)
-              , (todoStateAttr, bg white)
-              ] .
-          defaultAttrMap
+          let col = rgbColor :: Int -> Int -> Int -> Color
+              orange = col 255 165 0
+              brown = col 205 133 63
+          in applyAttrMappings
+                 [ (todoStateSpecificAttr "TODO", fg red)
+                 , (todoStateSpecificAttr "NEXT", fg orange)
+                 , (todoStateSpecificAttr "STARTED", fg orange)
+                 , (todoStateSpecificAttr "WAITING", fg blue)
+                 , (todoStateSpecificAttr "READY", fg brown)
+                 , (todoStateSpecificAttr "DONE", fg green)
+                 , (todoStateSpecificAttr "CANCELLED", fg green)
+                 , (todoStateAttr, bg white)
+                 ] .
+             defaultAttrMap
     , configAgendaFiles =
           do home <- getHomeDir
              d <- resolveDir home "smos"

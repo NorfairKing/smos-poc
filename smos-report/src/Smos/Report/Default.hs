@@ -22,5 +22,9 @@ defaultReportConfig =
              d <- resolveDir home "smos"
              fromMaybe [] <$> forgivingAbsence (snd <$> listDirRecur d)
     , reportConfigReports =
-          [("todo", prettyEntryReport . entryReport (stateIs "TODO"))]
+          [ ("todo", prettyEntryReport . entryReport (stateIs "TODO"))
+          , ("next", prettyEntryReport . entryReport (stateIs "NEXT"))
+          , ("done", prettyEntryReport . entryReport (stateIs "DONE"))
+          , ("waiting", prettyEntryReport . entryReport (stateIs "WAITING"))
+          ]
     }
