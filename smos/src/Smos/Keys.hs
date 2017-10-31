@@ -26,55 +26,55 @@ import qualified Graphics.Vty as V
 import Smos.Cursor
 import Smos.Types
 
-matchChar :: Char -> SmosM () -> Keymap e
+matchChar :: Char -> SmosM () -> Keymap
 matchChar c = matchKey $ V.KChar c
 
-satisfyChar :: (Char -> Bool) -> SmosM () -> Keymap e
+satisfyChar :: (Char -> Bool) -> SmosM () -> Keymap
 satisfyChar pred_ func =
     rawKeymap $ \ev ->
         case ev of
             B.VtyEvent (V.EvKey (V.KChar ec) []) -> when (pred_ ec) func
             _ -> pure ()
 
-matchKey :: V.Key -> SmosM () -> Keymap e
+matchKey :: V.Key -> SmosM () -> Keymap
 matchKey k = satisfyKey (== k)
 
-onChar :: (Char -> SmosM ()) -> Keymap e
+onChar :: (Char -> SmosM ()) -> Keymap
 onChar func =
     rawKeymap $ \ev ->
         case ev of
             B.VtyEvent (V.EvKey (V.KChar c) []) -> func c
             _ -> pure ()
 
-satisfyKey :: (V.Key -> Bool) -> SmosM () -> Keymap e
+satisfyKey :: (V.Key -> Bool) -> SmosM () -> Keymap
 satisfyKey pred_ func =
     rawKeymap $ \ev ->
         case ev of
             B.VtyEvent (V.EvKey ek []) -> when (pred_ ek) func
             _ -> pure ()
 
-inEmpty :: Keymap e -> Keymap e
+inEmpty :: Keymap -> Keymap
 inEmpty =
     filterKeymap $ \s ->
         case smosStateCursor s of
             Nothing -> True
             _ -> False
 
-inEntry :: Keymap e -> Keymap e
+inEntry :: Keymap -> Keymap
 inEntry =
     filterKeymap $ \s ->
         case smosStateCursor s of
             Just (AnEntry _) -> True
             _ -> False
 
-inHeader :: Keymap e -> Keymap e
+inHeader :: Keymap -> Keymap
 inHeader =
     filterKeymap $ \s ->
         case smosStateCursor s of
             Just (AHeader _) -> True
             _ -> False
 
-inTodoState :: Keymap e -> Keymap e
+inTodoState :: Keymap -> Keymap
 inTodoState =
     filterKeymap $ \s ->
         case smosStateCursor s of

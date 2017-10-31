@@ -10,9 +10,9 @@ import Smos.Keys
 import Smos.Style
 
 defaultSmos :: IO ()
-defaultSmos = smos (defaultConfig :: SmosConfig ())
+defaultSmos = smos defaultConfig
 
-defaultConfig :: Ord e => SmosConfig e
+defaultConfig :: SmosConfig
 defaultConfig =
     SmosConfig
     { configKeyMap =
@@ -68,4 +68,8 @@ defaultConfig =
               , (todoStateAttr, bg white)
               ] .
           defaultAttrMap
+    , configAgendaFiles =
+          do home <- getHomeDir
+             d <- resolveDir home "smos"
+             fromMaybe [] <$> forgivingAbsence (snd <$> listDirRecur d)
     }

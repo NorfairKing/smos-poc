@@ -25,12 +25,12 @@ getInstructions conf = do
 combineToInstructions ::
        SmosReportConfig -> Arguments -> Configuration -> IO Instructions
 combineToInstructions SmosReportConfig {..} (Arguments name Flags) Configuration =
-    case lookup name configReports of
+    case lookup name reportConfigReports of
         Nothing ->
             die $
             unlines
                 [ "Unknown report name: " ++ name
-                , "known options are: " ++ unwords (map fst configReports)
+                , "known options are: " ++ unwords (map fst reportConfigReports)
                 ]
         Just r -> pure $ Instructions r Settings
 

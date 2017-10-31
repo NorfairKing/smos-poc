@@ -15,14 +15,14 @@ import Options.Applicative
 import Smos.OptParse.Types
 import Smos.Types
 
-getInstructions :: SmosConfig e -> IO Instructions
+getInstructions :: SmosConfig -> IO Instructions
 getInstructions conf = do
     args <- getArguments
     config <- getConfiguration args
     combineToInstructions conf args config
 
 combineToInstructions ::
-       SmosConfig e -> Arguments -> Configuration -> IO Instructions
+       SmosConfig -> Arguments -> Configuration -> IO Instructions
 combineToInstructions SmosConfig {..} (Arguments fp Flags) Configuration = do
     p <- resolveFile' fp
     pure $ Instructions p Settings

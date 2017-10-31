@@ -17,10 +17,10 @@ defaultSmosReport = pure ()
 defaultReportConfig :: SmosReportConfig
 defaultReportConfig =
     SmosReportConfig
-    { configAgendaFiles =
+    { reportConfigAgendaFiles =
           do home <- getHomeDir
              d <- resolveDir home "smos"
              fromMaybe [] <$> forgivingAbsence (snd <$> listDirRecur d)
-    , configReports =
+    , reportConfigReports =
           [("todo", prettyEntryReport . entryReport (stateIs "TODO"))]
     }

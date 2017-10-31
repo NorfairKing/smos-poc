@@ -21,7 +21,7 @@ import Smos.OptParse
 import Smos.Style
 import Smos.Types
 
-smos :: Ord e => SmosConfig e -> IO ()
+smos :: SmosConfig -> IO ()
 smos sc@SmosConfig {..} = do
     Instructions p Settings <- getInstructions sc
     errOrSF <- readSmosFile p
@@ -30,25 +30,27 @@ smos sc@SmosConfig {..} = do
             Nothing -> pure Nothing
             Just (Left err) -> die err
             Just (Right sf) -> pure $ Just sf
-    let s = initState $ fromMaybe emptySmosFile startF
+    let s = initState p $ fromMaybe emptySmosFile startF
     s' <- defaultMain (mkSmosApp sc) s
     let sf' = rebuildSmosFile s'
     when (startF /= Just sf') $ writeSmosFile p sf'
 
-initState :: SmosFile -> SmosState
-initState sf = SmosState {smosStateCursor = selectACursor $ makeAnyCursor sf}
+initState :: Path Abs File -> SmosFile -> SmosState
+initState p sf =
+    SmosState
+    {smosStateFilePath = p, smosStateCursor = selectACursor $ makeAnyCursor sf}
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =
     SmosFile
     {smosFileForest = fromMaybe (SmosForest []) $ rebuild <$> smosStateCursor}
 
-mkSmosApp :: Ord e => SmosConfig e -> App SmosState e ResourceName
-mkSmosApp SmosConfig {..} =
+mkSmosApp :: SmosConfig -> App SmosState () ResourceName
+mkSmosApp sc@SmosConfig {..} =
     App
     { appDraw = smosDraw
     , appChooseCursor = smosChooseCursor
-    , appHandleEvent = smosHandleEvent configKeyMap
+    , appHandleEvent = smosHandleEvent sc
     , appStartEvent = smosStartEvent
     , appAttrMap = smosAttrMap configAttrMap
     }
@@ -58,13 +60,12 @@ smosChooseCursor ::
 smosChooseCursor _ = showCursorNamed textCursorName
 
 smosHandleEvent ::
-       Ord e
-    => Keymap e
+       SmosConfig
     -> SmosState
-    -> BrickEvent ResourceName e
+    -> BrickEvent ResourceName ()
     -> EventM ResourceName (Next SmosState)
-smosHandleEvent km s e = do
-    (mkHalt, s') <- runSmosM s $ unKeymap km s e
+smosHandleEvent cf s e = do
+    (mkHalt, s') <- runSmosM cf s $ unKeymap (configKeyMap cf) s e
     case mkHalt of
         Stop -> B.halt s'
         Continue () -> B.continue s'

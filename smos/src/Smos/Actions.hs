@@ -41,11 +41,14 @@ module Smos.Actions
     , withHeaderCursor
     , withStateCursor
     , withFullMod
-    , modify
+    , withAgendaFilesMod
+    , module Control.Monad.Reader
+    , module Control.Monad.State
     ) where
 
 import Import
 
+import Control.Monad.Reader
 import Control.Monad.State
 
 import Data.Time
@@ -56,9 +59,6 @@ import Smos.Cursor
 import Smos.Types
 
 {-# ANN module ("HLint: ignore Use fromMaybe" :: String) #-}
-
-stop :: SmosM a
-stop = MkSmosM $ NextT $ pure Stop
 
 emptyTree :: SmosTree
 emptyTree = SmosTree {treeEntry = newEntry "", treeForest = SmosForest []}
@@ -208,6 +208,7 @@ clockOut :: SmosM ()
 clockOut = do
     now <- liftIO getCurrentTime
     withFullMod $ clockOutMod now
+    withAgendaFilesMod $ const $ clockOutMod now
 
 clockOutMod :: UTCTime -> (SmosFile -> SmosFile)
 clockOutMod now = SmosFile . gof . smosFileForest
@@ -343,3 +344,18 @@ withFullMod func =
                     sf' = func sf
                     cur' = selectACursor $ reselect sel sf'
                 in ss {smosStateCursor = cur'}
+
+withAgendaFilesMod :: (Path Abs File -> SmosFile -> SmosFile) -> SmosM ()
+withAgendaFilesMod func = do
+    getAgendaFiles <- asks configAgendaFiles
+    files <- liftIO getAgendaFiles
+    forM_ files $ \file -> do
+        errOrSF <- readSmosFile file
+        let result =
+                case errOrSF of
+                    Nothing -> Nothing
+                    Just (Left _) -> Nothing
+                    Just (Right sf) -> Just $ func file sf
+        case result of
+            Nothing -> pure ()
+            Just sf' -> writeSmosFile file sf'

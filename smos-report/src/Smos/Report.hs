@@ -23,7 +23,7 @@ import Smos.Report.Config
 
 smosReport :: SmosReportConfig -> ([(Path Abs File, SmosFile)] -> Doc) -> IO ()
 smosReport SmosReportConfig {..} reportFunc = do
-    afs <- configAgendaFiles
+    afs <- reportConfigAgendaFiles
     sfs <-
         fmap catMaybes $
         forM afs $ \af -> do

@@ -1,13 +1,29 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Smos.Types where
+module Smos.Types
+    ( SmosConfig(..)
+    , Keymap(..)
+    , filterKeymap
+    , rawKeymap
+    , SmosEvent
+    , SmosM
+    , runSmosM
+    , SmosState(..)
+    , ResourceName
+    , MStop(..)
+    , stop
+    , module Control.Monad.Reader
+    , module Control.Monad.State
+    ) where
 
 import Import
 
+import Control.Monad.Reader
 import Control.Monad.State
 
 import Brick.AttrMap as B
@@ -15,25 +31,26 @@ import Brick.Types as B hiding (Next)
 
 import Smos.Cursor
 
-data SmosConfig e = SmosConfig
-    { configKeyMap :: Keymap e
+data SmosConfig = SmosConfig
+    { configKeyMap :: Keymap
     , configAttrMap :: SmosState -> B.AttrMap
+    , configAgendaFiles :: IO [Path Abs File]
     } deriving (Generic)
 
-newtype Keymap e = Keymap
-    { unKeymap :: SmosState -> SmosEvent e -> SmosM ()
+newtype Keymap = Keymap
+    { unKeymap :: SmosState -> SmosEvent -> SmosM ()
     } deriving (Generic)
 
 -- TODO explain how this is not the current state, but the state at the start of
 -- the handler
-filterKeymap :: (SmosState -> Bool) -> Keymap e -> Keymap e
+filterKeymap :: (SmosState -> Bool) -> Keymap -> Keymap
 filterKeymap pred_ (Keymap km) =
     Keymap $ \s e ->
         if pred_ s
             then km s e
             else pure ()
 
-rawKeymap :: (SmosEvent e -> SmosM ()) -> Keymap e
+rawKeymap :: (SmosEvent -> SmosM ()) -> Keymap
 rawKeymap = Keymap . const
 
 -- | This instance is the most important for implementors.
@@ -42,41 +59,49 @@ rawKeymap = Keymap . const
 --
 -- Note that all handlers will be executed, not just the first one to be
 -- selected.
-instance Monoid (Keymap e) where
+instance Monoid Keymap where
     mempty = Keymap $ \_ _ -> pure ()
     mappend (Keymap km1) (Keymap km2) =
         Keymap $ \s e -> do
             km1 s e
             km2 s e
 
-type SmosEvent e = BrickEvent ResourceName e
+type SmosEvent = BrickEvent ResourceName ()
 
-type SmosM = MkSmosM ResourceName SmosState
+type SmosM = MkSmosM SmosConfig ResourceName SmosState
 
-runSmosM :: SmosState -> SmosM a -> EventM ResourceName (MStop a, SmosState)
+runSmosM ::
+       SmosConfig
+    -> SmosState
+    -> SmosM a
+    -> EventM ResourceName (MStop a, SmosState)
 runSmosM = runMkSmosM
 
-newtype SmosState = SmosState
-    { smosStateCursor :: Maybe ACursor
+data SmosState = SmosState
+    { smosStateFilePath :: Path Abs File
+    , smosStateCursor :: Maybe ACursor
     } deriving (Generic)
 
-newtype ResourceName = ResourceName
-    { unResourceName :: Text
-    } deriving (Show, Eq, Ord, Generic, IsString)
+newtype ResourceName =
+    ResourceName Text
+    deriving (Show, Eq, Ord, Generic, IsString)
 
-newtype MkSmosM n s a = MkSmosM
-    { unMkSmosM :: NextT (StateT s (EventM n)) a
-    } deriving (Generic, Functor, Applicative, Monad)
+newtype MkSmosM c n s a = MkSmosM
+    { unMkSmosM :: NextT (StateT s (ReaderT c (EventM n))) a
+    } deriving ( Generic
+               , Functor
+               , Applicative
+               , Monad
+               , MonadState s
+               , MonadReader c
+               )
 
-instance MonadState s (MkSmosM n s) where
-    get = MkSmosM $ lift get
-    put = MkSmosM . lift . put
-
-instance MonadIO (MkSmosM n s) where
+instance MonadIO (MkSmosM c n s) where
     liftIO = MkSmosM . liftIO
 
-runMkSmosM :: s -> MkSmosM n s a -> EventM n (MStop a, s)
-runMkSmosM initState act = runStateT (runNextT (unMkSmosM act)) initState
+runMkSmosM :: c -> s -> MkSmosM c n s a -> EventM n (MStop a, s)
+runMkSmosM conf initState act =
+    runReaderT (runStateT (runNextT (unMkSmosM act)) initState) conf
 
 data MStop a
     = Stop
@@ -117,3 +142,14 @@ instance MonadTrans NextT where
 
 instance MonadIO m => MonadIO (NextT m) where
     liftIO = lift . liftIO
+
+instance MonadState s m => MonadState s (NextT m) where
+    get = NextT $ Continue <$> get
+    put = NextT . fmap Continue . put
+
+instance MonadReader s m => MonadReader s (NextT m) where
+    ask = NextT $ Continue <$> ask
+    local func (NextT m) = NextT $ local func m
+
+stop :: SmosM a
+stop = MkSmosM $ NextT $ pure Stop
