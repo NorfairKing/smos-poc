@@ -42,8 +42,10 @@ module Smos.Cursor
     , EntryCursor
     , entryCursorParent
     , entryCursorHeader
+    , entryCursorContents
     , entryCursorState
     , entryCursorHeaderL
+    , entryCursorContentsL
     , entryCursorStateL
     , entryCursorLogbookL
     , entryCursorClockIn
@@ -59,6 +61,12 @@ module Smos.Cursor
     , headerCursorRight
     , headerCursorStart
     , headerCursorEnd
+    , ContentsCursor
+    , contentsCursor
+    , contentsCursorParent
+    , contentsCursorContents
+    , contentsCursorContentsL
+    , contentsCursorSetContents
     , StateCursor
     , stateCursor
     , stateCursorParent
@@ -76,6 +84,7 @@ import Lens.Micro
 
 import Smos.Cursor.Class
 import Smos.Cursor.Text
+import Smos.Cursor.TextField
 import Smos.Data
 
 data AnyCursor
@@ -428,7 +437,7 @@ treeCursorDeleteCurrent tc = tc''
 data EntryCursor = EntryCursor
     { entryCursorParent :: TreeCursor
     , entryCursorHeader :: HeaderCursor
-    , entryCursorContents :: Maybe Contents
+    , entryCursorContents :: Maybe ContentsCursor
     , entryCursorTimestamps :: HashMap TimestampName UTCTime
     , entryCursorState :: StateCursor
     , entryCursorTags :: [Tag]
@@ -465,7 +474,7 @@ instance Build EntryCursor where
     build EntryCursor {..} =
         Entry
         { entryHeader = build entryCursorHeader
-        , entryContents = entryCursorContents
+        , entryContents = build <$> entryCursorContents
         , entryTimestamps = entryCursorTimestamps
         , entryState = build entryCursorState
         , entryTags = entryCursorTags
@@ -479,7 +488,7 @@ entryCursor par Entry {..} = ec
         EntryCursor
         { entryCursorParent = par
         , entryCursorHeader = headerCursor ec entryHeader
-        , entryCursorContents = entryContents
+        , entryCursorContents = contentsCursor ec <$> entryContents
         , entryCursorTimestamps = entryTimestamps
         , entryCursorState = stateCursor ec entryState
         , entryCursorTags = entryTags
@@ -500,6 +509,28 @@ entryCursorHeaderL = lens getter setter
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
             , entryCursorHeader = hc
+            , entryCursorContents =
+                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
+                  entryCursorContents ec
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            }
+
+entryCursorContentsL ::
+       Functor f
+    => (Maybe ContentsCursor -> f (Maybe ContentsCursor))
+    -> EntryCursor
+    -> f EntryCursor
+entryCursorContentsL = lens getter setter
+  where
+    getter = entryCursorContents
+    setter ec mcc = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorContents = mcc
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             }
 
@@ -518,6 +549,9 @@ entryCursorStateL = lens getter setter
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorContents =
+                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
+                  entryCursorContents ec
             , entryCursorState = hc
             }
 
@@ -532,6 +566,9 @@ entryCursorLogbookL = lens getter setter
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorContents =
+                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
+                  entryCursorContents ec
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorLogbook = lb
@@ -609,6 +646,55 @@ headerCursorTextCursorL = lens getter setter
                   headerCursorParent hc & entryCursorHeaderL .~ hc'
             , headerCursorHeader = tc
             }
+
+data ContentsCursor = ContentsCursor
+    { contentsCursorParent :: EntryCursor
+    , contentsCursorContents :: TextFieldCursor
+    }
+
+instance Validity ContentsCursor where
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+instance Show ContentsCursor where
+    show ContentsCursor {..} =
+        unlines ["[Entry]", " |-" ++ show contentsCursorContents]
+
+instance Eq ContentsCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
+
+contentsCursor :: EntryCursor -> Contents -> ContentsCursor
+contentsCursor ec Contents {..} =
+    ContentsCursor
+    { contentsCursorParent = ec
+    , contentsCursorContents = makeTextFieldCursor contentsText
+    }
+
+contentsCursorContentsL ::
+       Functor f
+    => (Contents -> f Contents)
+    -> ContentsCursor
+    -> f ContentsCursor
+contentsCursorContentsL = lens getter setter
+  where
+    getter = build
+    setter cc cs = cc'
+      where
+        ec' :: EntryCursor
+        ec' = contentsCursorParent cc & entryCursorContentsL .~ Just cc'
+        cc' :: ContentsCursor
+        cc' = contentsCursor ec' cs
+
+contentsCursorSetContents :: Contents -> ContentsCursor -> ContentsCursor
+contentsCursorSetContents cs = contentsCursorContentsL .~ cs
+
+instance Rebuild ContentsCursor where
+    type ReBuilding ContentsCursor = SmosFile
+    rebuild = rebuild . contentsCursorParent
+
+instance Build ContentsCursor where
+    type Building ContentsCursor = Contents
+    build ContentsCursor {..} = Contents $ rebuild contentsCursorContents
 
 data StateCursor = StateCursor
     { stateCursorParent :: EntryCursor

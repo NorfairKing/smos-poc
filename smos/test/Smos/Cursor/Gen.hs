@@ -87,6 +87,21 @@ instance GenUnchecked HeaderCursor where
 instance GenValid HeaderCursor where
     genValid = entryCursorHeader <$> genValid
 
+instance GenUnchecked ContentsCursor where
+    genUnchecked =
+        genUnchecked >>= \ec ->
+            case entryCursorContents ec of
+                Nothing -> genUnchecked
+                Just c -> pure c
+    shrinkUnchecked = shrinkNothing
+
+instance GenValid ContentsCursor where
+    genValid =
+        genValid >>= \ec ->
+            case entryCursorContents ec of
+                Nothing -> genValid
+                Just c -> pure c
+
 instance GenUnchecked StateCursor where
     genUnchecked = entryCursorState <$> genUnchecked
     shrinkUnchecked = shrinkNothing

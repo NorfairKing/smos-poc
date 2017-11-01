@@ -20,6 +20,8 @@ import Smos.Data.Gen ()
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
+{-# ANN module ("HLint: ignore Functor law" :: String) #-}
+
 spec :: Spec
 spec = do
     describe "ACursor" $ do
@@ -140,6 +142,11 @@ spec = do
             it "rebuilds to the same" $ rebuildsToTheSame entryCursorParent
         describe "entryCursorHeader" $
             it "rebuilds to the same" $ rebuildsToTheSame entryCursorHeader
+        describe "entryCursorContents" $
+            it "rebuilds to the same" $
+            rebuildsToTheSameIfSuceeds entryCursorContents
+        describe "entryCursorState" $
+            it "rebuilds to the same" $ rebuildsToTheSame entryCursorState
         describe "entryCursorHeaderL and entryCursorStateL" $
             it
                 "has the same state after setting the state and then changing the header" $
@@ -153,6 +160,50 @@ spec = do
                             ec'' = headerCursorParent hc'
                         in build (entryCursorState ec'') `shouldBe`
                            build (entryCursorState ec')
+        describe "entryCursorHeaderL and entryCursorContentsL" $
+            it
+                "has the same contents after setting the contents and then changing the header" $
+            forAll genValid $ \cs ->
+                forAll genValid $ \c ->
+                    forAll genValid $ \ec ->
+                        let ec' =
+                                ec & entryCursorContentsL %~
+                                fmap (contentsCursorSetContents cs)
+                            hc = entryCursorHeader ec'
+                            hc' = headerCursorInsert c hc
+                            ec'' = headerCursorParent hc'
+                        in build <$> entryCursorContents ec'' `shouldBe` build <$>
+                           entryCursorContents ec'
+        describe "entryCursorStateL and entryCursorContentsL" $ do
+            it
+                "has the same contents after setting the contents and then changing the state" $
+                forAll genValid $ \cs ->
+                    forAll genValid $ \ts ->
+                        forAll genValid $ \ec ->
+                            let ec' =
+                                    ec & entryCursorContentsL %~
+                                    fmap (contentsCursorSetContents cs)
+                                sc = entryCursorState ec'
+                                sc' = stateCursorSetState ts sc
+                                ec'' = stateCursorParent sc'
+                            in build <$>
+                               entryCursorContents ec'' `shouldBe` build <$>
+                               entryCursorContents ec'
+            it
+                "has the same state after setting the state and then changing the contents" $
+                forAll genValid $ \ts ->
+                    forAll genValid $ \cs ->
+                        forAll genValid $ \ec ->
+                            let ec' =
+                                    ec & entryCursorStateL %~
+                                    stateCursorSetState ts
+                            in case entryCursorContents ec' of
+                                   Nothing -> pure () -- nevermind
+                                   Just cc ->
+                                       let cc' = contentsCursorSetContents cs cc
+                                           ec'' = contentsCursorParent cc'
+                                       in build (entryCursorState ec'') `shouldBe`
+                                          build (entryCursorState ec')
     describe "HeaderCursor" $ do
         describe "headerCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorParent
@@ -193,6 +244,14 @@ spec = do
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorStart
         describe "headerCursorEnd" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorEnd
+    describe "contentsCursor" $ do
+        describe "contentsCursorParent" $
+            it "rebuilds to the same" $ rebuildsToTheSame contentsCursorParent
+        describe "contentsCursorSetContents" $
+            it "builds to the given contents" $
+            forAll genValid $ \cs ->
+                forAll genValid $ \cc ->
+                    build (contentsCursorSetContents cs cc) `shouldBe` cs
     describe "stateCursor" $ do
         describe "stateCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame stateCursorParent
