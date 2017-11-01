@@ -46,3 +46,15 @@ spec = do
         it "rebuilds to the same text when applied twice" $
             rebuildsToTheSameIfSuceeds
                 (textFieldCursorSelectNext >=> textFieldCursorSelectNext)
+    describe "textCursorSelectUp" $ do
+        it "rebuilds to the same text" $
+            rebuildsToTheSameIfSuceeds textFieldCursorSelectUp
+        it "rebuilds to the same text when applied twice" $
+            rebuildsToTheSameIfSuceeds
+                (textFieldCursorSelectUp >=> textFieldCursorSelectUp)
+    describe "textCursorSelectDown" $ do
+        it "rebuilds to the same text" $
+            rebuildsToTheSameIfSuceeds textFieldCursorSelectDown
+        it "rebuilds to the same text when applied twice" $
+            rebuildsToTheSameIfSuceeds
+                (textFieldCursorSelectDown >=> textFieldCursorSelectDown)

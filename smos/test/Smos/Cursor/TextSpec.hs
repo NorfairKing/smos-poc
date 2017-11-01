@@ -8,17 +8,18 @@ import TestImport
 
 import qualified Data.Text as T
 
-import Smos.Cursor.List.Gen ()
+import Smos.Cursor.Class
 import Smos.Cursor.TestUtils
 import Smos.Cursor.Text
+import Smos.Cursor.Text.Gen ()
 
 spec :: Spec
 spec = do
     describe "makeTextCursor" $ do
         it "is the inverse of 'rebuildTextCursor' for this simple example" $
-            rebuildTextCursor (makeTextCursor "abc") `shouldBe` "abc"
+            rebuild (makeTextCursor "abc") `shouldBe` "abc"
         it "is the inverse of 'rebuildTextCursor'" $
-            inverseFunctionsOnValid makeTextCursor rebuildTextCursor
+            inverseFunctionsOnValid makeTextCursor rebuild
     describe "textCursorSelectPrev" $ do
         it "rebuilds to the same text" $
             rebuildsToTheSameIfSuceeds textCursorSelectPrev
@@ -38,7 +39,7 @@ spec = do
     describe "textCursorInsert" $ do
         it "rebuilds to the right character when inserting into an empty cursor" $
             forAll genValid $ \c ->
-                rebuildTextCursor (textCursorInsert c emptyTextCursor) `shouldBe`
+                rebuild (textCursorInsert c emptyTextCursor) `shouldBe`
                 T.pack [c]
         it
             "rebuilds to the right two character when inserting into an empty cursor twice" $
@@ -46,7 +47,7 @@ spec = do
                 let tc = emptyTextCursor
                     tc' = textCursorInsert c1 tc
                     tc'' = textCursorInsert c2 tc'
-                    t' = rebuildTextCursor tc''
+                    t' = rebuild tc''
                 in unless (t' == T.pack [c1, c2]) $
                    expectationFailure $
                    unlines
@@ -62,5 +63,5 @@ spec = do
             forAll genValid $ \(t, c) ->
                 let tc = makeTextCursor t
                     tc' = textCursorInsert c tc
-                    t' = rebuildTextCursor tc'
+                    t' = rebuild tc'
                 in T.length t' `shouldBe` T.length t + 1

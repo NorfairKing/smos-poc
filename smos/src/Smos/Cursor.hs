@@ -92,6 +92,7 @@ data AnyCursor
     | AnyTree TreeCursor
     | AnyEntry EntryCursor
     | AnyHeader HeaderCursor
+    | AnyContents ContentsCursor
     | AnyState StateCursor
     deriving (Show, Eq, Generic)
 
@@ -103,11 +104,13 @@ instance Rebuild AnyCursor where
     rebuild (AnyTree tc) = rebuild tc
     rebuild (AnyEntry ec) = rebuild ec
     rebuild (AnyHeader hc) = rebuild hc
+    rebuild (AnyContents cc) = rebuild cc
     rebuild (AnyState sc) = rebuild sc
 
 data ACursor
     = AnEntry EntryCursor
     | AHeader HeaderCursor
+    | AContents ContentsCursor
     | AState StateCursor
     deriving (Show, Eq, Generic)
 
@@ -117,6 +120,7 @@ instance Rebuild ACursor where
     type ReBuilding ACursor = SmosFile
     rebuild (AnEntry ec) = rebuild ec
     rebuild (AHeader hc) = rebuild hc
+    rebuild (AContents cc) = rebuild cc
     rebuild (AState sc) = rebuild sc
 
 makeAnyCursor :: SmosFile -> AnyCursor
@@ -129,12 +133,16 @@ makeASelection = reverse . go
     go (AnyTree tc) = got tc
     go (AnyEntry ec) = goe ec
     go (AnyHeader hc) = goh hc
+    go (AnyContents cc) = goc cc
     go (AnyState sc) = gos sc
     gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
     goe EntryCursor {..} = 0 : got entryCursorParent
     goh HeaderCursor {..} =
         textCursorIndex headerCursorHeader : 0 : goe headerCursorParent
+    goc ContentsCursor {..} =
+        textFieldCursorIndices contentsCursorContents ++
+        [2] ++ goe contentsCursorParent
     gos StateCursor {..} = 1 : goe stateCursorParent
 
 reselect :: [Int] -> SmosFile -> AnyCursor
@@ -144,6 +152,7 @@ reselect s = go s . makeAnyCursor
     go sel (AnyTree tc) = got sel tc
     go sel (AnyEntry ec) = goe sel ec
     go sel (AnyHeader hc) = goh sel hc
+    go sel (AnyContents cc) = goc sel cc
     go sel (AnyState sc) = gos sel sc
     gof sel fc =
         withSel sel (AnyForest fc) $ \ix_ sel_ ->
@@ -160,8 +169,10 @@ reselect s = go s . makeAnyCursor
             case ix_ of
                 0 -> goh sel_ $ entryCursorHeader e
                 1 -> gos sel_ $ entryCursorState e
+                2 -> maybe (AnyEntry e) (goc sel_) $ entryCursorContents e
                 _ -> AnyEntry e
     goh _ = AnyHeader
+    goc _ = AnyContents
     gos _ = AnyState
     withSel :: [Int] -> a -> (Int -> [Int] -> a) -> a
     withSel sel a func =
@@ -176,6 +187,7 @@ selectACursor ac =
         AnyTree tc -> Just $ AnEntry $ treeCursorEntry tc
         AnyEntry ec -> Just $ AnEntry ec
         AnyHeader hc -> Just $ AHeader hc
+        AnyContents cc -> Just $ AContents cc
         AnyState sc -> Just $ AState sc
 
 selectAnyCursor :: ACursor -> AnyCursor
@@ -183,6 +195,7 @@ selectAnyCursor ac =
     case ac of
         AnEntry hc -> AnyEntry hc
         AHeader hc -> AnyHeader hc
+        AContents cc -> AnyContents cc
         AState hc -> AnyState hc
 
 data ForestCursor = ForestCursor
@@ -588,8 +601,7 @@ instance Validity HeaderCursor where
 
 instance Show HeaderCursor where
     show HeaderCursor {..} =
-        unlines
-            ["[Entry]", " |-" ++ show (rebuildTextCursor headerCursorHeader)]
+        unlines ["[Entry]", " |-" ++ show (rebuild headerCursorHeader)]
 
 instance Eq HeaderCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
@@ -600,7 +612,7 @@ instance Rebuild HeaderCursor where
 
 instance Build HeaderCursor where
     type Building HeaderCursor = Header
-    build HeaderCursor {..} = Header $ rebuildTextCursor headerCursorHeader
+    build HeaderCursor {..} = Header $ rebuild headerCursorHeader
 
 headerCursor :: EntryCursor -> Header -> HeaderCursor
 headerCursor par h =

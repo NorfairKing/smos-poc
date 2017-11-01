@@ -11,9 +11,12 @@ module Smos.Cursor.TextField
     , emptyTextFieldCursor
     , makeTextFieldCursor
     , rebuildTextFieldCursor
+    , textFieldCursorIndices
     , textFieldSelectedL
     , textFieldCursorSelectPrev
     , textFieldCursorSelectNext
+    , textFieldCursorSelectUp
+    , textFieldCursorSelectDown
     ) where
 
 import Import
@@ -34,7 +37,7 @@ instance Validity TextFieldCursor
 
 instance Build TextFieldCursor where
     type Building TextFieldCursor = Text
-    build = rebuildTextCursor . textFieldSelected
+    build = rebuild . textFieldSelected
 
 instance Rebuild TextFieldCursor where
     type ReBuilding TextFieldCursor = Text
@@ -64,9 +67,16 @@ rebuildTextFieldCursor :: TextFieldCursor -> Text
 rebuildTextFieldCursor TextFieldCursor {..} =
     let ls =
             reverse textFieldCursorPrev ++
-            [rebuildTextCursor textFieldSelected] ++ textFieldCursorNext
+            [rebuild textFieldSelected] ++ textFieldCursorNext
     in T.intercalate "\n" ls
 
+textFieldCursorIndices :: TextFieldCursor -> [Int]
+textFieldCursorIndices TextFieldCursor {..} =
+    [length textFieldCursorPrev, textCursorIndex textFieldSelected]
+
+-- reselectTextFieldCursor :: [Int] -> TextFieldCursor -> TextFieldCursor
+-- reselectTextFieldCursor [x, y] _ = undefined
+-- reselectTextFieldCursor _ tc = tc
 textFieldSelectedL ::
        Functor f
     => (TextCursor -> f TextCursor)
@@ -80,3 +90,29 @@ textFieldCursorSelectPrev = textFieldSelectedL textCursorSelectPrev
 
 textFieldCursorSelectNext :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorSelectNext = textFieldSelectedL textCursorSelectNext
+
+textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectUp tfc =
+    case textFieldCursorPrev tfc of
+        [] -> Nothing
+        (p:rest) ->
+            Just $
+            tfc
+            { textFieldCursorPrev = rest
+            , textFieldSelected = makeTextCursor p
+            , textFieldCursorNext =
+                  rebuild (textFieldSelected tfc) : textFieldCursorNext tfc
+            }
+
+textFieldCursorSelectDown :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectDown tfc =
+    case textFieldCursorNext tfc of
+        [] -> Nothing
+        (p:rest) ->
+            Just $
+            tfc
+            { textFieldCursorPrev =
+                  rebuild (textFieldSelected tfc) : textFieldCursorPrev tfc
+            , textFieldSelected = makeTextCursor p
+            , textFieldCursorNext = rest
+            }

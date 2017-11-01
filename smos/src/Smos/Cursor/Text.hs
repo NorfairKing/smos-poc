@@ -1,8 +1,10 @@
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Smos.Cursor.Text
     ( TextCursor
     , emptyTextCursor
     , makeTextCursor
-    , rebuildTextCursor
     , textCursorIndex
     , textCursorSelectPrev
     , textCursorSelectNext
@@ -18,46 +20,60 @@ module Smos.Cursor.Text
 import Import
 
 import qualified Data.Text as T
+import Lens.Micro
 
+import Smos.Cursor.Class
 import Smos.Cursor.List
 
-type TextCursor = ListCursor Char
+newtype TextCursor = TextCursor
+    { unTextCursor :: ListCursor Char
+    } deriving (Show, Eq, Generic)
+
+instance Validity TextCursor
+
+instance Rebuild TextCursor where
+    type ReBuilding TextCursor = Text
+    rebuild = T.pack . rebuildListCursor . unTextCursor
 
 emptyTextCursor :: TextCursor
-emptyTextCursor = emptyListCursor
+emptyTextCursor = TextCursor emptyListCursor
 
 makeTextCursor :: Text -> TextCursor
-makeTextCursor = makeListCursor . T.unpack
+makeTextCursor = TextCursor . makeListCursor . T.unpack
 
-rebuildTextCursor :: TextCursor -> Text
-rebuildTextCursor = T.pack . rebuildListCursor
+textCursorListCursorL ::
+       Functor f
+    => (ListCursor Char -> f (ListCursor Char))
+    -> TextCursor
+    -> f TextCursor
+textCursorListCursorL = lens unTextCursor (\tc lc -> tc {unTextCursor = lc})
 
 textCursorIndex :: TextCursor -> Int
-textCursorIndex = listCursorIndex
+textCursorIndex = listCursorIndex . unTextCursor
 
 textCursorSelectPrev :: TextCursor -> Maybe TextCursor
-textCursorSelectPrev = listCursorSelectPrev
+textCursorSelectPrev = textCursorListCursorL listCursorSelectPrev
 
 textCursorSelectNext :: TextCursor -> Maybe TextCursor
-textCursorSelectNext = listCursorSelectNext
+textCursorSelectNext = textCursorListCursorL listCursorSelectNext
 
 textCursorSelectPrevChar :: TextCursor -> Maybe Char
-textCursorSelectPrevChar = listCursorSelectPrevChar
+textCursorSelectPrevChar = listCursorSelectPrevChar . unTextCursor
 
 textCursorSelectNextChar :: TextCursor -> Maybe Char
-textCursorSelectNextChar = listCursorSelectNextChar
+textCursorSelectNextChar = listCursorSelectNextChar . unTextCursor
 
 textCursorSelectStart :: TextCursor -> TextCursor
-textCursorSelectStart = listCursorSelectStart
+textCursorSelectStart = textCursorListCursorL %~ listCursorSelectStart
 
 textCursorSelectEnd :: TextCursor -> TextCursor
-textCursorSelectEnd = listCursorSelectEnd
+textCursorSelectEnd = textCursorListCursorL %~ listCursorSelectEnd
 
 textCursorInsert :: Char -> TextCursor -> TextCursor
-textCursorInsert = listCursorInsert
+textCursorInsert c = over textCursorListCursorL $ listCursorInsert c
 
 textCursorRemove :: TextCursor -> Maybe TextCursor
-textCursorRemove = listCursorRemove
+textCursorRemove = textCursorListCursorL listCursorRemove
 
 textCursorDelete :: TextCursor -> Maybe TextCursor
-textCursorDelete = listCursorDelete
+textCursorDelete = textCursorListCursorL listCursorDelete
