@@ -19,6 +19,7 @@ module Smos.Cursor.TextField
     , textFieldCursorSelectDown
     , textFieldCursorInsert
     , textFieldCursorAppend
+    , textFieldCursorNewline
     , textFieldCursorRemove
     , textFieldCursorDelete
     , textFieldCursorSelectStart
@@ -128,6 +129,14 @@ textFieldCursorInsert c = textFieldSelectedL %~ textCursorInsert c
 
 textFieldCursorAppend :: Char -> TextFieldCursor -> TextFieldCursor
 textFieldCursorAppend c = textFieldSelectedL %~ textCursorAppend c
+
+textFieldCursorNewline :: TextFieldCursor -> TextFieldCursor
+textFieldCursorNewline tfc =
+    tfc
+    { textFieldCursorPrev =
+          rebuild (textFieldSelected tfc) : textFieldCursorPrev tfc
+    , textFieldSelected = emptyTextCursor
+    }
 
 textFieldCursorRemove :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorRemove = textFieldSelectedL textCursorRemove

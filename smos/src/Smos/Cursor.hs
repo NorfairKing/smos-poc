@@ -63,6 +63,7 @@ module Smos.Cursor
     , headerCursorStart
     , headerCursorEnd
     , ContentsCursor
+    , emptyContentsCursor
     , contentsCursor
     , contentsCursorParent
     , contentsCursorContents
@@ -71,10 +72,13 @@ module Smos.Cursor
     , contentsCursorTextFieldL
     , contentsCursorInsert
     , contentsCursorAppend
+    , contentsCursorNewline
     , contentsCursorRemove
     , contentsCursorDelete
     , contentsCursorLeft
     , contentsCursorRight
+    , contentsCursorUp
+    , contentsCursorDown
     , contentsCursorStart
     , contentsCursorEnd
     , StateCursor
@@ -88,6 +92,7 @@ module Smos.Cursor
 import Import
 
 import Data.HashMap.Lazy (HashMap)
+import qualified Data.Text as T
 import Data.Time
 
 import Lens.Micro
@@ -688,6 +693,9 @@ instance Show ContentsCursor where
 instance Eq ContentsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
+emptyContentsCursor :: EntryCursor -> ContentsCursor
+emptyContentsCursor ec = contentsCursor ec $ Contents T.empty
+
 contentsCursor :: EntryCursor -> Contents -> ContentsCursor
 contentsCursor ec Contents {..} =
     ContentsCursor
@@ -730,6 +738,9 @@ contentsCursorInsert c = contentsCursorTextFieldL %~ textFieldCursorInsert c
 contentsCursorAppend :: Char -> ContentsCursor -> ContentsCursor
 contentsCursorAppend c = contentsCursorTextFieldL %~ textFieldCursorAppend c
 
+contentsCursorNewline :: ContentsCursor -> ContentsCursor
+contentsCursorNewline = contentsCursorTextFieldL %~ textFieldCursorNewline
+
 contentsCursorRemove :: ContentsCursor -> Maybe ContentsCursor
 contentsCursorRemove = contentsCursorTextFieldL textFieldCursorRemove
 
@@ -741,6 +752,12 @@ contentsCursorLeft = contentsCursorTextFieldL textFieldCursorSelectPrev
 
 contentsCursorRight :: ContentsCursor -> Maybe ContentsCursor
 contentsCursorRight = contentsCursorTextFieldL textFieldCursorSelectNext
+
+contentsCursorUp :: ContentsCursor -> Maybe ContentsCursor
+contentsCursorUp = contentsCursorTextFieldL textFieldCursorSelectPrev
+
+contentsCursorDown :: ContentsCursor -> Maybe ContentsCursor
+contentsCursorDown = contentsCursorTextFieldL textFieldCursorSelectNext
 
 contentsCursorStart :: ContentsCursor -> ContentsCursor
 contentsCursorStart = contentsCursorTextFieldL %~ textFieldCursorSelectStart

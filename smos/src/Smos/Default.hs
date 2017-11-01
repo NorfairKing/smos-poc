@@ -30,6 +30,7 @@ defaultConfig =
                     , matchChar 'd' deleteCurrentHeader
                     , matchChar 'i' $ enterHeader >> headerStart
                     , matchChar 'a' $ enterHeader >> headerEnd
+                    , matchChar 'e' $ enterContents >> contentsStart
                     , matchChar 't' enterTodoState
                     , matchChar 'c' clockIn
                     , matchChar 'o' clockOut
@@ -54,6 +55,18 @@ defaultConfig =
                     , matchKey KRight headerRight
                     , matchKey KEnter exitHeader
                     , matchKey KEsc exitHeader
+                    ]
+              , inContents $
+                mconcat
+                    [ onChar contentsInsert
+                    , matchKey KBS contentsRemove
+                    , matchKey KDel contentsDelete
+                    , matchKey KLeft contentsLeft
+                    , matchKey KRight contentsRight
+                    , matchKey KUp contentsUp
+                    , matchKey KDown contentsDown
+                    , matchKey KEnter contentsNewline
+                    , matchKey KEsc exitContents
                     ]
               , inTodoState $
                 mconcat

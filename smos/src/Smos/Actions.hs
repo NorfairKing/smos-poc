@@ -25,6 +25,20 @@ module Smos.Actions
     , headerStart
     , headerEnd
     , exitHeader
+    -- * Header actions
+    , enterContents
+    , contentsInsert
+    , contentsAppend
+    , contentsNewline
+    , contentsRemove
+    , contentsDelete
+    , contentsLeft
+    , contentsRight
+    , contentsUp
+    , contentsDown
+    , contentsStart
+    , contentsEnd
+    , exitContents
     -- * Todo state actions
     , enterTodoState
     , todoStateClear
@@ -53,6 +67,8 @@ import Control.Monad.Reader
 import Control.Monad.State
 
 import Data.Time
+
+import Lens.Micro
 
 import Smos.Data
 
@@ -268,6 +284,59 @@ exitHeader =
             AHeader hc -> AnEntry $ headerCursorParent hc
             _ -> cur
 
+enterContents :: SmosM ()
+enterContents =
+    modifyCursor $ \cur ->
+        case cur of
+            AnEntry ec ->
+                case entryCursorContents ec of
+                    Nothing ->
+                        let e' = ec & entryCursorContentsL .~ Just cc
+                            cc = emptyContentsCursor e'
+                        in AContents cc
+                    Just cc -> AContents cc
+            _ -> cur
+
+contentsInsert :: Char -> SmosM ()
+contentsInsert c = modifyContents $ contentsCursorInsert c
+
+contentsAppend :: Char -> SmosM ()
+contentsAppend c = modifyContents $ contentsCursorAppend c
+
+contentsNewline :: SmosM ()
+contentsNewline = modifyContents contentsCursorNewline
+
+contentsRemove :: SmosM ()
+contentsRemove = modifyContentsM contentsCursorRemove
+
+contentsDelete :: SmosM ()
+contentsDelete = modifyContentsM contentsCursorDelete
+
+contentsLeft :: SmosM ()
+contentsLeft = modifyContentsM contentsCursorLeft
+
+contentsRight :: SmosM ()
+contentsRight = modifyContentsM contentsCursorRight
+
+contentsUp :: SmosM ()
+contentsUp = modifyContentsM contentsCursorUp
+
+contentsDown :: SmosM ()
+contentsDown = modifyContentsM contentsCursorDown
+
+contentsStart :: SmosM ()
+contentsStart = modifyContents contentsCursorStart
+
+contentsEnd :: SmosM ()
+contentsEnd = modifyContents contentsCursorEnd
+
+exitContents :: SmosM ()
+exitContents =
+    modifyCursor $ \cur ->
+        case cur of
+            AContents hc -> AnEntry $ contentsCursorParent hc
+            _ -> cur
+
 enterTodoState :: SmosM ()
 enterTodoState =
     modifyCursor $ \cur ->
@@ -306,6 +375,16 @@ modifyHeader func =
     modifyCursor $ \cur ->
         case cur of
             AHeader h -> AHeader $ func h
+            _ -> cur
+
+modifyContentsM :: (ContentsCursor -> Maybe ContentsCursor) -> SmosM ()
+modifyContentsM func = modifyContents $ \cc -> fromMaybe cc $ func cc
+
+modifyContents :: (ContentsCursor -> ContentsCursor) -> SmosM ()
+modifyContents func =
+    modifyCursor $ \cur ->
+        case cur of
+            AContents cc -> AContents $ func cc
             _ -> cur
 
 modifyTodoState :: (StateCursor -> StateCursor) -> SmosM ()
