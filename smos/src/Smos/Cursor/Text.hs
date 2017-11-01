@@ -13,6 +13,7 @@ module Smos.Cursor.Text
     , textCursorSelectStart
     , textCursorSelectEnd
     , textCursorInsert
+    , textCursorAppend
     , textCursorRemove
     , textCursorDelete
     ) where
@@ -70,7 +71,10 @@ textCursorSelectEnd :: TextCursor -> TextCursor
 textCursorSelectEnd = textCursorListCursorL %~ listCursorSelectEnd
 
 textCursorInsert :: Char -> TextCursor -> TextCursor
-textCursorInsert c = over textCursorListCursorL $ listCursorInsert c
+textCursorInsert c = textCursorListCursorL %~ listCursorInsert c
+
+textCursorAppend :: Char -> TextCursor -> TextCursor
+textCursorAppend c = textCursorListCursorL %~ listCursorAppend c
 
 textCursorRemove :: TextCursor -> Maybe TextCursor
 textCursorRemove = textCursorListCursorL listCursorRemove

@@ -55,6 +55,7 @@ module Smos.Cursor
     , headerCursorHeader
     , headerCursorTextCursorL
     , headerCursorInsert
+    , headerCursorAppend
     , headerCursorRemove
     , headerCursorDelete
     , headerCursorLeft
@@ -67,6 +68,15 @@ module Smos.Cursor
     , contentsCursorContents
     , contentsCursorContentsL
     , contentsCursorSetContents
+    , contentsCursorTextFieldL
+    , contentsCursorInsert
+    , contentsCursorAppend
+    , contentsCursorRemove
+    , contentsCursorDelete
+    , contentsCursorLeft
+    , contentsCursorRight
+    , contentsCursorStart
+    , contentsCursorEnd
     , StateCursor
     , stateCursor
     , stateCursorParent
@@ -624,6 +634,9 @@ headerCursor par h =
 headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
 headerCursorInsert c = headerCursorTextCursorL %~ textCursorInsert c
 
+headerCursorAppend :: Char -> HeaderCursor -> HeaderCursor
+headerCursorAppend c = headerCursorTextCursorL %~ textCursorAppend c
+
 headerCursorRemove :: HeaderCursor -> Maybe HeaderCursor
 headerCursorRemove = headerCursorTextCursorL textCursorRemove
 
@@ -692,13 +705,48 @@ contentsCursorContentsL = lens getter setter
     getter = build
     setter cc cs = cc'
       where
-        ec' :: EntryCursor
         ec' = contentsCursorParent cc & entryCursorContentsL .~ Just cc'
-        cc' :: ContentsCursor
         cc' = contentsCursor ec' cs
 
 contentsCursorSetContents :: Contents -> ContentsCursor -> ContentsCursor
 contentsCursorSetContents cs = contentsCursorContentsL .~ cs
+
+contentsCursorTextFieldL ::
+       Functor f
+    => (TextFieldCursor -> f TextFieldCursor)
+    -> ContentsCursor
+    -> f ContentsCursor
+contentsCursorTextFieldL = lens getter setter
+  where
+    getter = contentsCursorContents
+    setter cc tfc = cc'
+      where
+        ec' = contentsCursorParent cc & entryCursorContentsL .~ Just cc'
+        cc' = cc {contentsCursorParent = ec', contentsCursorContents = tfc}
+
+contentsCursorInsert :: Char -> ContentsCursor -> ContentsCursor
+contentsCursorInsert c = contentsCursorTextFieldL %~ textFieldCursorInsert c
+
+contentsCursorAppend :: Char -> ContentsCursor -> ContentsCursor
+contentsCursorAppend c = contentsCursorTextFieldL %~ textFieldCursorAppend c
+
+contentsCursorRemove :: ContentsCursor -> Maybe ContentsCursor
+contentsCursorRemove = contentsCursorTextFieldL textFieldCursorRemove
+
+contentsCursorDelete :: ContentsCursor -> Maybe ContentsCursor
+contentsCursorDelete = contentsCursorTextFieldL textFieldCursorDelete
+
+contentsCursorLeft :: ContentsCursor -> Maybe ContentsCursor
+contentsCursorLeft = contentsCursorTextFieldL textFieldCursorSelectPrev
+
+contentsCursorRight :: ContentsCursor -> Maybe ContentsCursor
+contentsCursorRight = contentsCursorTextFieldL textFieldCursorSelectNext
+
+contentsCursorStart :: ContentsCursor -> ContentsCursor
+contentsCursorStart = contentsCursorTextFieldL %~ textFieldCursorSelectStart
+
+contentsCursorEnd :: ContentsCursor -> ContentsCursor
+contentsCursorEnd = contentsCursorTextFieldL %~ textFieldCursorSelectEnd
 
 instance Rebuild ContentsCursor where
     type ReBuilding ContentsCursor = SmosFile

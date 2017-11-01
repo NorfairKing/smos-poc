@@ -15,6 +15,7 @@ module Smos.Cursor.List
     , listCursorSelectStart
     , listCursorSelectEnd
     , listCursorInsert
+    , listCursorAppend
     , listCursorRemove
     , listCursorDelete
     ) where
@@ -99,9 +100,10 @@ listCursorSelectEnd tc =
         Just tc' -> listCursorSelectEnd tc'
 
 listCursorInsert :: a -> ListCursor a -> ListCursor a
-listCursorInsert c tc =
-    ListCursor
-    {listCursorPrev = c : listCursorPrev tc, listCursorNext = listCursorNext tc}
+listCursorInsert c lc = lc {listCursorPrev = c : listCursorPrev lc}
+
+listCursorAppend :: a -> ListCursor a -> ListCursor a
+listCursorAppend c lc = lc {listCursorNext = c : listCursorNext lc}
 
 listCursorRemove :: ListCursor a -> Maybe (ListCursor a)
 listCursorRemove tc =
