@@ -98,8 +98,8 @@ textFieldCursorSelectPrev = textFieldSelectedL textCursorSelectPrev
 textFieldCursorSelectNext :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorSelectNext = textFieldSelectedL textCursorSelectNext
 
-textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectUp tfc =
+textFieldCursorSelectPrevLine :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectPrevLine tfc =
     case textFieldCursorPrev tfc of
         [] -> Nothing
         (p:rest) ->
@@ -111,8 +111,11 @@ textFieldCursorSelectUp tfc =
                   rebuild (textFieldSelected tfc) : textFieldCursorNext tfc
             }
 
-textFieldCursorSelectDown :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectDown tfc =
+textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectUp = textFieldCursorSelectPrevLine
+
+textFieldCursorSelectNextLine :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectNextLine tfc =
     case textFieldCursorNext tfc of
         [] -> Nothing
         (p:rest) ->
@@ -123,6 +126,9 @@ textFieldCursorSelectDown tfc =
             , textFieldSelected = makeTextCursor p
             , textFieldCursorNext = rest
             }
+
+textFieldCursorSelectDown :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectDown = textFieldCursorSelectNextLine
 
 textFieldCursorInsert :: Char -> TextFieldCursor -> TextFieldCursor
 textFieldCursorInsert c = textFieldSelectedL %~ textCursorInsert c
@@ -139,10 +145,33 @@ textFieldCursorNewline tfc =
     }
 
 textFieldCursorRemove :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorRemove = textFieldSelectedL textCursorRemove
+textFieldCursorRemove tfc =
+    case textCursorRemove $ textFieldSelected tfc of
+        Nothing ->
+            case textFieldCursorPrev tfc of
+                [] -> Nothing
+                (p:rest) ->
+                    Just $
+                    tfc
+                    { textFieldCursorPrev = rest
+                    , textFieldSelected = textCursorSelectEnd $ makeTextCursor p
+                    }
+        Just tc' -> Just $ tfc & textFieldSelectedL .~ tc'
 
 textFieldCursorDelete :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorDelete = textFieldSelectedL textCursorDelete
+textFieldCursorDelete tfc =
+    case textCursorDelete $ textFieldSelected tfc of
+        Nothing ->
+            case textFieldCursorNext tfc of
+                [] -> Nothing
+                (p:rest) ->
+                    Just $
+                    tfc
+                    { textFieldSelected =
+                          textCursorSelectStart $ makeTextCursor p
+                    , textFieldCursorNext = rest
+                    }
+        Just tc' -> Just $ tfc & textFieldSelectedL .~ tc'
 
 textFieldCursorSelectStart :: TextFieldCursor -> TextFieldCursor
 textFieldCursorSelectStart = textFieldSelectedL %~ textCursorSelectStart
