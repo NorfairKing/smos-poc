@@ -70,7 +70,7 @@ drawEntry msel Entry {..} =
           [ drawHeader (drillSel msel 0) entryHeader
           , B.hBox $ intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
           ]
-        , mayW entryContents $ B.txt . contentsText
+        , drawContents (drillSel msel 2) entryContents
         , B.vBox $
           flip map (HM.toList entryTimestamps) $ \(k, ts) ->
               B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
@@ -82,6 +82,13 @@ drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
 drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
 drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
+
+drawContents :: Maybe [Int] -> Maybe Contents -> Widget ResourceName
+drawContents msel mcon =
+    case mcon of
+        Nothing -> emptyWidget
+        Just Contents {..} ->
+            withAttr contentsAttr $ withTextFieldSel msel contentsText
 
 drawLogbook :: Logbook -> Widget n
 drawLogbook LogEnd = B.emptyWidget
@@ -117,5 +124,11 @@ withTextSel msel t =
             B.showCursor textCursorName (B.Location (ix_, 0)) $ B.txt t
         Just _ -> B.txt t
 
-mayW :: Maybe a -> (a -> Widget n) -> Widget n
-mayW mw func = maybe emptyWidget func mw
+withTextFieldSel :: Maybe [Int] -> Text -> Widget ResourceName
+withTextFieldSel msel t =
+    case msel of
+        Nothing -> B.txt t
+        Just [xix_, yix_] ->
+            withAttr selectedAttr $
+            B.showCursor textCursorName (B.Location (xix_, yix_)) $ B.txt t
+        Just _ -> B.txt t

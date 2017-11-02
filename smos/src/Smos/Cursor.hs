@@ -754,10 +754,10 @@ contentsCursorRight :: ContentsCursor -> Maybe ContentsCursor
 contentsCursorRight = contentsCursorTextFieldL textFieldCursorSelectNext
 
 contentsCursorUp :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorUp = contentsCursorTextFieldL textFieldCursorSelectPrev
+contentsCursorUp = contentsCursorTextFieldL textFieldCursorSelectUp
 
 contentsCursorDown :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorDown = contentsCursorTextFieldL textFieldCursorSelectNext
+contentsCursorDown = contentsCursorTextFieldL textFieldCursorSelectDown
 
 contentsCursorStart :: ContentsCursor -> ContentsCursor
 contentsCursorStart = contentsCursorTextFieldL %~ textFieldCursorSelectStart

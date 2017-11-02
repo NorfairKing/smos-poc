@@ -4,6 +4,7 @@ module Smos.Style
     ( defaultAttrMap
     , selectedAttr
     , headerAttr
+    , contentsAttr
     , todoStateAttr
     , todoStateSpecificAttr
     -- * Names of widgets
@@ -36,6 +37,9 @@ selectedAttr = "selected"
 
 headerAttr :: AttrName
 headerAttr = "header"
+
+contentsAttr :: AttrName
+contentsAttr = "contents"
 
 todoStateAttr :: AttrName
 todoStateAttr = "todostate"
