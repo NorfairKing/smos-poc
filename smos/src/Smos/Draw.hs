@@ -8,6 +8,7 @@ module Smos.Draw
 import Import
 
 import qualified Data.HashMap.Lazy as HM
+import qualified Data.Text as T
 import Data.Time
 
 import Brick.Types as B
@@ -126,9 +127,15 @@ withTextSel msel t =
 
 withTextFieldSel :: Maybe [Int] -> Text -> Widget ResourceName
 withTextFieldSel msel t =
-    case msel of
-        Nothing -> B.txt t
-        Just [xix_, yix_] ->
-            withAttr selectedAttr $
-            B.showCursor textCursorName (B.Location (xix_, yix_)) $ B.txt t
-        Just _ -> B.txt t
+    let ls = T.splitOn "\n" t
+        textOrSpace t =
+            if T.null t
+                then B.txt " "
+                else B.txt t
+        tw = B.vBox $ map textOrSpace ls
+    in case msel of
+           Nothing -> tw
+           Just [xix_, yix_] ->
+               withAttr selectedAttr $
+               B.showCursor textCursorName (B.Location (xix_, yix_)) tw
+           Just _ -> tw
