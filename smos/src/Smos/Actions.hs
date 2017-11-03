@@ -45,6 +45,18 @@ module Smos.Actions
     , todoStateClear
     , todoStateSet
     , exitTodoState
+    -- * Tags actions
+    , enterTag
+    , tagInsert
+    , tagRemove
+    , tagDelete
+    , tagLeft
+    , tagRight
+    , tagStart
+    , tagEnd
+    , tagSelectPrev
+    , tagSelectNext
+    , exitTag
     -- * Helper functions to define your own actions
     , modifyEntryM
     , modifyEntry
@@ -399,6 +411,55 @@ exitTodoState =
             AState hc -> AnEntry $ stateCursorParent hc
             _ -> cur
 
+enterTag :: SmosM ()
+enterTag =
+    modifyCursor $ \cur ->
+        case cur of
+            AnEntry ec ->
+                let tsc = entryCursorTags ec
+                in case tagsCursorSelectFirst tsc of
+                       Nothing ->
+                           let tsc' = tagsCursorInsertAtStart "" tsc
+                           in case tagsCursorSelectFirst tsc' of
+                                  Nothing -> cur -- Should never happen, but fine if it does.
+                                  Just tc -> ATag tc
+                       Just tc -> ATag tc
+            _ -> cur
+
+tagInsert :: Char -> SmosM ()
+tagInsert = modifyTag . tagCursorInsert
+
+tagRemove :: SmosM ()
+tagRemove = modifyTagM tagCursorRemove
+
+tagDelete :: SmosM ()
+tagDelete = modifyTagM tagCursorDelete
+
+tagLeft :: SmosM ()
+tagLeft = modifyTagM tagCursorLeft
+
+tagRight :: SmosM ()
+tagRight = modifyTagM tagCursorRight
+
+tagStart :: SmosM ()
+tagStart = modifyTag tagCursorStart
+
+tagEnd :: SmosM ()
+tagEnd = modifyTag tagCursorEnd
+
+tagSelectPrev :: SmosM ()
+tagSelectPrev = modifyTagM tagCursorSelectPrev
+
+tagSelectNext :: SmosM ()
+tagSelectNext = modifyTagM tagCursorSelectNext
+
+exitTag :: SmosM ()
+exitTag =
+    modifyCursor $ \cur ->
+        case cur of
+            ATag tc -> AnEntry $ tagsCursorParent $ tagCursorParent tc
+            _ -> cur
+
 modifyEntryM :: (EntryCursor -> Maybe EntryCursor) -> SmosM ()
 modifyEntryM func = modifyEntry $ \hc -> fromMaybe hc $ func hc
 
@@ -434,6 +495,16 @@ modifyTodoState func =
     modifyCursor $ \cur ->
         case cur of
             AState h -> AState $ func h
+            _ -> cur
+
+modifyTagM :: (TagCursor -> Maybe TagCursor) -> SmosM ()
+modifyTagM func = modifyTag $ \hc -> fromMaybe hc $ func hc
+
+modifyTag :: (TagCursor -> TagCursor) -> SmosM ()
+modifyTag func =
+    modifyCursor $ \cur ->
+        case cur of
+            ATag h -> ATag $ func h
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()

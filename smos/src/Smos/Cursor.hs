@@ -93,6 +93,8 @@ module Smos.Cursor
     , tagsCursor
     , tagsCursorParent
     , tagsCursorTags
+    , tagsCursorSelectFirst
+    , tagsCursorSelectLast
     , tagsCursorInsertAtStart
     , tagsCursorAppendAtEnd
     , TagCursor
@@ -106,6 +108,8 @@ module Smos.Cursor
     , tagCursorRight
     , tagCursorStart
     , tagCursorEnd
+    , tagCursorSelectPrev
+    , tagCursorSelectNext
     ) where
 
 import Import
@@ -128,6 +132,8 @@ data AnyCursor
     | AnyHeader HeaderCursor
     | AnyContents ContentsCursor
     | AnyState StateCursor
+    | AnyTags TagsCursor
+    | AnyTag TagCursor
     deriving (Show, Eq, Generic)
 
 instance Validity AnyCursor
@@ -140,12 +146,15 @@ instance Rebuild AnyCursor where
     rebuild (AnyHeader hc) = rebuild hc
     rebuild (AnyContents cc) = rebuild cc
     rebuild (AnyState sc) = rebuild sc
+    rebuild (AnyTags tsc) = rebuild tsc
+    rebuild (AnyTag tc) = rebuild tc
 
 data ACursor
     = AnEntry EntryCursor
     | AHeader HeaderCursor
     | AContents ContentsCursor
     | AState StateCursor
+    | ATag TagCursor
     deriving (Show, Eq, Generic)
 
 instance Validity ACursor
@@ -156,6 +165,7 @@ instance Rebuild ACursor where
     rebuild (AHeader hc) = rebuild hc
     rebuild (AContents cc) = rebuild cc
     rebuild (AState sc) = rebuild sc
+    rebuild (ATag tc) = rebuild tc
 
 makeAnyCursor :: SmosFile -> AnyCursor
 makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor smosFileForest
@@ -169,6 +179,8 @@ makeASelection = reverse . go
     go (AnyHeader hc) = goh hc
     go (AnyContents cc) = goc cc
     go (AnyState sc) = gos sc
+    go (AnyTags tsc) = gotgs tsc
+    go (AnyTag tc) = gotg tc
     gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
     got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
     goe EntryCursor {..} = 0 : got entryCursorParent
@@ -178,6 +190,8 @@ makeASelection = reverse . go
         textFieldCursorIndices contentsCursorContents ++
         [2] ++ goe contentsCursorParent
     gos StateCursor {..} = 1 : goe stateCursorParent
+    gotgs TagsCursor {..} = 3 : goe tagsCursorParent
+    gotg TagCursor {..} = tagCursorIndex : gotgs tagCursorParent
 
 reselect :: [Int] -> SmosFile -> AnyCursor
 reselect s = go s . makeAnyCursor
@@ -188,6 +202,8 @@ reselect s = go s . makeAnyCursor
     go sel (AnyHeader hc) = goh sel hc
     go sel (AnyContents cc) = goc sel cc
     go sel (AnyState sc) = gos sel sc
+    go sel (AnyTags tsc) = gotgs sel tsc
+    go sel (AnyTag tc) = gotg sel tc
     gof sel fc =
         withSel sel (AnyForest fc) $ \ix_ sel_ ->
             fromMaybe (AnyForest fc) $
@@ -204,10 +220,16 @@ reselect s = go s . makeAnyCursor
                 0 -> goh sel_ $ entryCursorHeader e
                 1 -> gos sel_ $ entryCursorState e
                 2 -> maybe (AnyEntry e) (goc sel_) $ entryCursorContents e
+                3 -> gotgs sel_ $ entryCursorTags e
                 _ -> AnyEntry e
     goh _ = AnyHeader
     goc _ = AnyContents
     gos _ = AnyState
+    gotgs sel tsc =
+        withSel sel (AnyTags tsc) $ \ix_ sel_ ->
+            fromMaybe (AnyTags tsc) $
+            gotg sel_ <$> tagsCursorTags tsc `atMay` ix_
+    gotg _ = AnyTag
     withSel :: [Int] -> a -> (Int -> [Int] -> a) -> a
     withSel sel a func =
         case sel of
@@ -223,6 +245,8 @@ selectACursor ac =
         AnyHeader hc -> Just $ AHeader hc
         AnyContents cc -> Just $ AContents cc
         AnyState sc -> Just $ AState sc
+        AnyTags tsc -> ATag <$> tagsCursorSelectFirst tsc
+        AnyTag tc -> Just $ ATag tc
 
 selectAnyCursor :: ACursor -> AnyCursor
 selectAnyCursor ac =
@@ -231,6 +255,7 @@ selectAnyCursor ac =
         AHeader hc -> AnyHeader hc
         AContents cc -> AnyContents cc
         AState hc -> AnyState hc
+        ATag tc -> AnyTag tc
 
 data ForestCursor = ForestCursor
     { forestCursorParent :: Maybe TreeCursor
@@ -920,6 +945,18 @@ tagsCursorTagsL = lens getter setter
         ec' = tagsCursorParent cc & entryCursorTagsL .~ cc'
         cc' = cc {tagsCursorParent = ec', tagsCursorTags = ts}
 
+tagsCursorSelectFirst :: TagsCursor -> Maybe TagCursor
+tagsCursorSelectFirst tsc =
+    case tagsCursorTags tsc of
+        [] -> Nothing
+        (tc:_) -> Just tc
+
+tagsCursorSelectLast :: TagsCursor -> Maybe TagCursor
+tagsCursorSelectLast tsc =
+    case reverse $ tagsCursorTags tsc of
+        [] -> Nothing
+        (tc:_) -> Just tc
+
 tagsCursorInsertAt :: Int -> Tag -> TagsCursor -> TagsCursor
 tagsCursorInsertAt ix_ newTag tsc = tsc'
   where
@@ -1005,3 +1042,15 @@ tagCursorStart = tagCursorTextCursorL %~ textCursorSelectStart
 
 tagCursorEnd :: TagCursor -> TagCursor
 tagCursorEnd = tagCursorTextCursorL %~ textCursorSelectEnd
+
+tagCursorSelectPrev :: TagCursor -> Maybe TagCursor
+tagCursorSelectPrev tc =
+    case tagCursorNextElemens tc of
+        [] -> Nothing
+        (tc':_) -> Just tc'
+
+tagCursorSelectNext :: TagCursor -> Maybe TagCursor
+tagCursorSelectNext tc =
+    case tagCursorNextElemens tc of
+        [] -> Nothing
+        (tc':_) -> Just tc'

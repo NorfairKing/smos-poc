@@ -7,6 +7,7 @@ module Smos.Draw
 
 import Import
 
+import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.Text as T
 import Data.Time
@@ -61,25 +62,20 @@ drawEntry msel Entry {..} =
         [ B.hBox $
           intersperse (B.txt " ") $
           [B.txt ">"] ++
-          (case entryState of
-               Nothing -> []
-               Just ts ->
-                   [ withAttr todoStateAttr $
-                     withAttr (todoStateSpecificAttr ts) $
-                     B.txt $ todoStateText ts
-                   ]) ++
+          maybe [] pure (drawTodoState (drillSel msel 1) <$> entryState) ++
           [ drawHeader (drillSel msel 0) entryHeader
-          , B.hBox $ intersperse (B.txt ":") $ map (B.txt . tagText) entryTags
+          , drawTags (drillSel msel 3) entryTags
           ]
         , drawContents (drillSel msel 2) entryContents
-        , B.vBox $
-          flip map (HM.toList entryTimestamps) $ \(k, ts) ->
-              B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
+        , drawTimestamps (drillSel msel 4) entryTimestamps
         , drawLogbook entryLogbook
         ]
 
-drawTimestamp :: UTCTime -> Widget n
-drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
+drawTodoState :: Maybe [Int] -> TodoState -> Widget ResourceName
+drawTodoState msel ts =
+    withSel msel $
+    withAttr todoStateAttr $
+    withAttr (todoStateSpecificAttr ts) $ B.txt $ todoStateText ts
 
 drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
 drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
@@ -90,6 +86,34 @@ drawContents msel mcon =
         Nothing -> emptyWidget
         Just Contents {..} ->
             withAttr contentsAttr $ withTextFieldSel msel contentsText
+
+drawTags :: Maybe [Int] -> [Tag] -> Widget ResourceName
+drawTags msel ts =
+    withSel msel $
+    B.hBox $
+    addColons $
+    flip map (zip [0 ..] ts) $ \(ix, t) -> drawTag (drillSel msel ix) t
+  where
+    addColons ls =
+        case ls of
+            [] -> []
+            _ -> colon : intersperse colon ls ++ [colon]
+      where
+        colon = B.txt ":"
+
+drawTag :: Maybe [Int] -> Tag -> Widget ResourceName
+drawTag msel Tag {..} = withAttr tagAttr $ withTextSel msel tagText
+
+drawTimestamps ::
+       Maybe [Int] -> HashMap TimestampName UTCTime -> Widget ResourceName
+drawTimestamps msel tss =
+    withSel msel $
+    B.vBox $
+    flip map (HM.toList tss) $ \(k, ts) ->
+        B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
+
+drawTimestamp :: UTCTime -> Widget n
+drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
 drawLogbook :: Logbook -> Widget n
 drawLogbook LogEnd = B.emptyWidget

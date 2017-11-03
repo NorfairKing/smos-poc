@@ -32,6 +32,7 @@ defaultConfig =
                     , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 'e' $ enterContents >> contentsStart
                     , matchChar 't' enterTodoState
+                    , matchChar 'g' enterTag
                     , matchChar 'c' clockIn
                     , matchChar 'o' clockOut
                     , matchChar 'j' moveDown
@@ -80,6 +81,17 @@ defaultConfig =
                     , matchChar 'd' $ todoStateSet "DONE" >> exitTodoState
                     , matchChar 'c' $ todoStateSet "CANCELLED" >> exitTodoState
                     ]
+              , inTag $
+                mconcat
+                    [ onChar tagInsert
+                    , matchKey KBS tagRemove
+                    , matchKey KDel tagDelete
+                    , matchKey KLeft tagLeft
+                    , matchKey KRight tagRight
+                    , matchKey KBackTab tagSelectNext
+                    , matchKey KEnter exitTag
+                    , matchKey KEsc exitTag
+                    ]
               ]
     , configAttrMap =
           let col = rgbColor :: Int -> Int -> Int -> Color
@@ -93,7 +105,7 @@ defaultConfig =
                  , (todoStateSpecificAttr "READY", fg brown)
                  , (todoStateSpecificAttr "DONE", fg green)
                  , (todoStateSpecificAttr "CANCELLED", fg green)
-                 , (todoStateAttr, bg white)
+                 , (selectedAttr <> tagAttr, fg brightWhite)
                  ] .
              defaultAttrMap
     , configAgendaFiles =

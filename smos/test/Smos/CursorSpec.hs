@@ -279,3 +279,9 @@ spec = do
             it "rebuilds to the same" $ rebuildsToTheSame tagCursorStart
         describe "tagCursorEnd" $
             it "rebuilds to the same" $ rebuildsToTheSame tagCursorEnd
+        describe "tagCursorSelectPrev" $
+            it "rebuilds to the same" $
+            rebuildsToTheSameIfSuceeds tagCursorSelectNext
+        describe "tagCursorSelectNext" $
+            it "rebuilds to the same" $
+            rebuildsToTheSameIfSuceeds tagCursorSelectNext

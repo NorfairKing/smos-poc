@@ -7,6 +7,8 @@ module Smos.Style
     , contentsAttr
     , todoStateAttr
     , todoStateSpecificAttr
+    , tagAttr
+    , tagSpecificAttr
     -- * Names of widgets
     , textCursorName
     -- * Re-exports
@@ -47,6 +49,12 @@ todoStateAttr = "todostate"
 todoStateSpecificAttr :: TodoState -> AttrName
 todoStateSpecificAttr tss =
     fromString $ "todostate-" ++ T.unpack (todoStateText tss)
+
+tagAttr :: AttrName
+tagAttr = "tag"
+
+tagSpecificAttr :: Tag -> AttrName
+tagSpecificAttr t = fromString $ "tag-" ++ T.unpack (tagText t)
 
 textCursorName :: ResourceName
 textCursorName = "text-cursor"

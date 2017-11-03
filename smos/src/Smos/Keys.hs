@@ -11,6 +11,7 @@ module Smos.Keys
     , inHeader
     , inContents
     , inTodoState
+    , inTag
     -- * Raw building blocks
     , filterKeymap
     , rawKeymap
@@ -87,4 +88,11 @@ inTodoState =
     filterKeymap $ \s ->
         case smosStateCursor s of
             Just (AState _) -> True
+            _ -> False
+
+inTag :: Keymap -> Keymap
+inTag =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Just (ATag _) -> True
             _ -> False
