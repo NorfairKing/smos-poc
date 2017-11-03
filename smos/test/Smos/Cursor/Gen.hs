@@ -108,3 +108,25 @@ instance GenUnchecked StateCursor where
 
 instance GenValid StateCursor where
     genValid = entryCursorState <$> genValid
+
+instance GenUnchecked TagsCursor where
+    genUnchecked = entryCursorTags <$> genUnchecked
+    shrinkUnchecked = shrinkNothing
+
+instance GenValid TagsCursor where
+    genValid = entryCursorTags <$> genValid
+
+instance GenUnchecked TagCursor where
+    genUnchecked = do
+        tsc <- genUnchecked
+        case rebuild $ tagsCursorList tsc of
+            [] -> scale (+ 1) genUnchecked
+            tcs -> elements tcs
+    shrinkUnchecked = shrinkNothing
+
+instance GenValid TagCursor where
+    genValid = do
+        tsc <- genValid
+        case rebuild $ tagsCursorList tsc of
+            [] -> scale (+ 1) genValid
+            tcs -> elements tcs

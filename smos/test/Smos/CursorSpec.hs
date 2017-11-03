@@ -244,7 +244,7 @@ spec = do
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorStart
         describe "headerCursorEnd" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorEnd
-    describe "contentsCursor" $ do
+    describe "ContentsCursor" $ do
         describe "contentsCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame contentsCursorParent
         describe "contentsCursorSetContents" $
@@ -252,7 +252,7 @@ spec = do
             forAll genValid $ \cs ->
                 forAll genValid $ \cc ->
                     build (contentsCursorSetContents cs cc) `shouldBe` cs
-    describe "stateCursor" $ do
+    describe "StateCursor" $ do
         describe "stateCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame stateCursorParent
         describe "stateCursorClear" $
@@ -264,3 +264,9 @@ spec = do
             forAll genValid $ \ts ->
                 forAll genValid $ \sc ->
                     build (stateCursorSetState ts sc) `shouldBe` Just ts
+    describe "TagsCursor" $
+        describe "tagsCursorParent" $
+        it "rebuilds to the same" $ rebuildsToTheSame tagsCursorParent
+    describe "TagCursor" $
+        describe "tagCursorParent" $
+        it "rebuilds to the same" $ rebuildsToTheSame tagCursorParent

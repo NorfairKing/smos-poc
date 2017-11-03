@@ -44,9 +44,11 @@ module Smos.Cursor
     , entryCursorHeader
     , entryCursorContents
     , entryCursorState
+    , entryCursorTags
     , entryCursorHeaderL
     , entryCursorContentsL
     , entryCursorStateL
+    , entryCursorTagsL
     , entryCursorLogbookL
     , entryCursorClockIn
     , HeaderCursor
@@ -87,6 +89,18 @@ module Smos.Cursor
     , stateCursorState
     , stateCursorClear
     , stateCursorSetState
+    , TagsCursor
+    , tagsCursor
+    , tagsCursorParent
+    , tagsCursorList
+    , tagsCursorInsert
+    , tagsCursorAppend
+    , tagsCursorRemove
+    , tagsCursorDelete
+    , TagCursor
+    , tagCursor
+    , tagCursorParent
+    , tagCursorTag
     ) where
 
 import Import
@@ -98,6 +112,7 @@ import Data.Time
 import Lens.Micro
 
 import Smos.Cursor.Class
+import Smos.Cursor.List
 import Smos.Cursor.Text
 import Smos.Cursor.TextField
 import Smos.Data
@@ -468,7 +483,7 @@ data EntryCursor = EntryCursor
     , entryCursorContents :: Maybe ContentsCursor
     , entryCursorTimestamps :: HashMap TimestampName UTCTime
     , entryCursorState :: StateCursor
-    , entryCursorTags :: [Tag]
+    , entryCursorTags :: TagsCursor
     , entryCursorLogbook :: Logbook
     }
 
@@ -486,7 +501,7 @@ instance Show EntryCursor where
                  , show entryCursorContents
                  , show entryCursorTimestamps
                  , "[State]: " ++ show (build entryCursorState)
-                 , show entryCursorTags
+                 , "[Tags]: " ++ show (build entryCursorTags)
                  , show entryCursorLogbook
                  ])
 
@@ -505,7 +520,7 @@ instance Build EntryCursor where
         , entryContents = build <$> entryCursorContents
         , entryTimestamps = entryCursorTimestamps
         , entryState = build entryCursorState
-        , entryTags = entryCursorTags
+        , entryTags = build entryCursorTags
         , entryLogbook = entryCursorLogbook
         }
 
@@ -519,7 +534,7 @@ entryCursor par Entry {..} = ec
         , entryCursorContents = contentsCursor ec <$> entryContents
         , entryCursorTimestamps = entryTimestamps
         , entryCursorState = stateCursor ec entryState
-        , entryCursorTags = entryTags
+        , entryCursorTags = tagsCursor ec entryTags
         , entryCursorLogbook = entryLogbook
         }
 
@@ -556,10 +571,11 @@ entryCursorContentsL = lens getter setter
         ec' =
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorContents = mcc
-            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
             }
 
 entryCursorStateL ::
@@ -575,12 +591,32 @@ entryCursorStateL = lens getter setter
         ec' =
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorState = hc
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorContents =
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
-            , entryCursorState = hc
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            }
+
+entryCursorTagsL ::
+       Functor f => (TagsCursor -> f TagsCursor) -> EntryCursor -> f EntryCursor
+entryCursorTagsL = lens getter setter
+  where
+    getter = entryCursorTags
+    setter ec ts = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorContents =
+                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
+                  entryCursorContents ec
+            , entryCursorTags = ts
             }
 
 entryCursorLogbookL ::
@@ -594,11 +630,12 @@ entryCursorLogbookL = lens getter setter
             ec
             { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorContents =
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
-            , entryCursorHeader =
-                  (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
             , entryCursorLogbook = lb
             }
 
@@ -693,6 +730,14 @@ instance Show ContentsCursor where
 instance Eq ContentsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
+instance Rebuild ContentsCursor where
+    type ReBuilding ContentsCursor = SmosFile
+    rebuild = rebuild . contentsCursorParent
+
+instance Build ContentsCursor where
+    type Building ContentsCursor = Contents
+    build ContentsCursor {..} = Contents $ rebuild contentsCursorContents
+
 emptyContentsCursor :: EntryCursor -> ContentsCursor
 emptyContentsCursor ec = contentsCursor ec $ Contents T.empty
 
@@ -765,14 +810,6 @@ contentsCursorStart = contentsCursorTextFieldL %~ textFieldCursorSelectStart
 contentsCursorEnd :: ContentsCursor -> ContentsCursor
 contentsCursorEnd = contentsCursorTextFieldL %~ textFieldCursorSelectEnd
 
-instance Rebuild ContentsCursor where
-    type ReBuilding ContentsCursor = SmosFile
-    rebuild = rebuild . contentsCursorParent
-
-instance Build ContentsCursor where
-    type Building ContentsCursor = Contents
-    build ContentsCursor {..} = Contents $ rebuild contentsCursorContents
-
 data StateCursor = StateCursor
     { stateCursorParent :: EntryCursor
     , stateCursorState :: Maybe TodoState
@@ -824,3 +861,91 @@ stateCursorSetState ts sc = sc & stateCursorStateL .~ Just ts
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b
+
+data TagsCursor = TagsCursor
+    { tagsCursorParent :: EntryCursor
+    , tagsCursorList :: ListCursor TagCursor
+    }
+
+instance Validity TagsCursor where
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+instance Show TagsCursor where
+    show TagsCursor {..} = unlines ["[Entry]", " |-" ++ show tagsCursorList]
+
+instance Eq TagsCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
+
+instance Rebuild TagsCursor where
+    type ReBuilding TagsCursor = SmosFile
+    rebuild = rebuild . tagsCursorParent
+
+instance Build TagsCursor where
+    type Building TagsCursor = [Tag]
+    build = map build . rebuild . tagsCursorList
+
+tagsCursor :: EntryCursor -> [Tag] -> TagsCursor
+tagsCursor ec tags = tsc
+  where
+    tsc =
+        TagsCursor
+        { tagsCursorParent = ec
+        , tagsCursorList = makeListCursor $ map (tagCursor tsc) tags
+        }
+
+tagsCursorListL ::
+       Functor f
+    => (ListCursor TagCursor -> f (ListCursor TagCursor))
+    -> TagsCursor
+    -> f TagsCursor
+tagsCursorListL = lens getter setter
+  where
+    getter = tagsCursorList
+    setter cc lc = cc'
+      where
+        ec' = tagsCursorParent cc & entryCursorTagsL .~ cc'
+        cc' = cc {tagsCursorParent = ec', tagsCursorList = lc}
+
+tagsCursorInsert :: Tag -> TagsCursor -> TagsCursor
+tagsCursorInsert t tsc = tsc'
+  where
+    tsc' = tsc & tagsCursorListL %~ listCursorInsert (tagCursor tsc' t)
+
+tagsCursorAppend :: Tag -> TagsCursor -> TagsCursor
+tagsCursorAppend t tsc = tsc'
+  where
+    tsc' = tsc & tagsCursorListL %~ listCursorAppend (tagCursor tsc' t)
+
+tagsCursorRemove :: TagsCursor -> Maybe TagsCursor
+tagsCursorRemove = tagsCursorListL listCursorRemove
+
+tagsCursorDelete :: TagsCursor -> Maybe TagsCursor
+tagsCursorDelete = tagsCursorListL listCursorDelete
+
+data TagCursor = TagCursor
+    { tagCursorParent :: TagsCursor
+    , tagCursorTag :: TextCursor
+    }
+
+instance Validity TagCursor where
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+instance Show TagCursor where
+    show TagCursor {..} = unlines ["[Tags]", " |-" ++ show tagCursorTag]
+
+instance Eq TagCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
+
+instance Rebuild TagCursor where
+    type ReBuilding TagCursor = SmosFile
+    rebuild = rebuild . tagCursorParent
+
+instance Build TagCursor where
+    type Building TagCursor = Tag
+    build TagCursor {..} = Tag $ rebuild tagCursorTag
+
+tagCursor :: TagsCursor -> Tag -> TagCursor
+tagCursor tc t =
+    TagCursor {tagCursorParent = tc, tagCursorTag = makeTextCursor $ tagText t}
