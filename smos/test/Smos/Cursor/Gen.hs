@@ -119,7 +119,7 @@ instance GenValid TagsCursor where
 instance GenUnchecked TagCursor where
     genUnchecked = do
         tsc <- genUnchecked
-        case rebuild $ tagsCursorList tsc of
+        case tagsCursorTags tsc of
             [] -> scale (+ 1) genUnchecked
             tcs -> elements tcs
     shrinkUnchecked = shrinkNothing
@@ -127,6 +127,6 @@ instance GenUnchecked TagCursor where
 instance GenValid TagCursor where
     genValid = do
         tsc <- genValid
-        case rebuild $ tagsCursorList tsc of
+        case tagsCursorTags tsc of
             [] -> scale (+ 1) genValid
             tcs -> elements tcs

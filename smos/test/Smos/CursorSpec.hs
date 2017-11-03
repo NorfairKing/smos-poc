@@ -267,6 +267,15 @@ spec = do
     describe "TagsCursor" $
         describe "tagsCursorParent" $
         it "rebuilds to the same" $ rebuildsToTheSame tagsCursorParent
-    describe "TagCursor" $
+    describe "TagCursor" $ do
         describe "tagCursorParent" $
-        it "rebuilds to the same" $ rebuildsToTheSame tagCursorParent
+            it "rebuilds to the same" $ rebuildsToTheSame tagCursorParent
+        describe "tagCursorLeft" $
+            it "rebuilds to the same" $ rebuildsToTheSameIfSuceeds tagCursorLeft
+        describe "tagCursorRight" $
+            it "rebuilds to the same" $
+            rebuildsToTheSameIfSuceeds tagCursorRight
+        describe "tagCursorStart" $
+            it "rebuilds to the same" $ rebuildsToTheSame tagCursorStart
+        describe "tagCursorEnd" $
+            it "rebuilds to the same" $ rebuildsToTheSame tagCursorEnd

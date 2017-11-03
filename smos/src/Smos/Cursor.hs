@@ -92,15 +92,20 @@ module Smos.Cursor
     , TagsCursor
     , tagsCursor
     , tagsCursorParent
-    , tagsCursorList
-    , tagsCursorInsert
-    , tagsCursorAppend
-    , tagsCursorRemove
-    , tagsCursorDelete
+    , tagsCursorTags
+    , tagsCursorInsertAtStart
+    , tagsCursorAppendAtEnd
     , TagCursor
-    , tagCursor
     , tagCursorParent
     , tagCursorTag
+    , tagCursorInsert
+    , tagCursorAppend
+    , tagCursorRemove
+    , tagCursorDelete
+    , tagCursorLeft
+    , tagCursorRight
+    , tagCursorStart
+    , tagCursorEnd
     ) where
 
 import Import
@@ -112,7 +117,6 @@ import Data.Time
 import Lens.Micro
 
 import Smos.Cursor.Class
-import Smos.Cursor.List
 import Smos.Cursor.Text
 import Smos.Cursor.TextField
 import Smos.Data
@@ -673,6 +677,23 @@ headerCursor par h =
     , headerCursorHeader = makeTextCursor $ headerText h
     }
 
+headerCursorTextCursorL ::
+       Functor f
+    => (TextCursor -> f TextCursor)
+    -> HeaderCursor
+    -> f HeaderCursor
+headerCursorTextCursorL = lens getter setter
+  where
+    getter = headerCursorHeader
+    setter hc tc = hc'
+      where
+        hc' =
+            HeaderCursor
+            { headerCursorParent =
+                  headerCursorParent hc & entryCursorHeaderL .~ hc'
+            , headerCursorHeader = tc
+            }
+
 headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
 headerCursorInsert c = headerCursorTextCursorL %~ textCursorInsert c
 
@@ -696,23 +717,6 @@ headerCursorStart = headerCursorTextCursorL %~ textCursorSelectStart
 
 headerCursorEnd :: HeaderCursor -> HeaderCursor
 headerCursorEnd = headerCursorTextCursorL %~ textCursorSelectEnd
-
-headerCursorTextCursorL ::
-       Functor f
-    => (TextCursor -> f TextCursor)
-    -> HeaderCursor
-    -> f HeaderCursor
-headerCursorTextCursorL = lens getter setter
-  where
-    getter = headerCursorHeader
-    setter hc tc = hc'
-      where
-        hc' =
-            HeaderCursor
-            { headerCursorParent =
-                  headerCursorParent hc & entryCursorHeaderL .~ hc'
-            , headerCursorHeader = tc
-            }
 
 data ContentsCursor = ContentsCursor
     { contentsCursorParent :: EntryCursor
@@ -864,7 +868,7 @@ stateCursorSetState ts sc = sc & stateCursorStateL .~ Just ts
 
 data TagsCursor = TagsCursor
     { tagsCursorParent :: EntryCursor
-    , tagsCursorList :: ListCursor TagCursor
+    , tagsCursorTags :: [TagCursor]
     }
 
 instance Validity TagsCursor where
@@ -872,7 +876,7 @@ instance Validity TagsCursor where
     validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show TagsCursor where
-    show TagsCursor {..} = unlines ["[Entry]", " |-" ++ show tagsCursorList]
+    show TagsCursor {..} = unlines ["[Entry]", " |-" ++ show tagsCursorTags]
 
 instance Eq TagsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
@@ -883,48 +887,63 @@ instance Rebuild TagsCursor where
 
 instance Build TagsCursor where
     type Building TagsCursor = [Tag]
-    build = map build . rebuild . tagsCursorList
+    build = map build . tagsCursorTags
 
 tagsCursor :: EntryCursor -> [Tag] -> TagsCursor
 tagsCursor ec tags = tsc
   where
-    tsc =
-        TagsCursor
-        { tagsCursorParent = ec
-        , tagsCursorList = makeListCursor $ map (tagCursor tsc) tags
-        }
+    tsc = TagsCursor {tagsCursorParent = ec, tagsCursorTags = tagElems tsc tags}
 
-tagsCursorListL ::
-       Functor f
-    => (ListCursor TagCursor -> f (ListCursor TagCursor))
-    -> TagsCursor
-    -> f TagsCursor
-tagsCursorListL = lens getter setter
+tagElems :: TagsCursor -> [Tag] -> [TagCursor]
+tagElems tsc sts = tcs
   where
-    getter = tagsCursorList
-    setter cc lc = cc'
+    tcs = zipWith tc [0 ..] sts
+    tc i t = cur
+      where
+        cur =
+            TagCursor
+            { tagCursorParent = tsc
+            , tagCursorPrevElemens =
+                  reverse $ filter ((< i) . tagCursorIndex) tcs
+            , tagCursorNextElemens = filter ((> i) . tagCursorIndex) tcs
+            , tagCursorIndex = i
+            , tagCursorTag = makeTextCursor $ tagText t
+            }
+
+tagsCursorTagsL ::
+       Functor f => ([TagCursor] -> f [TagCursor]) -> TagsCursor -> f TagsCursor
+tagsCursorTagsL = lens getter setter
+  where
+    getter = tagsCursorTags
+    setter cc ts = cc'
       where
         ec' = tagsCursorParent cc & entryCursorTagsL .~ cc'
-        cc' = cc {tagsCursorParent = ec', tagsCursorList = lc}
+        cc' = cc {tagsCursorParent = ec', tagsCursorTags = ts}
 
-tagsCursorInsert :: Tag -> TagsCursor -> TagsCursor
-tagsCursorInsert t tsc = tsc'
+tagsCursorInsertAt :: Int -> Tag -> TagsCursor -> TagsCursor
+tagsCursorInsertAt ix_ newTag tsc = tsc'
   where
-    tsc' = tsc & tagsCursorListL %~ listCursorInsert (tagCursor tsc' t)
+    tsc' =
+        tsc & tagsCursorTagsL %~
+        (\els ->
+             tagElems tsc' $
+             map build (prevs els) ++ [newTag] ++ map build (nexts els))
+    ffilter rel = filter ((`rel` ix_) . tagCursorIndex)
+    prevs = ffilter (<)
+    nexts = ffilter (>=)
 
-tagsCursorAppend :: Tag -> TagsCursor -> TagsCursor
-tagsCursorAppend t tsc = tsc'
-  where
-    tsc' = tsc & tagsCursorListL %~ listCursorAppend (tagCursor tsc' t)
+tagsCursorInsertAtStart :: Tag -> TagsCursor -> TagsCursor
+tagsCursorInsertAtStart = tagsCursorInsertAt 0
 
-tagsCursorRemove :: TagsCursor -> Maybe TagsCursor
-tagsCursorRemove = tagsCursorListL listCursorRemove
-
-tagsCursorDelete :: TagsCursor -> Maybe TagsCursor
-tagsCursorDelete = tagsCursorListL listCursorDelete
+tagsCursorAppendAtEnd :: Tag -> TagsCursor -> TagsCursor
+tagsCursorAppendAtEnd t fc =
+    tagsCursorInsertAt (length $ tagsCursorTags fc) t fc
 
 data TagCursor = TagCursor
     { tagCursorParent :: TagsCursor
+    , tagCursorPrevElemens :: [TagCursor]
+    , tagCursorNextElemens :: [TagCursor]
+    , tagCursorIndex :: Int
     , tagCursorTag :: TextCursor
     }
 
@@ -946,6 +965,43 @@ instance Build TagCursor where
     type Building TagCursor = Tag
     build TagCursor {..} = Tag $ rebuild tagCursorTag
 
-tagCursor :: TagsCursor -> Tag -> TagCursor
-tagCursor tc t =
-    TagCursor {tagCursorParent = tc, tagCursorTag = makeTextCursor $ tagText t}
+tagCursorTextCursorL ::
+       Functor f => (TextCursor -> f TextCursor) -> TagCursor -> f TagCursor
+tagCursorTextCursorL = lens getter setter
+  where
+    getter = tagCursorTag
+    setter tc textC = tagCursorModify (const textC) tc
+
+tagCursorModify :: (TextCursor -> TextCursor) -> TagCursor -> TagCursor
+tagCursorModify tfunc tc = tc''
+  where
+    tc' = tc {tagCursorTag = tfunc $ tagCursorTag tc}
+    tcs = reverse (tagCursorPrevElemens tc) ++ [tc'] ++ tagCursorNextElemens tc
+    tags = map build tcs
+    fc = tagCursorParent tc & tagsCursorTagsL .~ els
+    els = tagElems fc tags
+    tc'' = els !! tagCursorIndex tc
+
+tagCursorInsert :: Char -> TagCursor -> TagCursor
+tagCursorInsert c = tagCursorTextCursorL %~ textCursorInsert c
+
+tagCursorAppend :: Char -> TagCursor -> TagCursor
+tagCursorAppend c = tagCursorTextCursorL %~ textCursorAppend c
+
+tagCursorRemove :: TagCursor -> Maybe TagCursor
+tagCursorRemove = tagCursorTextCursorL textCursorRemove
+
+tagCursorDelete :: TagCursor -> Maybe TagCursor
+tagCursorDelete = tagCursorTextCursorL textCursorDelete
+
+tagCursorLeft :: TagCursor -> Maybe TagCursor
+tagCursorLeft = tagCursorTextCursorL textCursorSelectPrev
+
+tagCursorRight :: TagCursor -> Maybe TagCursor
+tagCursorRight = tagCursorTextCursorL textCursorSelectNext
+
+tagCursorStart :: TagCursor -> TagCursor
+tagCursorStart = tagCursorTextCursorL %~ textCursorSelectStart
+
+tagCursorEnd :: TagCursor -> TagCursor
+tagCursorEnd = tagCursorTextCursorL %~ textCursorSelectEnd
