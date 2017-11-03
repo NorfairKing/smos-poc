@@ -38,6 +38,7 @@ module Smos.Actions
     , contentsDown
     , contentsStart
     , contentsEnd
+    , commandOnContentsFile
     , exitContents
     -- * Todo state actions
     , enterTodoState
@@ -63,10 +64,14 @@ module Smos.Actions
 
 import Import
 
+import qualified Data.Text.IO as T
+import Data.Time
+
 import Control.Monad.Reader
 import Control.Monad.State
 
-import Data.Time
+import System.Exit
+import System.Process
 
 import Lens.Micro
 
@@ -329,6 +334,43 @@ contentsStart = modifyContents contentsCursorStart
 
 contentsEnd :: SmosM ()
 contentsEnd = modifyContents contentsCursorEnd
+
+commandOnContentsFile :: String -> SmosM ()
+commandOnContentsFile cmd = do
+    cur <- gets smosStateCursor
+    case cur of
+        Just (AnEntry ec) -> do
+            mNewContents <-
+                liftIO $
+                withSystemTempDir "smos" $ \d -> do
+                    p <- resolveFile d "edit.tmp"
+                    T.writeFile (toFilePath p) $
+                        contentsText $
+                        maybe (Contents "") build $ entryCursorContents ec
+                    let cp =
+                            (shell $ unwords [cmd, toFilePath p])
+                            { std_in = NoStream
+                            , std_out = NoStream
+                            , std_err = NoStream
+                            }
+                    (Nothing, Nothing, Nothing, ph) <- createProcess cp
+                    c <- waitForProcess ph
+                    case c of
+                        ExitSuccess -> Just <$> T.readFile (toFilePath p)
+                        ExitFailure _ -> pure Nothing -- TODO show a message
+            case mNewContents of
+                Nothing -> pure ()
+                Just ct ->
+                    modify $ \s ->
+                        s
+                        { smosStateCursor =
+                              Just $
+                              AnEntry
+                                  (ec & entryCursorContentsL %~
+                                   fmap
+                                       (contentsCursorSetContents (Contents ct)))
+                        }
+        _ -> pure ()
 
 exitContents :: SmosM ()
 exitContents =

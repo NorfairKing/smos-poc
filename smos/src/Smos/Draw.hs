@@ -128,10 +128,10 @@ withTextSel msel t =
 withTextFieldSel :: Maybe [Int] -> Text -> Widget ResourceName
 withTextFieldSel msel t =
     let ls = T.splitOn "\n" t
-        textOrSpace t =
+        textOrSpace t_ =
             if T.null t
                 then B.txt " "
-                else B.txt t
+                else B.txt t_
         tw = B.vBox $ map textOrSpace ls
     in case msel of
            Nothing -> tw
