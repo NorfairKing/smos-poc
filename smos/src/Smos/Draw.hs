@@ -20,6 +20,7 @@ import Brick.Widgets.Core as B
 import Smos.Data
 
 import Smos.Cursor
+import Smos.Cursor.Entry
 import Smos.Cursor.Text
 import Smos.Cursor.TextField
 import Smos.Cursor.Tree

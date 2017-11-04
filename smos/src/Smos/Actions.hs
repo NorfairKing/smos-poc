@@ -91,6 +91,7 @@ import Lens.Micro
 import Smos.Data
 
 import Smos.Cursor
+import Smos.Cursor.Entry
 import Smos.Cursor.Tree
 import Smos.Types
 

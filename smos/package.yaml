@@ -40,10 +40,11 @@ library:
   - Smos.Actions
   - Smos.Cursor
   - Smos.Cursor.Class
-  - Smos.Cursor.Tree
+  - Smos.Cursor.Entry
   - Smos.Cursor.List
   - Smos.Cursor.Text
   - Smos.Cursor.TextField
+  - Smos.Cursor.Tree
   - Smos.Default
   - Smos.Style
   - Smos.Types
