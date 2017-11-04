@@ -2,9 +2,20 @@ module Smos.Keys
     ( Keymap
     , matchChar
     , satisfyChar
-    , matchKey
     , onChar
+    , onCharM
+    , matchKey
     , satisfyKey
+    , onKey
+    , onKeyM
+    , matchKeyPress
+    , satisfyKeyPress
+    , onKeyPress
+    , onKeyPressM
+    , matchEvent
+    , satisfyEvent
+    , onEvent
+    , onEventM
     -- * Filters
     , inEmpty
     , inEntry
@@ -41,29 +52,71 @@ satisfyChar pred_ func =
                     else Nothing
             _ -> Nothing
 
+onChar :: (Char -> SmosM ()) -> Keymap
+onChar func = onCharM (Just . func)
+
+onCharM :: (Char -> Maybe (SmosM ())) -> Keymap
+onCharM func =
+    onKeyM $ \k ->
+        case k of
+            V.KChar c -> func c
+            _ -> Nothing
+
 matchKey :: V.Key -> SmosM () -> Keymap
 matchKey k = satisfyKey (== k)
-
-onChar :: (Char -> SmosM ()) -> Keymap
-onChar func =
-    rawKeymap $ \ev ->
-        case ev of
-            B.VtyEvent (V.EvKey (V.KChar c) []) -> Just $ func c
-            _ -> Nothing
 
 satisfyKey :: (V.Key -> Bool) -> SmosM () -> Keymap
 satisfyKey pred_ = satisfyKeyPress $ \(KeyPress k []) -> pred_ k
 
+onKey :: (V.Key -> SmosM ()) -> Keymap
+onKey func = onKeyM (Just . func)
+
+onKeyM :: (V.Key -> Maybe (SmosM ())) -> Keymap
+onKeyM func =
+    onKeyPressM $ \kp ->
+        case kp of
+            KeyPress k [] -> func k
+            _ -> Nothing
+
+matchKeyPress :: KeyPress -> SmosM () -> Keymap
+matchKeyPress kp = satisfyKeyPress (== kp)
+
 satisfyKeyPress :: (KeyPress -> Bool) -> SmosM () -> Keymap
-satisfyKeyPress pred_ func =
-    rawKeymap $ \ev ->
+satisfyKeyPress pred_ =
+    satisfyEvent $ \ev ->
         case ev of
             B.VtyEvent (V.EvKey ek mods) ->
                 let kp = KeyPress ek mods
-                in if pred_ kp
-                       then Just func
-                       else Nothing
+                in pred_ kp
+            _ -> False
+
+onKeyPress :: (KeyPress -> SmosM ()) -> Keymap
+onKeyPress func = onKeyPressM (Just . func)
+
+onKeyPressM :: (KeyPress -> Maybe (SmosM ())) -> Keymap
+onKeyPressM func =
+    onEventM $ \ev ->
+        case ev of
+            B.VtyEvent (V.EvKey ek mods) ->
+                let kp = KeyPress ek mods
+                in func kp
             _ -> Nothing
+
+matchEvent :: B.BrickEvent ResourceName () -> SmosM () -> Keymap
+matchEvent e = satisfyEvent (== e)
+
+satisfyEvent :: (B.BrickEvent ResourceName () -> Bool) -> SmosM () -> Keymap
+satisfyEvent pred_ func =
+    onEventM $ \ev ->
+        if pred_ ev
+            then Just func
+            else Nothing
+
+onEvent :: (B.BrickEvent ResourceName () -> SmosM ()) -> Keymap
+onEvent func = onEventM (Just . func)
+
+onEventM :: (B.BrickEvent ResourceName () -> Maybe (SmosM ())) -> Keymap
+onEventM = rawKeymap
 
 inEmpty :: Keymap -> Keymap
 inEmpty =

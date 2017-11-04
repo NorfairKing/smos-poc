@@ -10,6 +10,10 @@ instance GenUnchecked SmosFile
 
 instance GenValid SmosFile
 
+instance GenUnchecked a => GenUnchecked (ForYaml a)
+
+instance GenValid a => GenValid (ForYaml a)
+
 instance GenUnchecked Entry
 
 instance GenValid Entry where

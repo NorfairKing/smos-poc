@@ -16,6 +16,8 @@ module Smos.Data.Types
     , Tag(..)
     , Logbook(..)
     , TimestampName(..)
+    -- Utils
+    , ForYaml(..)
     ) where
 
 import Import
@@ -45,13 +47,18 @@ instance ToJSON SmosFile where
 
 newtype ForYaml a = ForYaml
     { unForYaml :: a
-    }
+    } deriving (Show, Eq, Ord, Generic)
+
+instance Validity a => Validity (ForYaml a)
 
 instance FromJSON (ForYaml (Forest Entry)) where
-    parseJSON v = ForYaml <$> parseJSON v
+    parseJSON v = do
+        els <- parseJSON v
+        ts <- mapM (fmap unForYaml . parseJSON) els
+        pure $ ForYaml ts
 
 instance ToJSON (ForYaml (Forest Entry)) where
-    toJSON = toJSON . unForYaml
+    toJSON (ForYaml ts) = toJSON $ map ForYaml ts
 
 instance FromJSON (ForYaml (Tree Entry)) where
     parseJSON v =
