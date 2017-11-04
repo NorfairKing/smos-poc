@@ -33,8 +33,8 @@ defaultConfig =
                     , matchChar 'e' $ enterContents >> contentsStart
                     , matchChar 't' enterTodoState
                     , matchChar 'g' enterTag
-                    , matchChar 'c' clockIn
-                    , matchChar 'o' clockOut
+                    , afterChar 'c' $
+                      mconcat [matchChar 'i' clockIn, matchChar 'o' clockOut]
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
                     , matchChar 'h' moveLeft

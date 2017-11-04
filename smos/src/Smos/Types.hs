@@ -8,6 +8,7 @@
 module Smos.Types
     ( SmosConfig(..)
     , Keymap(..)
+    , afterKeypress
     , filterKeymap
     , rawKeymap
     , SmosEvent
@@ -43,6 +44,20 @@ data SmosConfig = SmosConfig
 newtype Keymap = Keymap
     { unKeymap :: SmosState -> SmosEvent -> Maybe (SmosM ())
     } deriving (Generic)
+
+afterKeypress :: KeyPress -> Keymap -> Keymap
+afterKeypress kp (Keymap km) =
+    Keymap $ \s e ->
+        case reverse $ smosStateKeyHistory s of
+            (kp':_) ->
+                if kp == kp'
+                    then km (s
+                             { smosStateKeyHistory =
+                                   drop 1 $ smosStateKeyHistory s
+                             })
+                             e
+                    else Nothing
+            _ -> Nothing
 
 -- TODO explain how this is not the current state, but the state at the start of
 -- the handler

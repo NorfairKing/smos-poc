@@ -4,10 +4,12 @@ module Smos.Keys
     , satisfyChar
     , onChar
     , onCharM
+    , afterChar
     , matchKey
     , satisfyKey
     , onKey
     , onKeyM
+    , afterKey
     , matchKeyPress
     , satisfyKeyPress
     , onKeyPress
@@ -62,6 +64,9 @@ onCharM func =
             V.KChar c -> func c
             _ -> Nothing
 
+afterChar :: Char -> Keymap -> Keymap
+afterChar = afterKey . V.KChar
+
 matchKey :: V.Key -> SmosM () -> Keymap
 matchKey k = satisfyKey (== k)
 
@@ -77,6 +82,9 @@ onKeyM func =
         case kp of
             KeyPress k [] -> func k
             _ -> Nothing
+
+afterKey :: V.Key -> Keymap -> Keymap
+afterKey k = afterKeypress $ KeyPress k []
 
 matchKeyPress :: KeyPress -> SmosM () -> Keymap
 matchKeyPress kp = satisfyKeyPress (== kp)
