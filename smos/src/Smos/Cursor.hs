@@ -13,6 +13,7 @@ module Smos.Cursor
     , Build(..)
     , ForestCursor
     , makeForestCursor
+    , foldForestSel
     , forestCursorParent
     , forestCursorElems
     , forestCursorSelectIx
@@ -28,6 +29,7 @@ module Smos.Cursor
     , treeCursorIndex
     , treeCursorEntry
     , treeCursorForest
+    , foldTreeSel
     , treeCursorSelectPrev
     , treeCursorSelectNext
     , treeCursorEntryL
@@ -296,6 +298,17 @@ forestCursor mpar sf = fc
         , forestCursorElems = treeElems fc $ smosTrees sf
         }
 
+foldForestSel ::
+       (Maybe [Int] -> SmosTree -> r)
+    -> ([(Int, r)] -> r)
+    -> Maybe [Int]
+    -> SmosForest
+    -> r
+foldForestSel rFunc combFunc msel SmosForest {..} =
+    combFunc $
+    flip map (zip [0 ..] smosTrees) $ \(ix_, st) ->
+        (ix_, rFunc (drillSel msel ix_) st)
+
 forestElemsL ::
        Functor f
     => ([TreeCursor] -> f [TreeCursor])
@@ -453,6 +466,17 @@ treeElems fc sts = tcs
             }
         fc' = forestCursor (Just cur) (treeForest st)
 
+foldTreeSel ::
+       (Maybe [Int] -> Entry -> r)
+    -> (Maybe [Int] -> SmosForest -> r)
+    -> (r -> r -> r)
+    -> Maybe [Int]
+    -> SmosTree
+    -> r
+foldTreeSel eFunc fFunc combFunc msel SmosTree {..} =
+    eFunc (drillSel msel 0) treeEntry `combFunc`
+    fFunc (drillSel msel 1) treeForest
+
 treeCursorSelectPrev :: TreeCursor -> Maybe TreeCursor
 treeCursorSelectPrev tc =
     case treeCursorPrevElemens tc of
@@ -565,6 +589,15 @@ entryCursor par Entry {..} = ec
         , entryCursorTags = tagsCursor ec entryTags
         , entryCursorLogbook = entryLogbook
         }
+
+foldEntrySel :: (Maybe [Int] -> TodoState -> r)
+    -> (Maybe [Int] -> Header -> r)
+    -> (Maybe [Int] -> [Tag] -> r)
+    -> (Maybe [Int] -> HashMap TimestampName UTCTime -> r)
+    -> (Maybe [Int] -> Contents -> r)
+    -> (Maybe [Int] -> Logbook -> r)
+    -> (r -> r->r->r->r->r->r) -> Entry -> r
+foldEntrySel = undefined
 
 entryCursorHeaderL ::
        Functor f

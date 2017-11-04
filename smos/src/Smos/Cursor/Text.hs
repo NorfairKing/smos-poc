@@ -5,6 +5,7 @@ module Smos.Cursor.Text
     ( TextCursor
     , emptyTextCursor
     , makeTextCursor
+    , foldTextSel
     , textCursorIndex
     , textCursorSelectPrev
     , textCursorSelectNext
@@ -42,6 +43,13 @@ emptyTextCursor = TextCursor emptyListCursor
 
 makeTextCursor :: Text -> TextCursor
 makeTextCursor = TextCursor . makeListCursor . T.unpack
+
+foldTextSel :: (Maybe Int -> Text -> r) -> Maybe [Int] -> Text -> r
+foldTextSel func msel =
+    case msel of
+        Nothing -> func Nothing
+        Just [ix_] -> func $ Just ix_
+        Just _ -> func Nothing
 
 textCursorListCursorL ::
        Functor f

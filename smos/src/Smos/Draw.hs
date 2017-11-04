@@ -19,6 +19,9 @@ import Brick.Widgets.Core as B
 import Smos.Data
 
 import Smos.Cursor
+import Smos.Cursor.Class
+import Smos.Cursor.Text
+import Smos.Cursor.TextField
 import Smos.Style
 import Smos.Types
 
@@ -45,15 +48,10 @@ drawNoContent =
         ]
 
 drawForest :: Maybe [Int] -> SmosForest -> Widget ResourceName
-drawForest msel SmosForest {..} =
-    padLeft (Pad 2) . B.vBox $
-    flip map (zip [0 ..] smosTrees) $ \(ix, st) ->
-        drawTree (drillSel msel ix) st
+drawForest = foldForestSel drawTree $ padLeft (Pad 2) . B.vBox . map snd
 
 drawTree :: Maybe [Int] -> SmosTree -> Widget ResourceName
-drawTree msel SmosTree {..} =
-    drawEntry (drillSel msel 0) treeEntry <=>
-    drawForest (drillSel msel 1) treeForest
+drawTree msel SmosTree {..} = foldTreeSel drawEntry drawTree (<=>)
 
 drawEntry :: Maybe [Int] -> Entry -> Widget ResourceName
 drawEntry msel Entry {..} =
@@ -124,16 +122,6 @@ drawLogbook (LogEntry b e l) =
 drawLogbook (LogOpenEntry b l) =
     B.hBox [str "[", drawTimestamp b, str "]"] <=> drawLogbook l
 
-drillSel :: Maybe [Int] -> Int -> Maybe [Int]
-drillSel msel ix =
-    case msel of
-        Nothing -> Nothing
-        Just [] -> Nothing
-        Just (x:xs) ->
-            if x == ix
-                then Just xs
-                else Nothing
-
 withSel :: Maybe [Int] -> Widget n -> Widget n
 withSel msel =
     case msel of
@@ -142,25 +130,25 @@ withSel msel =
         Just _ -> id
 
 withTextSel :: Maybe [Int] -> Text -> Widget ResourceName
-withTextSel msel t =
-    case msel of
-        Nothing -> B.txt t
-        Just [ix_] ->
-            withAttr selectedAttr $
-            B.showCursor textCursorName (B.Location (ix_, 0)) $ B.txt t
-        Just _ -> B.txt t
+withTextSel =
+    foldTextSel $ \mix t ->
+        case mix of
+            Nothing -> B.txt t
+            Just ix_ ->
+                withAttr selectedAttr $
+                B.showCursor textCursorName (B.Location (ix_, 0)) $ B.txt t
 
 withTextFieldSel :: Maybe [Int] -> Text -> Widget ResourceName
-withTextFieldSel msel t =
-    let ls = T.splitOn "\n" t
-        textOrSpace t_ =
-            if T.null t
-                then B.txt " "
-                else B.txt t_
-        tw = B.vBox $ map textOrSpace ls
-    in case msel of
-           Nothing -> tw
-           Just [xix_, yix_] ->
-               withAttr selectedAttr $
-               B.showCursor textCursorName (B.Location (xix_, yix_)) tw
-           Just _ -> tw
+withTextFieldSel =
+    foldTextFieldSel $ \mixs t ->
+        let ls = T.splitOn "\n" t
+            textOrSpace t_ =
+                if T.null t
+                    then B.txt " "
+                    else B.txt t_
+            tw = B.vBox $ map textOrSpace ls
+        in case mixs of
+               Nothing -> tw
+               Just (xix_, yix_) ->
+                   withAttr selectedAttr $
+                   B.showCursor textCursorName (B.Location (xix_, yix_)) tw

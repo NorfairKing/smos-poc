@@ -10,6 +10,7 @@ module Smos.Cursor.TextField
     , textFieldCursorNext
     , emptyTextFieldCursor
     , makeTextFieldCursor
+    , foldTextFieldSel
     , rebuildTextFieldCursor
     , textFieldCursorIndices
     , textFieldSelectedL
@@ -71,6 +72,12 @@ makeTextFieldCursor t =
                , textFieldSelected = makeTextCursor first
                , textFieldCursorNext = rest
                }
+
+foldTextFieldSel :: (Maybe (Int, Int) -> Text -> r) -> Maybe [Int] -> Text -> r
+foldTextFieldSel func msel =
+    case msel of
+        Just [xix_, yix_] -> func (Just (xix_, yix_))
+        _ -> func Nothing
 
 rebuildTextFieldCursor :: TextFieldCursor -> Text
 rebuildTextFieldCursor TextFieldCursor {..} =
