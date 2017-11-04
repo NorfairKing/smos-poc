@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -11,35 +12,6 @@ module Smos.Cursor
     , selectAnyCursor
     , Rebuild(..)
     , Build(..)
-    , ForestCursor
-    , makeForestCursor
-    , foldForestSel
-    , forestCursorParent
-    , forestCursorElems
-    , forestCursorSelectIx
-    , forestCursorSelectFirst
-    , forestCursorSelectLast
-    , forestCursorInsertAt
-    , forestCursorInsertAtStart
-    , forestCursorInsertAtEnd
-    , TreeCursor
-    , treeCursorParent
-    , treeCursorPrevElemens
-    , treeCursorNextElemens
-    , treeCursorIndex
-    , treeCursorEntry
-    , treeCursorForest
-    , foldTreeSel
-    , treeCursorSelectPrev
-    , treeCursorSelectNext
-    , treeCursorEntryL
-    , treeCursorForestL
-    , treeCursorInsertAbove
-    , treeCursorInsertBelow
-    , treeCursorInsertChildAt
-    , treeCursorInsertChildAtStart
-    , treeCursorInsertChildAtEnd
-    , treeCursorDeleteCurrent
     , EntryCursor
     , entryCursor
     , foldEntrySel
@@ -121,17 +93,19 @@ import Import
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.Text as T
 import Data.Time
+import Data.Tree
 
 import Lens.Micro
 
 import Smos.Cursor.Class
 import Smos.Cursor.Text
 import Smos.Cursor.TextField
+import Smos.Cursor.Tree
 import Smos.Data
 
 data AnyCursor
-    = AnyForest ForestCursor
-    | AnyTree TreeCursor
+    = AnyForest (ForestCursor EntryCursor)
+    | AnyTree (TreeCursor EntryCursor)
     | AnyEntry EntryCursor
     | AnyHeader HeaderCursor
     | AnyContents ContentsCursor
@@ -144,14 +118,17 @@ instance Validity AnyCursor
 
 instance Rebuild AnyCursor where
     type ReBuilding AnyCursor = SmosFile
-    rebuild (AnyForest fc) = rebuild fc
-    rebuild (AnyTree tc) = rebuild tc
-    rebuild (AnyEntry ec) = rebuild ec
-    rebuild (AnyHeader hc) = rebuild hc
-    rebuild (AnyContents cc) = rebuild cc
-    rebuild (AnyState sc) = rebuild sc
-    rebuild (AnyTags tsc) = rebuild tsc
-    rebuild (AnyTag tc) = rebuild tc
+    rebuild ac =
+        SmosFile $
+        case ac of
+            (AnyForest fc) -> rebuild fc
+            (AnyTree tc) -> rebuild tc
+            (AnyEntry ec) -> rebuild ec
+            (AnyHeader hc) -> rebuild hc
+            (AnyContents cc) -> rebuild cc
+            (AnyState sc) -> rebuild sc
+            (AnyTags tsc) -> rebuild tsc
+            (AnyTag tc) -> rebuild tc
     selection (AnyForest fc) = selection fc
     selection (AnyTree tc) = selection tc
     selection (AnyEntry ec) = selection ec
@@ -173,11 +150,14 @@ instance Validity ACursor
 
 instance Rebuild ACursor where
     type ReBuilding ACursor = SmosFile
-    rebuild (AnEntry ec) = rebuild ec
-    rebuild (AHeader hc) = rebuild hc
-    rebuild (AContents cc) = rebuild cc
-    rebuild (AState sc) = rebuild sc
-    rebuild (ATag tc) = rebuild tc
+    rebuild ac =
+        SmosFile $
+        case ac of
+            AnEntry ec -> rebuild ec
+            AHeader hc -> rebuild hc
+            AContents cc -> rebuild cc
+            AState sc -> rebuild sc
+            ATag tc -> rebuild tc
     selection (AnEntry ec) = selection ec
     selection (AHeader hc) = selection hc
     selection (AContents cc) = selection cc
@@ -205,7 +185,7 @@ reselect s = go (reverse s) . makeAnyCursor
     got sel tc =
         withSel sel (AnyTree tc) $ \ix_ sel_ ->
             case ix_ of
-                0 -> goe sel_ $ treeCursorEntry tc
+                0 -> goe sel_ $ treeCursorValue tc
                 1 -> gof sel_ $ treeCursorForest tc
                 _ -> AnyTree tc
     goe sel e =
@@ -236,8 +216,8 @@ reselect s = go (reverse s) . makeAnyCursor
 selectACursor :: AnyCursor -> Maybe ACursor
 selectACursor ac =
     case ac of
-        AnyForest fc -> AnEntry . treeCursorEntry <$> forestCursorSelectFirst fc
-        AnyTree tc -> Just $ AnEntry $ treeCursorEntry tc
+        AnyForest fc -> AnEntry . treeCursorValue <$> forestCursorSelectFirst fc
+        AnyTree tc -> Just $ AnEntry $ treeCursorValue tc
         AnyEntry ec -> Just $ AnEntry ec
         AnyHeader hc -> Just $ AHeader hc
         AnyContents cc -> Just $ AContents cc
@@ -254,285 +234,8 @@ selectAnyCursor ac =
         AState hc -> AnyState hc
         ATag tc -> AnyTag tc
 
-data ForestCursor = ForestCursor
-    { forestCursorParent :: Maybe TreeCursor
-    , forestCursorElems :: [TreeCursor]
-    }
-
-instance Validity ForestCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show ForestCursor where
-    show ForestCursor {..} =
-        unlines
-            $(case forestCursorParent of
-                  Nothing -> "Nothing"
-                  Just _ -> "Just [..]") :
-        map ((" -" ++) . show) forestCursorElems
-
-instance Eq ForestCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild ForestCursor where
-    type ReBuilding ForestCursor = SmosFile
-    rebuild fc =
-        case forestCursorParent fc of
-            Nothing -> SmosFile $ build fc
-            Just pc -> rebuild pc
-    selection ForestCursor {..} =
-        case forestCursorParent of
-            Nothing -> []
-            Just p -> 1 : selection p
-
-instance Build ForestCursor where
-    type Building ForestCursor = SmosForest
-    build = SmosForest . map build . forestCursorElems
-
-makeForestCursor :: SmosForest -> ForestCursor
-makeForestCursor = forestCursor Nothing
-
-forestCursor :: Maybe TreeCursor -> SmosForest -> ForestCursor
-forestCursor mpar sf = fc
-  where
-    fc =
-        ForestCursor
-        { forestCursorParent = mpar
-        , forestCursorElems = treeElems fc $ smosTrees sf
-        }
-
-foldForestSel ::
-       (Maybe [Int] -> SmosTree -> r)
-    -> ([(Int, r)] -> r)
-    -> Maybe [Int]
-    -> SmosForest
-    -> r
-foldForestSel rFunc combFunc msel SmosForest {..} =
-    combFunc $
-    flip map (zip [0 ..] smosTrees) $ \(ix_, st) ->
-        (ix_, rFunc (drillSel msel ix_) st)
-
-forestElemsL ::
-       Functor f
-    => ([TreeCursor] -> f [TreeCursor])
-    -> ForestCursor
-    -> f ForestCursor
-forestElemsL = lens getter setter
-  where
-    getter = forestCursorElems
-    setter ForestCursor {..} elems = fc'
-      where
-        fc' =
-            ForestCursor
-            { forestCursorParent =
-                  rebuildForestParentCursor (const fc') forestCursorParent
-            , forestCursorElems = elems
-            }
-
-rebuildForestParentCursor ::
-       (ForestCursor -> ForestCursor) -> Maybe TreeCursor -> Maybe TreeCursor
-rebuildForestParentCursor func mtc =
-    (\tc -> tc & treeCursorForestL %~ func) <$> mtc
-
-forestCursorSelectIx :: ForestCursor -> Int -> Maybe TreeCursor
-forestCursorSelectIx fc = atMay $ forestCursorElems fc
-
-forestCursorSelectFirst :: ForestCursor -> Maybe TreeCursor
-forestCursorSelectFirst fc =
-    case forestCursorElems fc of
-        [] -> Nothing
-        (tc:_) -> Just tc
-
-forestCursorSelectLast :: ForestCursor -> Maybe TreeCursor
-forestCursorSelectLast fc =
-    case reverse $ forestCursorElems fc of
-        [] -> Nothing
-        (tc:_) -> Just tc
-
-forestCursorInsertAt :: Int -> SmosTree -> ForestCursor -> ForestCursor
-forestCursorInsertAt ix_ newTree fc = fc'
-  where
-    fc' =
-        fc & forestElemsL %~
-        (\els ->
-             treeElems fc' $
-             map build (prevs els) ++ [newTree] ++ map build (nexts els))
-    ffilter rel = filter ((`rel` ix_) . treeCursorIndex)
-    prevs = ffilter (<)
-    nexts = ffilter (>=)
-
-forestCursorInsertAtStart :: SmosTree -> ForestCursor -> ForestCursor
-forestCursorInsertAtStart = forestCursorInsertAt 0
-
-forestCursorInsertAtEnd :: SmosTree -> ForestCursor -> ForestCursor
-forestCursorInsertAtEnd t fc =
-    forestCursorInsertAt (length $ forestCursorElems fc) t fc
-
-data TreeCursor = TreeCursor
-    { treeCursorParent :: ForestCursor
-    , treeCursorPrevElemens :: [TreeCursor] -- ^ In reverse order, so that the first element is the nearest.
-    , treeCursorNextElemens :: [TreeCursor]
-    , treeCursorIndex :: Int
-    , treeCursorEntry :: EntryCursor
-    , treeCursorForest :: ForestCursor
-    }
-
-instance Validity TreeCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Eq TreeCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild TreeCursor where
-    type ReBuilding TreeCursor = SmosFile
-    rebuild = rebuild . treeCursorParent
-    selection TreeCursor {..} =
-        length treeCursorPrevElemens : selection treeCursorParent
-
-instance Build TreeCursor where
-    type Building TreeCursor = SmosTree
-    build TreeCursor {..} =
-        SmosTree
-        {treeEntry = build treeCursorEntry, treeForest = build treeCursorForest}
-
-instance Show TreeCursor where
-    show TreeCursor {..} =
-        unlines
-            ("[..]" :
-             map
-                 (" |-" ++)
-                 (concat
-                      [ map (const "tree") treeCursorPrevElemens
-                      , [ "---"
-                        , unwords
-                              [ show treeCursorIndex
-                              , show $ build treeCursorEntry
-                              , show $ build treeCursorForest
-                              ]
-                        , "---"
-                        ]
-                      , map (const "tree") treeCursorNextElemens
-                      ]))
-
-treeCursorEntryL ::
-       Functor f => (EntryCursor -> f EntryCursor) -> TreeCursor -> f TreeCursor
-treeCursorEntryL = lens getter setter
-  where
-    getter = treeCursorEntry
-    setter tc ec = treeCursorModify (const ec) id tc
-
-treeCursorForestL ::
-       Functor f
-    => (ForestCursor -> f ForestCursor)
-    -> TreeCursor
-    -> f TreeCursor
-treeCursorForestL = lens getter setter
-  where
-    getter = treeCursorForest
-    setter tc fc = treeCursorModify id (const fc) tc
-
-treeCursorModify ::
-       (EntryCursor -> EntryCursor)
-    -> (ForestCursor -> ForestCursor)
-    -> TreeCursor
-    -> TreeCursor
-treeCursorModify efunc ffunc tc = tc''
-  where
-    tc' =
-        tc
-        { treeCursorEntry = efunc $ treeCursorEntry tc
-        , treeCursorForest = ffunc $ treeCursorForest tc
-        }
-    tcs =
-        reverse (treeCursorPrevElemens tc) ++ [tc'] ++ treeCursorNextElemens tc
-    trees = map build tcs
-    fc = treeCursorParent tc & forestElemsL .~ els
-    els = treeElems fc trees
-    tc'' = els !! treeCursorIndex tc
-
-treeElems :: ForestCursor -> [SmosTree] -> [TreeCursor]
-treeElems fc sts = tcs
-  where
-    tcs = zipWith tc [0 ..] sts
-    tc i st = cur
-      where
-        cur =
-            TreeCursor
-            { treeCursorParent = fc
-            , treeCursorPrevElemens =
-                  reverse $ filter ((< i) . treeCursorIndex) tcs
-            , treeCursorNextElemens = filter ((> i) . treeCursorIndex) tcs
-            , treeCursorIndex = i
-            , treeCursorEntry = entryCursor cur $ treeEntry st
-            , treeCursorForest = fc'
-            }
-        fc' = forestCursor (Just cur) (treeForest st)
-
-foldTreeSel ::
-       (Maybe [Int] -> Entry -> r)
-    -> (Maybe [Int] -> SmosForest -> r)
-    -> (r -> r -> r)
-    -> Maybe [Int]
-    -> SmosTree
-    -> r
-foldTreeSel eFunc fFunc combFunc msel SmosTree {..} =
-    eFunc (drillSel msel 0) treeEntry `combFunc`
-    fFunc (drillSel msel 1) treeForest
-
-treeCursorSelectPrev :: TreeCursor -> Maybe TreeCursor
-treeCursorSelectPrev tc =
-    case treeCursorPrevElemens tc of
-        [] -> Nothing
-        (tc':_) -> Just tc'
-
-treeCursorSelectNext :: TreeCursor -> Maybe TreeCursor
-treeCursorSelectNext tc =
-    case treeCursorNextElemens tc of
-        [] -> Nothing
-        (tc':_) -> Just tc'
-
-treeCursorInsertAbove :: TreeCursor -> SmosTree -> TreeCursor
-treeCursorInsertAbove tc t = fromJust $ forestCursorSelectIx newpar newIx
-  where
-    newIx = treeCursorIndex tc
-    newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
-
-treeCursorInsertBelow :: TreeCursor -> SmosTree -> TreeCursor
-treeCursorInsertBelow tc t =
-    fromJust $ forestCursorSelectIx newpar $ treeCursorIndex tc + 1
-  where
-    newIx = treeCursorIndex tc + 1
-    newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
-
-treeCursorInsertChildAt :: Int -> SmosTree -> TreeCursor -> TreeCursor
-treeCursorInsertChildAt ix_ t tc =
-    tc & treeCursorForestL %~ forestCursorInsertAt ix_ t
-
-treeCursorInsertChildAtStart :: SmosTree -> TreeCursor -> TreeCursor
-treeCursorInsertChildAtStart = treeCursorInsertChildAt 0
-
-treeCursorInsertChildAtEnd :: SmosTree -> TreeCursor -> TreeCursor
-treeCursorInsertChildAtEnd t tc =
-    treeCursorInsertChildAt
-        (length $ forestCursorElems $ treeCursorForest tc)
-        t
-        tc
-
-treeCursorDeleteCurrent :: TreeCursor -> Either ForestCursor TreeCursor
-treeCursorDeleteCurrent tc = tc''
-  where
-    tcs = reverse (treeCursorPrevElemens tc) ++ treeCursorNextElemens tc
-    trees = map build tcs
-    for = treeCursorParent tc & forestElemsL .~ els
-    els = treeElems for trees
-    tc'' =
-        let ix_ = treeCursorIndex tc
-        in maybe (Left for) Right $
-           (els `atMay` ix_) `mplus` (els `atMay` (ix_ - 1))
-
 data EntryCursor = EntryCursor
-    { entryCursorParent :: TreeCursor
+    { entryCursorParent :: TreeCursor EntryCursor
     , entryCursorHeader :: HeaderCursor
     , entryCursorContents :: Maybe ContentsCursor
     , entryCursorTimestamps :: HashMap TimestampName UTCTime
@@ -563,7 +266,7 @@ instance Eq EntryCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild EntryCursor where
-    type ReBuilding EntryCursor = SmosFile
+    type ReBuilding EntryCursor = Forest Entry
     rebuild = rebuild . entryCursorParent
     selection EntryCursor {..} = 0 : selection entryCursorParent
 
@@ -579,7 +282,11 @@ instance Build EntryCursor where
         , entryLogbook = entryCursorLogbook
         }
 
-entryCursor :: TreeCursor -> Entry -> EntryCursor
+instance BuiltFrom EntryCursor Entry where
+    type Parent EntryCursor = TreeCursor EntryCursor
+    makeWith = entryCursor
+
+entryCursor :: TreeCursor EntryCursor -> Entry -> EntryCursor
 entryCursor par Entry {..} = ec
   where
     ec =
@@ -626,7 +333,7 @@ entryCursorHeaderL = lens getter setter
       where
         ec' =
             ec
-            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
             , entryCursorHeader = hc
             , entryCursorContents =
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
@@ -646,7 +353,7 @@ entryCursorContentsL = lens getter setter
       where
         ec' =
             ec
-            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
@@ -666,7 +373,7 @@ entryCursorStateL = lens getter setter
       where
         ec' =
             ec
-            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
             , entryCursorState = hc
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
@@ -685,7 +392,7 @@ entryCursorTagsL = lens getter setter
       where
         ec' =
             ec
-            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
@@ -704,7 +411,7 @@ entryCursorLogbookL = lens getter setter
       where
         ec' =
             ec
-            { entryCursorParent = entryCursorParent ec & treeCursorEntryL .~ ec'
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             , entryCursorHeader =
                   (entryCursorHeader ec) {headerCursorParent = ec'}
@@ -735,7 +442,7 @@ instance Eq HeaderCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild HeaderCursor where
-    type ReBuilding HeaderCursor = SmosFile
+    type ReBuilding HeaderCursor = Forest Entry
     rebuild = rebuild . headerCursorParent
     selection HeaderCursor {..} =
         selection headerCursorHeader ++ [1] ++ selection headerCursorParent
@@ -809,7 +516,7 @@ instance Eq ContentsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild ContentsCursor where
-    type ReBuilding ContentsCursor = SmosFile
+    type ReBuilding ContentsCursor = Forest Entry
     rebuild = rebuild . contentsCursorParent
     selection ContentsCursor {..} =
         selection contentsCursorContents ++
@@ -907,7 +614,7 @@ instance Eq StateCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild StateCursor where
-    type ReBuilding StateCursor = SmosFile
+    type ReBuilding StateCursor = Forest Entry
     rebuild = rebuild . stateCursorParent
     selection StateCursor {..} = 0 : selection stateCursorParent
 
@@ -960,7 +667,7 @@ instance Eq TagsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TagsCursor where
-    type ReBuilding TagsCursor = SmosFile
+    type ReBuilding TagsCursor = Forest Entry
     rebuild = rebuild . tagsCursorParent
     selection TagsCursor {..} = 2 : selection tagsCursorParent
 
@@ -1059,7 +766,7 @@ instance Eq TagCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TagCursor where
-    type ReBuilding TagCursor = SmosFile
+    type ReBuilding TagCursor = Forest Entry
     rebuild = rebuild . tagCursorParent
     selection TagCursor {..} =
         selection tagCursorTag ++

@@ -15,6 +15,7 @@ import Lens.Micro
 import Smos.Cursor
 import Smos.Cursor.Gen ()
 import Smos.Cursor.TestUtils
+import Smos.Cursor.Tree
 import Smos.Data
 import Smos.Data.Gen ()
 
@@ -28,15 +29,15 @@ spec = do
         describe "selection" $ do
             it "returns the empty selection in a forest without a parent" $
                 forAll genValid $ \sf ->
-                    let fc = makeForestCursor sf
+                    let fc = makeForestCursor sf :: ForestCursor EntryCursor
                         cur = AnyForest fc
                     in selection cur `shouldBe` []
             it "returns the index of the tree we zoom in on" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf
+                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
-                            [] -> gen
+                            [] -> scale (+ 1) gen
                             els -> elements els
                 forAll gen $ \tc ->
                     let cur = AnyTree tc
@@ -44,9 +45,9 @@ spec = do
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf
+                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
-                            [] -> gen
+                            [] -> scale (+ 1) gen
                             els -> do
                                 tc <- elements els
                                 pure (treeCursorForest tc, treeCursorIndex tc)
@@ -60,83 +61,30 @@ spec = do
             it "selects the tree with the right index for a singleton selection" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf
+                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
-                            [] -> gen
+                            [] -> scale (+ 1) gen
                             els -> elements els
                 forAll gen $ \tc ->
-                    reselect [treeCursorIndex tc] (rebuild tc) `shouldBe`
+                    reselect [treeCursorIndex tc] (SmosFile $ rebuild tc) `shouldBe`
                     AnyTree tc
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf
+                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
-                            [] -> gen
+                            [] -> scale (+ 1) gen
                             els -> do
                                 tc <- elements els
                                 pure (treeCursorForest tc, treeCursorIndex tc)
                 forAll gen $ \(fc, ix_) ->
-                    reselect [1, ix_] (rebuild fc) `shouldBe` AnyForest fc
+                    reselect [1, ix_] (SmosFile $ rebuild fc) `shouldBe`
+                    AnyForest fc
             it "selects the cursor that was handed to selection" $
                 forAll genValid $ \ac ->
                     let sel = selection ac
                         sf = rebuild ac
                     in reselect sel sf `shouldBe` ac
-    describe "ForestCursor" $ do
-        describe "makeForestCurser" $
-            it "is the inverse of 'build'" $
-            inverseFunctionsOnValid makeForestCursor build
-        describe "forestCursorSelectIx" $
-            it "rebuilds to the same" $
-            forAll genUnchecked $ \i ->
-                rebuildsToTheSameIfSuceeds (`forestCursorSelectIx` i)
-        describe "forestCursorSelectFirst" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds forestCursorSelectFirst
-        describe "forestCursorSelectLast" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds forestCursorSelectLast
-        describe "forestCursorInsertAtStart" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \st ->
-                rebuildsToValid (forestCursorInsertAtStart st)
-        describe "forestCursorInsertAtEnd" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \st ->
-                rebuildsToValid (forestCursorInsertAtEnd st)
-    describe "TreeCursor" $ do
-        describe "treeCursorSelectPrev" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds treeCursorSelectPrev
-        describe "treeCursorSelectNext" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds treeCursorSelectNext
-        describe "treeCursorInsertAbove" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \st -> rebuildsToValid (treeCursorInsertAbove st)
-        describe "treeCursorInsertBelow" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \st -> rebuildsToValid (treeCursorInsertBelow st)
-        describe "treeCursorInsertChildAt" $
-            it "rebuilds to something valid" $
-            forAll genUnchecked $ \ix_ ->
-                forAll genValid $ \st ->
-                    rebuildsToValid (treeCursorInsertChildAt ix_ st)
-        describe "treeCursorInsertChildAtStart" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \st ->
-                rebuildsToValid (treeCursorInsertChildAtStart st)
-        describe "treeCursorInsertChildAtEnd" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \st ->
-                rebuildsToValid (treeCursorInsertChildAtEnd st)
-        describe "treeCursorDeleteCurrent" $
-            it "rebuilds to something valid" $
-            forAll genValid $ \tc ->
-                case treeCursorDeleteCurrent tc of
-                    Left fc' -> shouldBeValid fc'
-                    Right tc' -> shouldBeValid tc'
     describe "EntryCursor" $ do
         describe "entryCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame entryCursorParent

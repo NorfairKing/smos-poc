@@ -11,6 +11,7 @@ import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.Text as T
 import Data.Time
+import Data.Tree hiding (drawForest, drawTree)
 
 import Brick.Types as B
 import Brick.Widgets.Center as B
@@ -21,6 +22,7 @@ import Smos.Data
 import Smos.Cursor
 import Smos.Cursor.Text
 import Smos.Cursor.TextField
+import Smos.Cursor.Tree
 import Smos.Style
 import Smos.Types
 
@@ -46,10 +48,10 @@ drawNoContent =
         , str "Smos is open source and freely distributable"
         ]
 
-drawForest :: Maybe [Int] -> SmosForest -> Widget ResourceName
+drawForest :: Maybe [Int] -> Forest Entry -> Widget ResourceName
 drawForest = foldForestSel drawTree $ padLeft (Pad 2) . B.vBox . map snd
 
-drawTree :: Maybe [Int] -> SmosTree -> Widget ResourceName
+drawTree :: Maybe [Int] -> Tree Entry -> Widget ResourceName
 drawTree = foldTreeSel drawEntry drawForest (<=>)
 
 drawEntry :: Maybe [Int] -> Entry -> Widget ResourceName

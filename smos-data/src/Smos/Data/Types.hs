@@ -1,9 +1,22 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Smos.Data.Types where
+module Smos.Data.Types
+    ( SmosFile(..)
+    , Forest
+    , Tree(..)
+    , Entry(..)
+    , newEntry
+    , TodoState(..)
+    , Header(..)
+    , Contents(..)
+    , Tag(..)
+    , Logbook(..)
+    , TimestampName(..)
+    ) where
 
 import Import
 
@@ -14,11 +27,12 @@ import Data.Hashable
 import Data.String
 import Data.Text (Text)
 import Data.Time
+import Data.Tree
 
 import Control.Applicative
 
 newtype SmosFile = SmosFile
-    { smosFileForest :: SmosForest
+    { smosFileForest :: Forest Entry
     } deriving (Show, Eq, Generic)
 
 instance Validity SmosFile
@@ -29,39 +43,31 @@ instance FromJSON SmosFile where
 instance ToJSON SmosFile where
     toJSON = toJSON . smosFileForest
 
-newtype SmosForest = SmosForest
-    { smosTrees :: [SmosTree]
-    } deriving (Show, Eq, Generic)
+newtype ForYaml a = ForYaml
+    { unForYaml :: a
+    }
 
-instance Validity SmosForest
+instance FromJSON (ForYaml (Forest Entry)) where
+    parseJSON v = ForYaml <$> parseJSON v
 
-instance FromJSON SmosForest where
-    parseJSON v = SmosForest <$> parseJSON v
+instance ToJSON (ForYaml (Forest Entry)) where
+    toJSON = toJSON . unForYaml
 
-instance ToJSON SmosForest where
-    toJSON = toJSON . smosTrees
-
-data SmosTree = SmosTree
-    { treeEntry :: Entry
-    , treeForest :: SmosForest
-    } deriving (Show, Eq, Generic)
-
-instance Validity SmosTree
-
-instance FromJSON SmosTree where
+instance FromJSON (ForYaml (Tree Entry)) where
     parseJSON v =
-        (SmosTree <$> parseJSON v <*> pure (SmosForest [])) <|>
-        (withObject "SmosTree" $ \o ->
-             SmosTree <$> o .: "entry" <*> o .:? "forest" .!= SmosForest [])
-            v
+        ForYaml <$>
+        ((Node <$> parseJSON v <*> pure []) <|>
+         (withObject "Tree Entry" $ \o ->
+              Node <$> o .: "entry" <*> o .:? "forest" .!= [])
+             v)
 
-instance ToJSON SmosTree where
-    toJSON SmosTree {..} =
-        if treeForest == SmosForest []
-            then toJSON treeEntry
+instance ToJSON (ForYaml (Tree Entry)) where
+    toJSON (ForYaml Node {..}) =
+        if null subForest
+            then toJSON rootLabel
             else object $
-                 ("entry" .= treeEntry) :
-                 ["forest" .= treeForest | treeForest /= SmosForest []]
+                 ("entry" .= rootLabel) :
+                 ["forest" .= subForest | not (null subForest)]
 
 data Entry = Entry
     { entryHeader :: Header

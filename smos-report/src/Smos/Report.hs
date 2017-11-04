@@ -67,8 +67,8 @@ entryReport p fs =
   where
     go :: SmosFile -> [Entry]
     go SmosFile {..} = gof smosFileForest
-    gof SmosForest {..} = concatMap got smosTrees
-    got SmosTree {..} = [treeEntry | p treeEntry]
+    gof = concatMap got
+    got Node {..} = [rootLabel | p rootLabel]
 
 stateIs :: TodoState -> Entry -> Bool
 stateIs s e = entryState e == Just s

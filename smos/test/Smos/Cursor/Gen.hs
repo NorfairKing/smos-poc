@@ -1,3 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Smos.Cursor.Gen where
@@ -5,6 +9,8 @@ module Smos.Cursor.Gen where
 import TestImport
 
 import Smos.Cursor
+import Smos.Cursor.Class
+import Smos.Cursor.Tree
 import Smos.Data.Gen ()
 
 instance GenUnchecked AnyCursor
@@ -15,7 +21,13 @@ instance GenUnchecked ACursor
 
 instance GenValid ACursor
 
-instance GenUnchecked ForestCursor where
+instance ( GenUnchecked a
+         , Build a
+         , GenUnchecked (Building a)
+         , Parent a ~ TreeCursor a
+         , a `BuiltFrom` (Building a)
+         ) =>
+         GenUnchecked (ForestCursor a) where
     genUnchecked = do
         fc <- makeForestCursor <$> genUnchecked
         let go fc_ = do
@@ -30,11 +42,18 @@ instance GenUnchecked ForestCursor where
         go fc
     shrinkUnchecked = shrinkNothing
 
-instance GenValid ForestCursor where
+instance ( GenValid a
+         , Build a
+         , GenValid (Building a)
+         , Validity (Building a)
+         , Parent a ~ TreeCursor a
+         , a `BuiltFrom` (Building a)
+         ) =>
+         GenValid (ForestCursor a) where
     genValid = do
         fc <- makeForestCursor <$> genValid
         let go fc_ = do
-                b <- genUnchecked
+                b <- genValid
                 if b
                     then pure fc_
                     else case forestCursorElems fc_ of
@@ -44,7 +63,13 @@ instance GenValid ForestCursor where
                                  go $ treeCursorForest tc
         go fc
 
-instance GenUnchecked TreeCursor where
+instance ( GenUnchecked a
+         , Build a
+         , GenUnchecked (Building a)
+         , Parent a ~ TreeCursor a
+         , a `BuiltFrom` (Building a)
+         ) =>
+         GenUnchecked (TreeCursor a) where
     genUnchecked = do
         sf <- genUnchecked
         let go tc = do
@@ -55,30 +80,37 @@ instance GenUnchecked TreeCursor where
                              [] -> pure tc
                              els -> elements els >>= go
         case forestCursorElems sf of
-            [] -> genUnchecked
+            [] -> scale (+ 1) genUnchecked
             els -> elements els >>= go
     shrinkUnchecked = shrinkNothing
 
-instance GenValid TreeCursor where
+instance ( GenValid a
+         , Build a
+         , GenValid (Building a)
+         , Validity (Building a)
+         , Parent a ~ TreeCursor a
+         , a `BuiltFrom` (Building a)
+         ) =>
+         GenValid (TreeCursor a) where
     genValid = do
         sf <- genValid
         let go tc = do
-                b <- genUnchecked
+                b <- genValid
                 if b
                     then pure tc
                     else case forestCursorElems $ treeCursorForest tc of
                              [] -> pure tc
                              els -> elements els >>= go
         case forestCursorElems sf of
-            [] -> genValid
+            [] -> scale (+ 1) genValid
             els -> elements els >>= go
 
 instance GenUnchecked EntryCursor where
-    genUnchecked = treeCursorEntry <$> genUnchecked
+    genUnchecked = treeCursorValue <$> genUnchecked
     shrinkUnchecked = shrinkNothing
 
 instance GenValid EntryCursor where
-    genValid = treeCursorEntry <$> genValid
+    genValid = treeCursorValue <$> genValid
 
 instance GenUnchecked HeaderCursor where
     genUnchecked = entryCursorHeader <$> genUnchecked

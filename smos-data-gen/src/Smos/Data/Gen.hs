@@ -10,15 +10,6 @@ instance GenUnchecked SmosFile
 
 instance GenValid SmosFile
 
-instance GenUnchecked SmosForest
-
-instance GenValid SmosForest
-
-instance GenUnchecked SmosTree
-
-instance GenValid SmosTree where
-    genValid = SmosTree <$> genValid <*> genValid
-
 instance GenUnchecked Entry
 
 instance GenValid Entry where

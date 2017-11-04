@@ -15,6 +15,7 @@ import Import
 import qualified Data.ByteString as SB
 import qualified Data.Text as T
 import Data.Time
+import Data.Tree
 import Data.Yaml as Yaml
 
 import Smos.Data.Types
@@ -33,14 +34,14 @@ writeSmosFile fp sf =
         SB.writeFile (toFilePath fp) (Yaml.encode sf)
 
 emptySmosFile :: SmosFile
-emptySmosFile = SmosFile $ SmosForest []
+emptySmosFile = SmosFile []
 
-prettySmosForest :: SmosForest -> String
-prettySmosForest (SmosForest ts) = unlines $ map prettySmosTree ts
+prettySmosForest :: Forest Entry -> String
+prettySmosForest ts = unlines $ map prettySmosTree ts
 
-prettySmosTree :: SmosTree -> String
-prettySmosTree SmosTree {..} =
-    unlines [prettySmosEntry treeEntry, prettySmosForest treeForest]
+prettySmosTree :: Tree Entry -> String
+prettySmosTree Node {..} =
+    unlines [prettySmosEntry rootLabel, prettySmosForest subForest]
 
 prettySmosEntry :: Entry -> String
 prettySmosEntry Entry {..} = T.unpack $ headerText entryHeader

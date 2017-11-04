@@ -1,10 +1,12 @@
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstraintKinds #-}
 
 module Smos.Cursor.Class
     ( Cursor
     , Rebuild(..)
     , Build(..)
+    , BuiltFrom(..)
     , drillSel
     ) where
 
@@ -23,6 +25,10 @@ class Build a where
     type Building a :: *
     -- | Build to the thing we're looking at
     build :: a -> Building a
+
+class BuiltFrom a b where
+    type Parent a :: *
+    makeWith :: Parent a -> b -> a
 
 drillSel :: Maybe [Int] -> Int -> Maybe [Int]
 drillSel msel ix =

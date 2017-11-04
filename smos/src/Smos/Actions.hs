@@ -78,6 +78,7 @@ import Import
 
 import qualified Data.Text.IO as T
 import Data.Time
+import Data.Tree
 
 import Control.Monad.Reader
 import Control.Monad.State
@@ -90,19 +91,20 @@ import Lens.Micro
 import Smos.Data
 
 import Smos.Cursor
+import Smos.Cursor.Tree
 import Smos.Types
 
 {-# ANN module ("HLint: ignore Use fromMaybe" :: String) #-}
 
-emptyTree :: SmosTree
-emptyTree = SmosTree {treeEntry = newEntry "", treeForest = SmosForest []}
+emptyTree :: Tree Entry
+emptyTree = Node {rootLabel = newEntry "", subForest = []}
 
 initEntryCursor :: Maybe ACursor
 initEntryCursor =
-    let fc = makeForestCursor $ SmosForest []
+    let fc = makeForestCursor []
         fc' = forestCursorInsertAtStart emptyTree fc
         mtc' = forestCursorSelectFirst fc'
-    in (AnEntry . treeCursorEntry) <$> mtc'
+    in (AnEntry . treeCursorValue) <$> mtc'
 
 save :: SmosM ()
 save = do
@@ -110,7 +112,7 @@ save = do
     mcur <- gets smosStateCursor
     let sf =
             case mcur of
-                Nothing -> SmosFile $ SmosForest []
+                Nothing -> SmosFile []
                 Just cur -> rebuild cur
     writeSmosFile file sf
 
@@ -122,7 +124,7 @@ insertTreeAbove =
             Just (AnEntry ec) ->
                 let tc = entryCursorParent ec
                     tc' = treeCursorInsertAbove tc emptyTree
-                    ec' = treeCursorEntry tc'
+                    ec' = treeCursorValue tc'
                 in Just $ AnEntry ec'
             _ -> mcur
 
@@ -134,7 +136,7 @@ insertTreeBelow =
             Just (AnEntry ec) ->
                 let tc = entryCursorParent ec
                     tc' = treeCursorInsertBelow tc emptyTree
-                    ec' = treeCursorEntry tc'
+                    ec' = treeCursorValue tc'
                 in Just $ AnEntry ec'
             _ -> mcur
 
@@ -146,10 +148,10 @@ insertTreeChild =
             Just (AnEntry ec) ->
                 let tc = entryCursorParent ec
                     tc' = treeCursorInsertChildAtStart emptyTree tc
-                    ec' = treeCursorEntry tc'
+                    ec' = treeCursorValue tc'
                     fc' = treeCursorForest tc'
                     mtc' = forestCursorSelectFirst fc'
-                    mec' = treeCursorEntry <$> mtc'
+                    mec' = treeCursorValue <$> mtc'
                 in Just $ maybe (AnEntry ec') AnEntry mec'
             _ -> mcur
 
@@ -165,8 +167,8 @@ deleteCurrentHeader =
                             Left fc ->
                                 case forestCursorParent fc of
                                     Nothing -> Nothing
-                                    Just tc_ -> Just $ treeCursorEntry tc_
-                            Right tc_ -> Just $ treeCursorEntry tc_
+                                    Just tc_ -> Just $ treeCursorValue tc_
+                            Right tc_ -> Just $ treeCursorValue tc_
                 in AnEntry <$> mec'
             _ -> mcur
 
@@ -193,7 +195,7 @@ moveUp =
                                  of
                                Nothing -> tc
                                Just tc_ -> tc_
-            ec' = treeCursorEntry tc'
+            ec' = treeCursorValue tc'
         in ec'
 
 moveDown :: SmosM ()
@@ -222,7 +224,7 @@ moveDown =
                 case goNextViaDown tc of
                     Nothing -> goNextViaUp tc
                     Just tc_ -> tc_
-            ec' = treeCursorEntry tc'
+            ec' = treeCursorValue tc'
         in ec'
 
 moveLeft :: SmosM ()
@@ -230,7 +232,7 @@ moveLeft =
     modifyEntry $ \ec ->
         let tc = entryCursorParent ec
             tc' = fromMaybe tc $ forestCursorParent $ treeCursorParent tc
-            ec' = treeCursorEntry tc'
+            ec' = treeCursorValue tc'
         in ec'
 
 moveRight :: SmosM ()
@@ -239,7 +241,7 @@ moveRight =
         let tc = entryCursorParent ec
             fc = treeCursorForest tc
             tc' = fromMaybe tc $ forestCursorSelectFirst fc
-            ec' = treeCursorEntry tc'
+            ec' = treeCursorValue tc'
         in ec'
 
 clockIn :: SmosM ()
@@ -257,9 +259,8 @@ clockOut = do
 clockOutMod :: UTCTime -> (SmosFile -> SmosFile)
 clockOutMod now = SmosFile . gof . smosFileForest
   where
-    gof sf = SmosForest {smosTrees = map got $ smosTrees sf}
-    got SmosTree {..} =
-        SmosTree {treeEntry = goe treeEntry, treeForest = gof treeForest}
+    gof = map got
+    got Node {..} = Node {rootLabel = goe rootLabel, subForest = gof subForest}
     goe e =
         e
         { entryLogbook =
