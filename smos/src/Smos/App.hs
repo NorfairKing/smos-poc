@@ -9,6 +9,8 @@ import Import
 import Brick.Main as B
 import Brick.Types as B
 
+import qualified Graphics.Vty as V
+
 import Smos.Draw
 import Smos.Style
 import Smos.Types
@@ -33,10 +35,27 @@ smosHandleEvent ::
     -> BrickEvent ResourceName ()
     -> EventM ResourceName (Next SmosState)
 smosHandleEvent cf s e = do
-    (mkHalt, s') <- runSmosM cf s $ unKeymap (configKeyMap cf) s e
+    let func =
+            case unKeymap (configKeyMap cf) s e of
+                Nothing ->
+                    case e of
+                        B.VtyEvent (V.EvKey ek mods) ->
+                            let kp = KeyPress ek mods
+                            in recordKeyPress kp
+                        _ -> pure ()
+                Just func_ -> do
+                    func_
+                    clearKeyHistory
+    (mkHalt, s') <- runSmosM cf s func
     case mkHalt of
         Stop -> B.halt s'
         Continue () -> B.continue s'
+  where
+    recordKeyPress :: KeyPress -> SmosM ()
+    recordKeyPress kp =
+        modify $ \ss -> ss {smosStateKeyHistory = kp : smosStateKeyHistory ss}
+    clearKeyHistory :: SmosM ()
+    clearKeyHistory = modify $ \ss -> ss {smosStateKeyHistory = []}
 
 smosStartEvent :: s -> EventM n s
 smosStartEvent = pure

@@ -35,8 +35,11 @@ satisfyChar :: (Char -> Bool) -> SmosM () -> Keymap
 satisfyChar pred_ func =
     rawKeymap $ \ev ->
         case ev of
-            B.VtyEvent (V.EvKey (V.KChar ec) []) -> when (pred_ ec) func
-            _ -> pure ()
+            B.VtyEvent (V.EvKey (V.KChar ec) []) ->
+                if pred_ ec
+                    then Just func
+                    else Nothing
+            _ -> Nothing
 
 matchKey :: V.Key -> SmosM () -> Keymap
 matchKey k = satisfyKey (== k)
@@ -45,15 +48,22 @@ onChar :: (Char -> SmosM ()) -> Keymap
 onChar func =
     rawKeymap $ \ev ->
         case ev of
-            B.VtyEvent (V.EvKey (V.KChar c) []) -> func c
-            _ -> pure ()
+            B.VtyEvent (V.EvKey (V.KChar c) []) -> Just $ func c
+            _ -> Nothing
 
 satisfyKey :: (V.Key -> Bool) -> SmosM () -> Keymap
-satisfyKey pred_ func =
+satisfyKey pred_ = satisfyKeyPress $ \(KeyPress k []) -> pred_ k
+
+satisfyKeyPress :: (KeyPress -> Bool) -> SmosM () -> Keymap
+satisfyKeyPress pred_ func =
     rawKeymap $ \ev ->
         case ev of
-            B.VtyEvent (V.EvKey ek []) -> when (pred_ ek) func
-            _ -> pure ()
+            B.VtyEvent (V.EvKey ek mods) ->
+                let kp = KeyPress ek mods
+                in if pred_ kp
+                       then Just func
+                       else Nothing
+            _ -> Nothing
 
 inEmpty :: Keymap -> Keymap
 inEmpty =

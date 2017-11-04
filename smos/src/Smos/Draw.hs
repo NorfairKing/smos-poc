@@ -31,7 +31,9 @@ smosDraw :: SmosState -> [Widget ResourceName]
 smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
   where
     renderCursor :: ACursor -> Widget ResourceName
-    renderCursor cur = drawForest msel for <=> str (show rsel)
+    renderCursor cur =
+        drawForest msel for <=> str (show rsel) <=>
+        strWrap (show smosStateKeyHistory)
       where
         msel = Just rsel
         rsel = reverse $ selection $ selectAnyCursor cur

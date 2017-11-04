@@ -36,7 +36,10 @@ smos sc@SmosConfig {..} = do
 initState :: Path Abs File -> SmosFile -> SmosState
 initState p sf =
     SmosState
-    {smosStateFilePath = p, smosStateCursor = selectACursor $ makeAnyCursor sf}
+    { smosStateFilePath = p
+    , smosStateCursor = selectACursor $ makeAnyCursor sf
+    , smosStateKeyHistory = []
+    }
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =

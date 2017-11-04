@@ -14,6 +14,7 @@ module Smos.Types
     , SmosM
     , runSmosM
     , SmosState(..)
+    , KeyPress(..)
     , ResourceName
     , MStop(..)
     , stop
@@ -25,6 +26,8 @@ import Import
 
 import Control.Monad.Reader
 import Control.Monad.State
+
+import Graphics.Vty.Input.Events
 
 import Brick.AttrMap as B
 import Brick.Types as B hiding (Next)
@@ -38,7 +41,7 @@ data SmosConfig = SmosConfig
     } deriving (Generic)
 
 newtype Keymap = Keymap
-    { unKeymap :: SmosState -> SmosEvent -> SmosM ()
+    { unKeymap :: SmosState -> SmosEvent -> Maybe (SmosM ())
     } deriving (Generic)
 
 -- TODO explain how this is not the current state, but the state at the start of
@@ -48,9 +51,9 @@ filterKeymap pred_ (Keymap km) =
     Keymap $ \s e ->
         if pred_ s
             then km s e
-            else pure ()
+            else Nothing
 
-rawKeymap :: (SmosEvent -> SmosM ()) -> Keymap
+rawKeymap :: (SmosEvent -> Maybe (SmosM ())) -> Keymap
 rawKeymap = Keymap . const
 
 -- | This instance is the most important for implementors.
@@ -60,11 +63,14 @@ rawKeymap = Keymap . const
 -- Note that all handlers will be executed, not just the first one to be
 -- selected.
 instance Monoid Keymap where
-    mempty = Keymap $ \_ _ -> pure ()
+    mempty = Keymap $ \_ _ -> Nothing
     mappend (Keymap km1) (Keymap km2) =
-        Keymap $ \s e -> do
-            km1 s e
-            km2 s e
+        Keymap $ \s e ->
+            case (km1 s e, km2 s e) of
+                (Nothing, Nothing) -> Nothing
+                (Just f1, Nothing) -> Just f1
+                (Nothing, Just f2) -> Just f2
+                (Just f1, Just f2) -> Just $ f1 >> f2
 
 type SmosEvent = BrickEvent ResourceName ()
 
@@ -80,7 +86,13 @@ runSmosM = runMkSmosM
 data SmosState = SmosState
     { smosStateFilePath :: Path Abs File
     , smosStateCursor :: Maybe ACursor
+    , smosStateKeyHistory :: [KeyPress]
     } deriving (Generic)
+
+data KeyPress =
+    KeyPress Key
+             [Modifier]
+    deriving (Show, Eq, Ord)
 
 newtype ResourceName =
     ResourceName Text
