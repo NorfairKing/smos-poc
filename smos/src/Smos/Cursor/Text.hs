@@ -35,6 +35,7 @@ instance Validity TextCursor
 instance Rebuild TextCursor where
     type ReBuilding TextCursor = Text
     rebuild = T.pack . rebuildListCursor . unTextCursor
+    selection = selection . unTextCursor
 
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor

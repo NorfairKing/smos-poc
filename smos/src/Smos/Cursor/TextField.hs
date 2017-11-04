@@ -49,6 +49,8 @@ instance Build TextFieldCursor where
 instance Rebuild TextFieldCursor where
     type ReBuilding TextFieldCursor = Text
     rebuild = rebuildTextFieldCursor
+    selection TextFieldCursor {..} =
+        selection textFieldSelected ++ [length textFieldCursorPrev]
 
 emptyTextFieldCursor :: TextFieldCursor
 emptyTextFieldCursor =

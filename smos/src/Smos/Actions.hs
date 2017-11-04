@@ -542,7 +542,7 @@ withFullMod func =
             Nothing -> ss
             Just cur ->
                 let sf = rebuild cur
-                    sel = makeASelection $ selectAnyCursor cur
+                    sel = selection $ selectAnyCursor cur
                     sf' = func sf
                     cur' = selectACursor $ reselect sel sf'
                 in ss {smosStateCursor = cur'}

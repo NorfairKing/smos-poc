@@ -25,12 +25,12 @@ import Smos.Data.Gen ()
 spec :: Spec
 spec = do
     describe "ACursor" $ do
-        describe "makeASelection" $ do
+        describe "selection" $ do
             it "returns the empty selection in a forest without a parent" $
                 forAll genValid $ \sf ->
                     let fc = makeForestCursor sf
                         cur = AnyForest fc
-                    in makeASelection cur `shouldBe` []
+                    in selection cur `shouldBe` []
             it "returns the index of the tree we zoom in on" $ do
                 let gen = do
                         sf <- genValid
@@ -40,7 +40,7 @@ spec = do
                             els -> elements els
                 forAll gen $ \tc ->
                     let cur = AnyTree tc
-                    in makeASelection cur `shouldBe` [treeCursorIndex tc]
+                    in selection cur `shouldBe` [treeCursorIndex tc]
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
                         sf <- genValid
@@ -52,7 +52,7 @@ spec = do
                                 pure (treeCursorForest tc, treeCursorIndex tc)
                 forAll gen $ \(fc, ix_) ->
                     let cur = AnyForest fc
-                    in makeASelection cur `shouldBe` [ix_, 1]
+                    in selection cur `shouldBe` [1, ix_]
         describe "reselect" $ do
             it "selects the top level forrest for an empty list" $
                 forAll genValid $ \sf ->
@@ -77,10 +77,10 @@ spec = do
                                 tc <- elements els
                                 pure (treeCursorForest tc, treeCursorIndex tc)
                 forAll gen $ \(fc, ix_) ->
-                    reselect [ix_, 1] (rebuild fc) `shouldBe` AnyForest fc
-            it "selects the cursor that was handed to makeASelection" $
+                    reselect [1, ix_] (rebuild fc) `shouldBe` AnyForest fc
+            it "selects the cursor that was handed to selection" $
                 forAll genValid $ \ac ->
-                    let sel = makeASelection ac
+                    let sel = selection ac
                         sf = rebuild ac
                     in reselect sel sf `shouldBe` ac
     describe "ForestCursor" $ do

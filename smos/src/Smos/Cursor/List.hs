@@ -44,6 +44,7 @@ instance Show a => Show (ListCursor a) where
 instance Rebuild (ListCursor a) where
     type ReBuilding (ListCursor a) = [a]
     rebuild = rebuildListCursor
+    selection = (: []) . length . listCursorPrev
 
 emptyListCursor :: ListCursor a
 emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}

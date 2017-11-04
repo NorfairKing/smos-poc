@@ -23,13 +23,13 @@ import Smos.Style
 import Smos.Types
 
 smosDraw :: SmosState -> [Widget ResourceName]
-smosDraw SmosState {..} =
-    [fromMaybe drawNoContent $ renderCursor <$> smosStateCursor]
+smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
   where
     renderCursor :: ACursor -> Widget ResourceName
-    renderCursor cur = drawForest sel for
+    renderCursor cur = drawForest msel for <=> str (show rsel)
       where
-        sel = Just $ makeASelection $ selectAnyCursor cur
+        msel = Just rsel
+        rsel = reverse $ selection $ selectAnyCursor cur
         for = smosFileForest $ rebuild cur
 
 drawNoContent :: Widget n
@@ -62,12 +62,13 @@ drawEntry msel Entry {..} =
         [ B.hBox $
           intersperse (B.txt " ") $
           [B.txt ">"] ++
-          maybe [] pure (drawTodoState (drillSel msel 1) <$> entryState) ++
-          [ drawHeader (drillSel msel 0) entryHeader
-          , drawTags (drillSel msel 3) entryTags
+          maybe [] pure (drawTodoState (drillSel msel 0) <$> entryState) ++
+          [ drawHeader (drillSel msel 1) entryHeader
+          , drawTags (drillSel msel 2) entryTags
           ]
-        , drawContents (drillSel msel 2) entryContents
-        , drawTimestamps (drillSel msel 4) entryTimestamps
+        , drawTimestamps (drillSel msel 3) entryTimestamps
+        -- , drawProperties (drillSel msel 4) entryProperties
+        , drawContents (drillSel msel 5) entryContents
         , drawLogbook entryLogbook
         ]
 

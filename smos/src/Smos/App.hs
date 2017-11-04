@@ -6,10 +6,8 @@ module Smos.App
 
 import Import
 
-
 import Brick.Main as B
 import Brick.Types as B
-
 
 import Smos.Draw
 import Smos.Style

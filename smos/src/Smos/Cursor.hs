@@ -5,7 +5,6 @@
 module Smos.Cursor
     ( AnyCursor(..)
     , makeAnyCursor
-    , makeASelection
     , reselect
     , ACursor(..)
     , selectACursor
@@ -148,6 +147,14 @@ instance Rebuild AnyCursor where
     rebuild (AnyState sc) = rebuild sc
     rebuild (AnyTags tsc) = rebuild tsc
     rebuild (AnyTag tc) = rebuild tc
+    selection (AnyForest fc) = selection fc
+    selection (AnyTree tc) = selection tc
+    selection (AnyEntry ec) = selection ec
+    selection (AnyHeader hc) = selection hc
+    selection (AnyContents cc) = selection cc
+    selection (AnyState sc) = selection sc
+    selection (AnyTags tsc) = selection tsc
+    selection (AnyTag tc) = selection tc
 
 data ACursor
     = AnEntry EntryCursor
@@ -166,35 +173,17 @@ instance Rebuild ACursor where
     rebuild (AContents cc) = rebuild cc
     rebuild (AState sc) = rebuild sc
     rebuild (ATag tc) = rebuild tc
+    selection (AnEntry ec) = selection ec
+    selection (AHeader hc) = selection hc
+    selection (AContents cc) = selection cc
+    selection (AState sc) = selection sc
+    selection (ATag tc) = selection tc
 
 makeAnyCursor :: SmosFile -> AnyCursor
 makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor smosFileForest
 
-makeASelection :: AnyCursor -> [Int]
-makeASelection = reverse . go
-  where
-    go (AnyForest fc) = gof fc
-    go (AnyTree tc) = got tc
-    go (AnyEntry ec) = goe ec
-    go (AnyHeader hc) = goh hc
-    go (AnyContents cc) = goc cc
-    go (AnyState sc) = gos sc
-    go (AnyTags tsc) = gotgs tsc
-    go (AnyTag tc) = gotg tc
-    gof ForestCursor {..} = maybe [] ((1 :) . got) forestCursorParent
-    got TreeCursor {..} = treeCursorIndex : gof treeCursorParent
-    goe EntryCursor {..} = 0 : got entryCursorParent
-    goh HeaderCursor {..} =
-        textCursorIndex headerCursorHeader : 0 : goe headerCursorParent
-    goc ContentsCursor {..} =
-        textFieldCursorIndices contentsCursorContents ++
-        [2] ++ goe contentsCursorParent
-    gos StateCursor {..} = 1 : goe stateCursorParent
-    gotgs TagsCursor {..} = 3 : goe tagsCursorParent
-    gotg TagCursor {..} = tagCursorIndex : gotgs tagCursorParent
-
 reselect :: [Int] -> SmosFile -> AnyCursor
-reselect s = go s . makeAnyCursor
+reselect s = go (reverse s) . makeAnyCursor
   where
     go sel (AnyForest fc) = gof sel fc
     go sel (AnyTree tc) = got sel tc
@@ -217,10 +206,13 @@ reselect s = go s . makeAnyCursor
     goe sel e =
         withSel sel (AnyEntry e) $ \ix_ sel_ ->
             case ix_ of
-                0 -> goh sel_ $ entryCursorHeader e
-                1 -> gos sel_ $ entryCursorState e
-                2 -> maybe (AnyEntry e) (goc sel_) $ entryCursorContents e
-                3 -> gotgs sel_ $ entryCursorTags e
+                0 -> gos sel_ $ entryCursorState e
+                1 -> goh sel_ $ entryCursorHeader e
+                2 -> gotgs sel_ $ entryCursorTags e
+                -- 3: timestamps
+                -- 4: properties
+                5 -> maybe (AnyEntry e) (goc sel_) $ entryCursorContents e
+                -- 6: clock
                 _ -> AnyEntry e
     goh _ = AnyHeader
     goc _ = AnyContents
@@ -283,6 +275,10 @@ instance Rebuild ForestCursor where
         case forestCursorParent fc of
             Nothing -> SmosFile $ build fc
             Just pc -> rebuild pc
+    selection ForestCursor {..} =
+        case forestCursorParent of
+            Nothing -> []
+            Just p -> 1 : selection p
 
 instance Build ForestCursor where
     type Building ForestCursor = SmosForest
@@ -375,6 +371,14 @@ instance Eq TreeCursor where
 instance Rebuild TreeCursor where
     type ReBuilding TreeCursor = SmosFile
     rebuild = rebuild . treeCursorParent
+    selection TreeCursor {..} =
+        length treeCursorPrevElemens : selection treeCursorParent
+
+instance Build TreeCursor where
+    type Building TreeCursor = SmosTree
+    build TreeCursor {..} =
+        SmosTree
+        {treeEntry = build treeCursorEntry, treeForest = build treeCursorForest}
 
 instance Show TreeCursor where
     show TreeCursor {..} =
@@ -394,12 +398,6 @@ instance Show TreeCursor where
                         ]
                       , map (const "tree") treeCursorNextElemens
                       ]))
-
-instance Build TreeCursor where
-    type Building TreeCursor = SmosTree
-    build TreeCursor {..} =
-        SmosTree
-        {treeEntry = build treeCursorEntry, treeForest = build treeCursorForest}
 
 treeCursorEntryL ::
        Functor f => (EntryCursor -> f EntryCursor) -> TreeCursor -> f TreeCursor
@@ -540,6 +538,7 @@ instance Eq EntryCursor where
 instance Rebuild EntryCursor where
     type ReBuilding EntryCursor = SmosFile
     rebuild = rebuild . entryCursorParent
+    selection EntryCursor {..} = 0 : selection entryCursorParent
 
 instance Build EntryCursor where
     type Building EntryCursor = Entry
@@ -690,6 +689,8 @@ instance Eq HeaderCursor where
 instance Rebuild HeaderCursor where
     type ReBuilding HeaderCursor = SmosFile
     rebuild = rebuild . headerCursorParent
+    selection HeaderCursor {..} =
+        selection headerCursorHeader ++ [1] ++ selection headerCursorParent
 
 instance Build HeaderCursor where
     type Building HeaderCursor = Header
@@ -762,6 +763,9 @@ instance Eq ContentsCursor where
 instance Rebuild ContentsCursor where
     type ReBuilding ContentsCursor = SmosFile
     rebuild = rebuild . contentsCursorParent
+    selection ContentsCursor {..} =
+        selection contentsCursorContents ++
+        [5] ++ selection contentsCursorParent
 
 instance Build ContentsCursor where
     type Building ContentsCursor = Contents
@@ -857,6 +861,7 @@ instance Eq StateCursor where
 instance Rebuild StateCursor where
     type ReBuilding StateCursor = SmosFile
     rebuild = rebuild . stateCursorParent
+    selection StateCursor {..} = 0 : selection stateCursorParent
 
 instance Build StateCursor where
     type Building StateCursor = Maybe TodoState
@@ -909,6 +914,7 @@ instance Eq TagsCursor where
 instance Rebuild TagsCursor where
     type ReBuilding TagsCursor = SmosFile
     rebuild = rebuild . tagsCursorParent
+    selection TagsCursor {..} = 2 : selection tagsCursorParent
 
 instance Build TagsCursor where
     type Building TagsCursor = [Tag]
@@ -997,6 +1003,9 @@ instance Eq TagCursor where
 instance Rebuild TagCursor where
     type ReBuilding TagCursor = SmosFile
     rebuild = rebuild . tagCursorParent
+    selection TagCursor {..} =
+        selection tagCursorTag ++
+        [length tagCursorPrevElemens] ++ selection tagCursorParent
 
 instance Build TagCursor where
     type Building TagCursor = Tag
