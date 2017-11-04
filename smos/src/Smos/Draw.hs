@@ -19,7 +19,6 @@ import Brick.Widgets.Core as B
 import Smos.Data
 
 import Smos.Cursor
-import Smos.Cursor.Class
 import Smos.Cursor.Text
 import Smos.Cursor.TextField
 import Smos.Style
@@ -51,24 +50,29 @@ drawForest :: Maybe [Int] -> SmosForest -> Widget ResourceName
 drawForest = foldForestSel drawTree $ padLeft (Pad 2) . B.vBox . map snd
 
 drawTree :: Maybe [Int] -> SmosTree -> Widget ResourceName
-drawTree msel SmosTree {..} = foldTreeSel drawEntry drawTree (<=>)
+drawTree = foldTreeSel drawEntry drawForest (<=>)
 
 drawEntry :: Maybe [Int] -> Entry -> Widget ResourceName
-drawEntry msel Entry {..} =
-    withSel msel $
-    B.vBox
-        [ B.hBox $
-          intersperse (B.txt " ") $
-          [B.txt ">"] ++
-          maybe [] pure (drawTodoState (drillSel msel 0) <$> entryState) ++
-          [ drawHeader (drillSel msel 1) entryHeader
-          , drawTags (drillSel msel 2) entryTags
-          ]
-        , drawTimestamps (drillSel msel 3) entryTimestamps
-        -- , drawProperties (drillSel msel 4) entryProperties
-        , drawContents (drillSel msel 5) entryContents
-        , drawLogbook entryLogbook
-        ]
+drawEntry msel =
+    foldEntrySel
+        drawTodoState
+        drawHeader
+        drawTags
+        drawTimestamps
+        drawContents
+        drawLogbook
+        (\mts h tgs tss mc lb ->
+             withSel msel $
+             B.vBox
+                 [ B.hBox $
+                   intersperse (B.txt " ") $
+                   [B.txt ">"] ++ maybeToList mts ++ [h, tgs]
+                 , tss
+                -- , drawProperties (drillSel msel 4) entryProperties
+                 , fromMaybe emptyWidget mc
+                 , lb
+                 ])
+        msel
 
 drawTodoState :: Maybe [Int] -> TodoState -> Widget ResourceName
 drawTodoState msel ts =
@@ -79,19 +83,13 @@ drawTodoState msel ts =
 drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
 drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
 
-drawContents :: Maybe [Int] -> Maybe Contents -> Widget ResourceName
-drawContents msel mcon =
-    case mcon of
-        Nothing -> emptyWidget
-        Just Contents {..} ->
-            withAttr contentsAttr $ withTextFieldSel msel contentsText
+drawContents :: Maybe [Int] -> Contents -> Widget ResourceName
+drawContents msel Contents {..} =
+    withAttr contentsAttr $ withTextFieldSel msel contentsText
 
 drawTags :: Maybe [Int] -> [Tag] -> Widget ResourceName
-drawTags msel ts =
-    withSel msel $
-    B.hBox $
-    addColons $
-    flip map (zip [0 ..] ts) $ \(ix, t) -> drawTag (drillSel msel ix) t
+drawTags msel =
+    withSel msel . foldTagsSel drawTag (B.hBox . addColons . map snd) msel
   where
     addColons ls =
         case ls of
@@ -114,13 +112,23 @@ drawTimestamps msel tss =
 drawTimestamp :: UTCTime -> Widget n
 drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
-drawLogbook :: Logbook -> Widget n
-drawLogbook LogEnd = B.emptyWidget
-drawLogbook (LogEntry b e l) =
-    B.hBox [str "[", drawTimestamp b, str "]--[", drawTimestamp e, str "]"] <=>
-    drawLogbook l
-drawLogbook (LogOpenEntry b l) =
-    B.hBox [str "[", drawTimestamp b, str "]"] <=> drawLogbook l
+drawLogbook :: Maybe [Int] -> Logbook -> Widget n
+drawLogbook msel = withSel msel . go
+  where
+    go lb =
+        case lb of
+            LogEnd -> B.emptyWidget
+            LogEntry b e l ->
+                B.hBox
+                    [ str "["
+                    , drawTimestamp b
+                    , str "]--["
+                    , drawTimestamp e
+                    , str "]"
+                    ] <=>
+                go l
+            LogOpenEntry b l ->
+                B.hBox [str "[", drawTimestamp b, str "]"] <=> go l
 
 withSel :: Maybe [Int] -> Widget n -> Widget n
 withSel msel =

@@ -41,6 +41,8 @@ module Smos.Cursor
     , treeCursorInsertChildAtEnd
     , treeCursorDeleteCurrent
     , EntryCursor
+    , entryCursor
+    , foldEntrySel
     , entryCursorParent
     , entryCursorHeader
     , entryCursorContents
@@ -92,6 +94,7 @@ module Smos.Cursor
     , stateCursorSetState
     , TagsCursor
     , tagsCursor
+    , foldTagsSel
     , tagsCursorParent
     , tagsCursorTags
     , tagsCursorSelectFirst
@@ -590,14 +593,26 @@ entryCursor par Entry {..} = ec
         , entryCursorLogbook = entryLogbook
         }
 
-foldEntrySel :: (Maybe [Int] -> TodoState -> r)
+foldEntrySel ::
+       (Maybe [Int] -> TodoState -> r)
     -> (Maybe [Int] -> Header -> r)
     -> (Maybe [Int] -> [Tag] -> r)
     -> (Maybe [Int] -> HashMap TimestampName UTCTime -> r)
     -> (Maybe [Int] -> Contents -> r)
     -> (Maybe [Int] -> Logbook -> r)
-    -> (r -> r->r->r->r->r->r) -> Entry -> r
-foldEntrySel = undefined
+    -> (Maybe r -> r -> r -> r -> Maybe r -> r -> r)
+    -> Maybe [Int]
+    -> Entry
+    -> r
+foldEntrySel tsFunc hFunc tgsFunc tssFunc cFunc lFunc combFunc msel Entry {..} =
+    combFunc
+        (tsFunc (drillSel msel 0) <$> entryState)
+        (hFunc (drillSel msel 1) entryHeader)
+        (tgsFunc (drillSel msel 2) entryTags)
+        (tssFunc (drillSel msel 3) entryTimestamps)
+        -- (lFunc (drillSel msel 4) entryTimestamps)
+        (cFunc (drillSel msel 5) <$> entryContents)
+        (lFunc (drillSel msel 6) entryLogbook)
 
 entryCursorHeaderL ::
        Functor f
@@ -957,6 +972,16 @@ tagsCursor :: EntryCursor -> [Tag] -> TagsCursor
 tagsCursor ec tags = tsc
   where
     tsc = TagsCursor {tagsCursorParent = ec, tagsCursorTags = tagElems tsc tags}
+
+foldTagsSel ::
+       (Maybe [Int] -> Tag -> r)
+    -> ([(Int, r)] -> r)
+    -> Maybe [Int]
+    -> [Tag]
+    -> r
+foldTagsSel tFunc combFunc msel tgs =
+    combFunc $
+    flip map (zip [0 ..] tgs) $ \(ix_, t) -> (ix_, tFunc (drillSel msel ix_) t)
 
 tagElems :: TagsCursor -> [Tag] -> [TagCursor]
 tagElems tsc sts = tcs
