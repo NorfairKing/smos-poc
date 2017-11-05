@@ -69,7 +69,14 @@ filterKeymap pred_ (Keymap km) =
             else Nothing
 
 rawKeymap :: (SmosEvent -> Maybe (SmosM ())) -> Keymap
-rawKeymap = Keymap . const
+rawKeymap func =
+    Keymap $ \s e ->
+        case func e of
+            Nothing -> Nothing
+            Just f ->
+                if null (smosStateKeyHistory s)
+                    then Just f
+                    else Nothing
 
 -- | This instance is the most important for implementors.
 --
