@@ -162,6 +162,6 @@ withTextFieldSel =
             tw = B.vBox $ map textOrSpace ls
         in case mixs of
                Nothing -> tw
-               Just (xix_, yix_) ->
+               Just (yix_, xix_) ->
                    withAttr selectedAttr $
                    B.showCursor textCursorName (B.Location (xix_, yix_)) tw
