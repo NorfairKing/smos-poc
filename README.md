@@ -20,15 +20,25 @@ for an example of a configuration.
 The Smos file format (`.smos`) is completely future proof because it is just
 a subset of YAML:
 
+[/smos.png]
+
 ```
 - entry:
-    state: TODO
     header: Use Smos
+    state-history:
+    - - TODO
+      - 2017-11-06T23:32:58.574724188Z
   forest:
-  - state: DONE
-    header: Don't mess it up
-  - state: TODO
-    header: be smart about it
+  - header: Don't mess it up
+    state-history:
+    - - DONE
+      - 2017-11-06T23:32:59.17487692Z
+    - - TODO
+      - 2017-11-06T23:32:56.190474317Z
+  - header: Be smart about it
+    state-history:
+    - - TODO
+      - 2017-11-06T23:33:05.478947389Z
 ```
 
 This format is very easy to work with programmatically, and convenience

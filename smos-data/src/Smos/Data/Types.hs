@@ -43,10 +43,10 @@ newtype SmosFile = SmosFile
 instance Validity SmosFile
 
 instance FromJSON SmosFile where
-    parseJSON v = SmosFile <$> parseJSON v
+    parseJSON v = (SmosFile . unForYaml) <$> parseJSON v
 
 instance ToJSON SmosFile where
-    toJSON = toJSON . smosFileForest
+    toJSON = toJSON . ForYaml . smosFileForest
 
 newtype ForYaml a = ForYaml
     { unForYaml :: a
@@ -68,7 +68,8 @@ instance FromJSON (ForYaml (Tree Entry)) where
         ForYaml <$>
         ((Node <$> parseJSON v <*> pure []) <|>
          (withObject "Tree Entry" $ \o ->
-              Node <$> o .: "entry" <*> o .:? "forest" .!= [])
+              Node <$> o .: "entry" <*>
+              (unForYaml <$> o .:? "forest" .!= ForYaml []))
              v)
 
 instance ToJSON (ForYaml (Tree Entry)) where
@@ -77,7 +78,7 @@ instance ToJSON (ForYaml (Tree Entry)) where
             then toJSON rootLabel
             else object $
                  ("entry" .= rootLabel) :
-                 ["forest" .= subForest | not (null subForest)]
+                 ["forest" .= ForYaml subForest | not (null subForest)]
 
 data Entry = Entry
     { entryHeader :: Header
