@@ -401,10 +401,14 @@ enterTodoState =
             _ -> cur
 
 todoStateClear :: SmosM ()
-todoStateClear = modifyTodoState stateCursorClear
+todoStateClear = do
+    now <- liftIO getCurrentTime
+    modifyTodoState $ stateCursorClear now
 
 todoStateSet :: TodoState -> SmosM ()
-todoStateSet = modifyTodoState . stateCursorSetState
+todoStateSet ts = do
+    now <- liftIO getCurrentTime
+    modifyTodoState $ stateCursorSetState now ts
 
 exitTodoState :: SmosM ()
 exitTodoState =

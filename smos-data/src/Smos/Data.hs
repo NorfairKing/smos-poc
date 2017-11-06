@@ -8,6 +8,10 @@ module Smos.Data
     , prettySmosForest
     , clockInAt
     , clockOutAt
+    , stateHistoryState
+    , stateHistorySetState
+    , entryState
+    , entrySetState
     ) where
 
 import Import
@@ -59,3 +63,21 @@ clockOutAt now lb =
         LogEnd -> Nothing
         LogEntry {} -> Nothing
         LogOpenEntry start lb' -> Just $ LogEntry start now lb'
+
+stateHistoryState :: StateHistory -> Maybe TodoState
+stateHistoryState (StateHistory tups) =
+    case tups of
+        [] -> Nothing
+        ((mts, _):_) -> mts
+
+stateHistorySetState ::
+       UTCTime -> Maybe TodoState -> StateHistory -> StateHistory
+stateHistorySetState now mts sh =
+    sh {unStateHistory = (mts, now) : unStateHistory sh}
+
+entryState :: Entry -> Maybe TodoState
+entryState = stateHistoryState . entryStateHistory
+
+entrySetState :: UTCTime -> Maybe TodoState -> Entry -> Entry
+entrySetState now mts e =
+    e {entryStateHistory = stateHistorySetState now mts $ entryStateHistory e}

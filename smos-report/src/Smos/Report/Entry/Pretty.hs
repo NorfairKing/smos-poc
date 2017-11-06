@@ -17,6 +17,6 @@ prettyEntryReport EntryReport {..} =
     go :: Path Abs File -> [Entry] -> Doc
     go f e = string (toFilePath f) <$$> indent 2 (vcat $ map goe e)
     goe :: Entry -> Doc
-    goe Entry {..} =
-        maybe empty (text . T.unpack . todoStateText) entryState <+>
+    goe e@Entry {..} =
+        maybe empty (text . T.unpack . todoStateText) (entryState e) <+>
         text (T.unpack $ headerText entryHeader)

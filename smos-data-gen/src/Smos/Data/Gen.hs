@@ -37,6 +37,10 @@ instance GenUnchecked TodoState
 
 instance GenValid TodoState
 
+instance GenUnchecked StateHistory
+
+instance GenValid StateHistory
+
 instance GenUnchecked Tag
 
 instance GenValid Tag

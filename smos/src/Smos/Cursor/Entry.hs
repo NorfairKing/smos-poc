@@ -52,7 +52,7 @@ module Smos.Cursor.Entry
     , StateCursor
     , stateCursor
     , stateCursorParent
-    , stateCursorState
+    , stateCursorStateHistory
     , stateCursorClear
     , stateCursorSetState
     , TagsCursor
@@ -137,7 +137,7 @@ instance Build EntryCursor where
         { entryHeader = build entryCursorHeader
         , entryContents = build <$> entryCursorContents
         , entryTimestamps = entryCursorTimestamps
-        , entryState = build entryCursorState
+        , entryStateHistory = build entryCursorState
         , entryTags = build entryCursorTags
         , entryLogbook = entryCursorLogbook
         }
@@ -155,25 +155,25 @@ entryCursor par Entry {..} = ec
         , entryCursorHeader = headerCursor ec entryHeader
         , entryCursorContents = contentsCursor ec <$> entryContents
         , entryCursorTimestamps = entryTimestamps
-        , entryCursorState = stateCursor ec entryState
+        , entryCursorState = stateCursor ec entryStateHistory
         , entryCursorTags = tagsCursor ec entryTags
         , entryCursorLogbook = entryLogbook
         }
 
 foldEntrySel ::
-       (Maybe [Int] -> TodoState -> r)
-    -> (Maybe [Int] -> Header -> r)
-    -> (Maybe [Int] -> [Tag] -> r)
-    -> (Maybe [Int] -> HashMap TimestampName UTCTime -> r)
-    -> (Maybe [Int] -> Contents -> r)
-    -> (Maybe [Int] -> Logbook -> r)
-    -> (Maybe r -> r -> r -> r -> Maybe r -> r -> r)
+       (Maybe [Int] -> StateHistory -> a)
+    -> (Maybe [Int] -> Header -> b)
+    -> (Maybe [Int] -> [Tag] -> c)
+    -> (Maybe [Int] -> HashMap TimestampName UTCTime -> d)
+    -> (Maybe [Int] -> Contents -> e)
+    -> (Maybe [Int] -> Logbook -> f)
+    -> (a -> b -> c -> d -> Maybe e -> f -> r)
     -> Maybe [Int]
     -> Entry
     -> r
 foldEntrySel tsFunc hFunc tgsFunc tssFunc cFunc lFunc combFunc msel Entry {..} =
     combFunc
-        (tsFunc (drillSel msel 0) <$> entryState)
+        (tsFunc (drillSel msel 0) entryStateHistory)
         (hFunc (drillSel msel 1) entryHeader)
         (tgsFunc (drillSel msel 2) entryTags)
         (tssFunc (drillSel msel 3) entryTimestamps)
@@ -460,7 +460,7 @@ contentsCursorEnd = contentsCursorTextFieldL %~ textFieldCursorSelectEnd
 
 data StateCursor = StateCursor
     { stateCursorParent :: EntryCursor
-    , stateCursorState :: Maybe TodoState
+    , stateCursorStateHistory :: StateHistory
     }
 
 instance Validity StateCursor where
@@ -468,7 +468,8 @@ instance Validity StateCursor where
     validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show StateCursor where
-    show StateCursor {..} = unlines ["[Entry]", " |-" ++ show stateCursorState]
+    show StateCursor {..} =
+        unlines ["[Entry]", " |-" ++ show stateCursorStateHistory]
 
 instance Eq StateCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
@@ -479,34 +480,36 @@ instance Rebuild StateCursor where
     selection StateCursor {..} = 0 : selection stateCursorParent
 
 instance Build StateCursor where
-    type Building StateCursor = Maybe TodoState
-    build StateCursor {..} = stateCursorState
+    type Building StateCursor = StateHistory
+    build StateCursor {..} = stateCursorStateHistory
 
-stateCursor :: EntryCursor -> Maybe TodoState -> StateCursor
+stateCursor :: EntryCursor -> StateHistory -> StateCursor
 stateCursor = StateCursor
 
 stateCursorStateL ::
        Functor f
-    => (Maybe TodoState -> f (Maybe TodoState))
+    => UTCTime
+    -> (Maybe TodoState -> f (Maybe TodoState))
     -> StateCursor
     -> f StateCursor
-stateCursorStateL = lens getter setter
+stateCursorStateL now = lens getter setter
   where
-    getter = stateCursorState
-    setter sc ts = sc'
+    getter = stateHistoryState . stateCursorStateHistory
+    setter sc mts = sc'
       where
         sc' =
             StateCursor
             { stateCursorParent =
                   stateCursorParent sc & entryCursorStateL .~ sc'
-            , stateCursorState = ts
+            , stateCursorStateHistory =
+                  stateHistorySetState now mts $ stateCursorStateHistory sc
             }
 
-stateCursorClear :: StateCursor -> StateCursor
-stateCursorClear sc = sc & stateCursorStateL .~ Nothing
+stateCursorClear :: UTCTime -> StateCursor -> StateCursor
+stateCursorClear now sc = sc & stateCursorStateL now .~ Nothing
 
-stateCursorSetState :: TodoState -> StateCursor -> StateCursor
-stateCursorSetState ts sc = sc & stateCursorStateL .~ Just ts
+stateCursorSetState :: UTCTime -> TodoState -> StateCursor -> StateCursor
+stateCursorSetState now ts sc = sc & stateCursorStateL now .~ Just ts
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b

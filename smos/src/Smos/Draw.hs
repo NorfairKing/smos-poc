@@ -79,11 +79,13 @@ drawEntry msel =
                  ])
         msel
 
-drawTodoState :: Maybe [Int] -> TodoState -> Widget ResourceName
-drawTodoState msel ts =
-    withSel msel $
-    withAttr todoStateAttr $
-    withAttr (todoStateSpecificAttr ts) $ B.txt $ todoStateText ts
+drawTodoState :: Maybe [Int] -> StateHistory -> Maybe (Widget ResourceName)
+drawTodoState msel sh = do
+    ts <- stateHistoryState sh
+    pure $
+        withSel msel $
+        withAttr todoStateAttr $
+        withAttr (todoStateSpecificAttr ts) $ B.txt $ todoStateText ts
 
 drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
 drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText

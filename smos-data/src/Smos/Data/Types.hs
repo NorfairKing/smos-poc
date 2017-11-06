@@ -11,6 +11,7 @@ module Smos.Data.Types
     , Entry(..)
     , newEntry
     , TodoState(..)
+    , StateHistory(..)
     , Header(..)
     , Contents(..)
     , Tag(..)
@@ -80,7 +81,7 @@ data Entry = Entry
     { entryHeader :: Header
     , entryContents :: Maybe Contents
     , entryTimestamps :: HashMap TimestampName UTCTime -- SCHEDULED, DEADLINE, etc.
-    , entryState :: Maybe TodoState -- TODO, DONE, etc.
+    , entryStateHistory :: StateHistory -- TODO, DONE, etc.
     , entryTags :: [Tag] -- '@home', 'toast', etc.
     , entryLogbook :: Logbook
     } deriving (Show, Eq, Generic)
@@ -91,7 +92,7 @@ newEntry h =
     { entryHeader = h
     , entryContents = Nothing
     , entryTimestamps = HM.empty
-    , entryState = Nothing
+    , entryStateHistory = StateHistory []
     , entryTags = []
     , entryLogbook = LogEnd
     }
@@ -105,7 +106,7 @@ instance FromJSON Entry where
         (withObject "Entry" $ \o ->
              Entry <$> o .: "header" <*> o .:? "contents" <*>
              o .:? "timestamps" .!= HM.empty <*>
-             o .:? "state" <*>
+             o .:? "state-history" .!= StateHistory [] <*>
              o .:? "tags" .!= [] <*>
              o .:? "logbook" .!= LogEnd)
             v
@@ -114,7 +115,7 @@ instance ToJSON Entry where
     toJSON Entry {..} =
         if and [ isNothing entryContents
                , HM.null entryTimestamps
-               , isNothing entryState
+               , null $ unStateHistory entryStateHistory
                , null entryTags
                , entryLogbook == LogEnd
                ]
@@ -125,7 +126,9 @@ instance ToJSON Entry where
                  [ "timestamps" .= entryTimestamps
                  | not $ HM.null entryTimestamps
                  ] ++
-                 ["state" .= entryState | isJust entryState] ++
+                 [ "state-history" .= entryStateHistory
+                 | not $ null $ unStateHistory entryStateHistory
+                 ] ++
                  ["tags" .= entryTags | not $ null entryTags] ++
                  ["logbook" .= entryLogbook | entryLogbook /= LogEnd]
 
@@ -161,6 +164,16 @@ newtype TodoState = TodoState
     } deriving (Show, Eq, Generic, IsString, FromJSON, ToJSON)
 
 instance Validity TodoState
+
+newtype StateHistory = StateHistory
+    { unStateHistory :: [(Maybe TodoState, UTCTime)]
+    } deriving (Show, Eq, Generic)
+
+instance Validity StateHistory
+
+instance FromJSON StateHistory
+
+instance ToJSON StateHistory
 
 newtype Tag = Tag
     { tagText :: Text
