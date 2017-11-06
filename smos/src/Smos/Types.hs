@@ -8,6 +8,7 @@
 module Smos.Types
     ( SmosConfig(..)
     , Keymap(..)
+    , KeyMatch(..)
     , afterKeypress
     , filterKeymap
     , rawKeymap
@@ -42,8 +43,26 @@ data SmosConfig = SmosConfig
     } deriving (Generic)
 
 newtype Keymap = Keymap
-    { unKeymap :: SmosState -> SmosEvent -> Maybe (SmosM ())
+    { unKeymap :: SmosState -> SmosEvent -> Maybe KeyMatch
     } deriving (Generic)
+
+-- A keymatch stores two things:
+-- - Priority: length of the sequence that matched
+--   Longer = higher priority
+-- - The action to execute
+data KeyMatch =
+    KeyMatch Int
+             (SmosM ())
+
+combineKeymatch :: KeyMatch -> KeyMatch -> KeyMatch
+combineKeymatch km1@(KeyMatch p1 a1) km2@(KeyMatch p2 a2) =
+    case compare p1 p2 of
+        LT -> km2
+        EQ -> KeyMatch p1 $ a1 >> a2
+        GT -> km1
+
+incrementPriority :: KeyMatch -> KeyMatch
+incrementPriority (KeyMatch i a) = KeyMatch (i + 1) a
 
 afterKeypress :: KeyPress -> Keymap -> Keymap
 afterKeypress kp (Keymap km) =
@@ -51,10 +70,12 @@ afterKeypress kp (Keymap km) =
         case reverse $ smosStateKeyHistory s of
             (kp':_) ->
                 if kp == kp'
-                    then km (s
-                             { smosStateKeyHistory =
-                                   drop 1 $ smosStateKeyHistory s
-                             })
+                    then incrementPriority <$>
+                         km
+                             (s
+                              { smosStateKeyHistory =
+                                    drop 1 $ smosStateKeyHistory s
+                              })
                              e
                     else Nothing
             _ -> Nothing
@@ -70,13 +91,10 @@ filterKeymap pred_ (Keymap km) =
 
 rawKeymap :: (SmosEvent -> Maybe (SmosM ())) -> Keymap
 rawKeymap func =
-    Keymap $ \s e ->
+    Keymap $ \_ e ->
         case func e of
             Nothing -> Nothing
-            Just f ->
-                if null (smosStateKeyHistory s)
-                    then Just f
-                    else Nothing
+            Just f -> Just $ KeyMatch 1 f
 
 -- | This instance is the most important for implementors.
 --
@@ -90,9 +108,9 @@ instance Monoid Keymap where
         Keymap $ \s e ->
             case (km1 s e, km2 s e) of
                 (Nothing, Nothing) -> Nothing
-                (Just f1, Nothing) -> Just f1
-                (Nothing, Just f2) -> Just f2
-                (Just f1, Just f2) -> Just $ f1 >> f2
+                (Just m1, Nothing) -> Just m1
+                (Nothing, Just m2) -> Just m2
+                (Just m1, Just m2) -> Just $ combineKeymatch m1 m2
 
 type SmosEvent = BrickEvent ResourceName ()
 

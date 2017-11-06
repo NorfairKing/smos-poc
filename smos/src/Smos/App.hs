@@ -43,7 +43,7 @@ smosHandleEvent cf s e = do
                             let kp = KeyPress ek mods
                             in recordKeyPress kp
                         _ -> pure ()
-                Just func_ -> do
+                Just (KeyMatch _ func_) -> do
                     func_
                     clearKeyHistory
     (mkHalt, s') <- runSmosM cf s func
