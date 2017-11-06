@@ -16,6 +16,8 @@ module Smos.Data.Types
     , Contents(..)
     , Tag(..)
     , Logbook(..)
+    , PropertyName(..)
+    , PropertyValue(..)
     , TimestampName(..)
     -- Utils
     , ForYaml(..)
@@ -81,6 +83,7 @@ data Entry = Entry
     { entryHeader :: Header
     , entryContents :: Maybe Contents
     , entryTimestamps :: HashMap TimestampName UTCTime -- SCHEDULED, DEADLINE, etc.
+    , entryProperties :: HashMap PropertyName PropertyValue
     , entryStateHistory :: StateHistory -- TODO, DONE, etc.
     , entryTags :: [Tag] -- '@home', 'toast', etc.
     , entryLogbook :: Logbook
@@ -92,6 +95,7 @@ newEntry h =
     { entryHeader = h
     , entryContents = Nothing
     , entryTimestamps = HM.empty
+    , entryProperties = HM.empty
     , entryStateHistory = StateHistory []
     , entryTags = []
     , entryLogbook = LogEnd
@@ -106,6 +110,7 @@ instance FromJSON Entry where
         (withObject "Entry" $ \o ->
              Entry <$> o .: "header" <*> o .:? "contents" <*>
              o .:? "timestamps" .!= HM.empty <*>
+             o .:? "properties" .!= HM.empty <*>
              o .:? "state-history" .!= StateHistory [] <*>
              o .:? "tags" .!= [] <*>
              o .:? "logbook" .!= LogEnd)
@@ -115,6 +120,7 @@ instance ToJSON Entry where
     toJSON Entry {..} =
         if and [ isNothing entryContents
                , HM.null entryTimestamps
+               , HM.null entryProperties
                , null $ unStateHistory entryStateHistory
                , null entryTags
                , entryLogbook == LogEnd
@@ -125,6 +131,9 @@ instance ToJSON Entry where
                  ["contents" .= entryContents | isJust entryContents] ++
                  [ "timestamps" .= entryTimestamps
                  | not $ HM.null entryTimestamps
+                 ] ++
+                 [ "properties" .= entryProperties
+                 | not $ HM.null entryProperties
                  ] ++
                  [ "state-history" .= entryStateHistory
                  | not $ null $ unStateHistory entryStateHistory
@@ -143,6 +152,36 @@ newtype Contents = Contents
     } deriving (Show, Eq, Generic, IsString, FromJSON, ToJSON)
 
 instance Validity Contents
+
+newtype PropertyName = PropertyName
+    { propertyNameText :: Text
+    } deriving ( Show
+               , Eq
+               , Generic
+               , IsString
+               , FromJSON
+               , ToJSON
+               , FromJSONKey
+               , ToJSONKey
+               , Hashable
+               )
+
+instance Validity PropertyName
+
+newtype PropertyValue = PropertyValue
+    { propertyValueText :: Text
+    } deriving ( Show
+               , Eq
+               , Generic
+               , IsString
+               , FromJSON
+               , ToJSON
+               , FromJSONKey
+               , ToJSONKey
+               , Hashable
+               )
+
+instance Validity PropertyValue
 
 newtype TimestampName = TimestampName
     { timestampNameText :: Text

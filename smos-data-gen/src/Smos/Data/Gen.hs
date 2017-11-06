@@ -19,6 +19,7 @@ instance GenUnchecked Entry
 instance GenValid Entry where
     genValid =
         Entry <$> genValid <*> genValid <*> genValid <*> genValid <*> genValid <*>
+        genValid <*>
         genValid
 
 instance GenUnchecked Header
@@ -28,6 +29,14 @@ instance GenValid Header
 instance GenUnchecked Contents
 
 instance GenValid Contents
+
+instance GenUnchecked PropertyName
+
+instance GenValid PropertyName
+
+instance GenUnchecked PropertyValue
+
+instance GenValid PropertyValue
 
 instance GenUnchecked TimestampName
 

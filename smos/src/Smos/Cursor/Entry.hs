@@ -99,6 +99,7 @@ data EntryCursor = EntryCursor
     , entryCursorHeader :: HeaderCursor
     , entryCursorContents :: Maybe ContentsCursor
     , entryCursorTimestamps :: HashMap TimestampName UTCTime
+    , entryCursorProperties :: HashMap PropertyName PropertyValue
     , entryCursorState :: StateCursor
     , entryCursorTags :: TagsCursor
     , entryCursorLogbook :: Logbook
@@ -117,6 +118,7 @@ instance Show EntryCursor where
                  [ "[Header]: " ++ show (build entryCursorHeader)
                  , show entryCursorContents
                  , show entryCursorTimestamps
+                 , show entryCursorProperties
                  , "[State]: " ++ show (build entryCursorState)
                  , "[Tags]: " ++ show (build entryCursorTags)
                  , show entryCursorLogbook
@@ -137,6 +139,7 @@ instance Build EntryCursor where
         { entryHeader = build entryCursorHeader
         , entryContents = build <$> entryCursorContents
         , entryTimestamps = entryCursorTimestamps
+        , entryProperties = entryCursorProperties
         , entryStateHistory = build entryCursorState
         , entryTags = build entryCursorTags
         , entryLogbook = entryCursorLogbook
@@ -155,6 +158,7 @@ entryCursor par Entry {..} = ec
         , entryCursorHeader = headerCursor ec entryHeader
         , entryCursorContents = contentsCursor ec <$> entryContents
         , entryCursorTimestamps = entryTimestamps
+        , entryCursorProperties = entryProperties
         , entryCursorState = stateCursor ec entryStateHistory
         , entryCursorTags = tagsCursor ec entryTags
         , entryCursorLogbook = entryLogbook
@@ -165,19 +169,20 @@ foldEntrySel ::
     -> (Maybe [Int] -> Header -> b)
     -> (Maybe [Int] -> [Tag] -> c)
     -> (Maybe [Int] -> HashMap TimestampName UTCTime -> d)
-    -> (Maybe [Int] -> Contents -> e)
-    -> (Maybe [Int] -> Logbook -> f)
-    -> (a -> b -> c -> d -> Maybe e -> f -> r)
+    -> (Maybe [Int] -> HashMap PropertyName PropertyValue -> e)
+    -> (Maybe [Int] -> Contents -> f)
+    -> (Maybe [Int] -> Logbook -> g)
+    -> (a -> b -> c -> d -> e -> Maybe f -> g -> r)
     -> Maybe [Int]
     -> Entry
     -> r
-foldEntrySel tsFunc hFunc tgsFunc tssFunc cFunc lFunc combFunc msel Entry {..} =
+foldEntrySel tsFunc hFunc tgsFunc tssFunc psFunc cFunc lFunc combFunc msel Entry {..} =
     combFunc
         (tsFunc (drillSel msel 0) entryStateHistory)
         (hFunc (drillSel msel 1) entryHeader)
         (tgsFunc (drillSel msel 2) entryTags)
         (tssFunc (drillSel msel 3) entryTimestamps)
-        -- (lFunc (drillSel msel 4) entryTimestamps)
+        (psFunc (drillSel msel 4) entryProperties)
         (cFunc (drillSel msel 5) <$> entryContents)
         (lFunc (drillSel msel 6) entryLogbook)
 

@@ -64,16 +64,17 @@ drawEntry msel =
         drawHeader
         drawTags
         drawTimestamps
+        drawProperties
         drawContents
         drawLogbook
-        (\mts h tgs tss mc lb ->
+        (\mts h tgs tss pss mc lb ->
              withSel msel $
              B.vBox
                  [ B.hBox $
                    intersperse (B.txt " ") $
                    [B.txt ">"] ++ maybeToList mts ++ [h, tgs]
                  , tss
-                -- , drawProperties (drillSel msel 4) entryProperties
+                 , pss
                  , fromMaybe emptyWidget mc
                  , lb
                  ])
@@ -115,6 +116,18 @@ drawTimestamps msel tss =
     B.vBox $
     flip map (HM.toList tss) $ \(k, ts) ->
         B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
+
+drawProperties ::
+       Maybe [Int] -> HashMap PropertyName PropertyValue -> Widget ResourceName
+drawProperties msel pss =
+    withSel msel $
+    B.vBox $
+    flip map (HM.toList pss) $ \(k, p) ->
+        B.hBox
+            [ B.txt $ propertyNameText k
+            , B.txt ": "
+            , B.txt $ propertyValueText p
+            ]
 
 drawTimestamp :: UTCTime -> Widget n
 drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
