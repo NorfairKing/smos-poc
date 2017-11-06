@@ -206,13 +206,9 @@ instance Validity TodoState
 
 newtype StateHistory = StateHistory
     { unStateHistory :: [(Maybe TodoState, UTCTime)]
-    } deriving (Show, Eq, Generic)
+    } deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 instance Validity StateHistory
-
-instance FromJSON StateHistory
-
-instance ToJSON StateHistory
 
 newtype Tag = Tag
     { tagText :: Text
