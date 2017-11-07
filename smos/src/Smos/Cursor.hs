@@ -60,7 +60,6 @@ data ACursor
     = AnEntry EntryCursor
     | AHeader HeaderCursor
     | AContents ContentsCursor
-    | AState StateCursor
     | ATag TagCursor
     deriving (Show, Eq, Generic)
 
@@ -74,12 +73,10 @@ instance Rebuild ACursor where
             AnEntry ec -> rebuild ec
             AHeader hc -> rebuild hc
             AContents cc -> rebuild cc
-            AState sc -> rebuild sc
             ATag tc -> rebuild tc
     selection (AnEntry ec) = selection ec
     selection (AHeader hc) = selection hc
     selection (AContents cc) = selection cc
-    selection (AState sc) = selection sc
     selection (ATag tc) = selection tc
 
 makeAnyCursor :: SmosFile -> AnyCursor
@@ -139,7 +136,7 @@ selectACursor ac =
         AnyEntry ec -> Just $ AnEntry ec
         AnyHeader hc -> Just $ AHeader hc
         AnyContents cc -> Just $ AContents cc
-        AnyState sc -> Just $ AState sc
+        AnyState sc -> Just $ AnEntry $ stateCursorParent sc
         AnyTags tsc -> ATag <$> tagsCursorSelectFirst tsc
         AnyTag tc -> Just $ ATag tc
 
@@ -149,5 +146,4 @@ selectAnyCursor ac =
         AnEntry hc -> AnyEntry hc
         AHeader hc -> AnyHeader hc
         AContents cc -> AnyContents cc
-        AState hc -> AnyState hc
         ATag tc -> AnyTag tc

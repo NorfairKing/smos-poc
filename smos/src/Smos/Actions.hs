@@ -15,9 +15,12 @@ module Smos.Actions
     , moveRight
     , clockIn
     , clockOut
+    , todoStateClear
+    , todoStateSet
     -- * Header actions
     , enterHeader
     , headerInsert
+    , headerAppend
     , headerRemove
     , headerDelete
     , headerLeft
@@ -40,14 +43,10 @@ module Smos.Actions
     , contentsEnd
     , commandOnContentsFile
     , exitContents
-    -- * Todo state actions
-    , enterTodoState
-    , todoStateClear
-    , todoStateSet
-    , exitTodoState
     -- * Tags actions
     , enterTag
     , tagInsert
+    , tagAppend
     , tagRemove
     , tagDelete
     , tagLeft
@@ -67,7 +66,6 @@ module Smos.Actions
     , modifyMCursor
     , withEntryCursor
     , withHeaderCursor
-    , withStateCursor
     , withFullMod
     , withAgendaFilesMod
     , module Control.Monad.Reader
@@ -276,7 +274,10 @@ enterHeader =
             _ -> cur
 
 headerInsert :: Char -> SmosM ()
-headerInsert c = modifyHeader $ \hc -> headerCursorInsert c hc
+headerInsert = modifyHeader . headerCursorInsert
+
+headerAppend :: Char -> SmosM ()
+headerAppend = modifyHeader . headerCursorAppend
 
 headerRemove :: SmosM ()
 headerRemove = modifyHeaderM headerCursorRemove
@@ -393,13 +394,6 @@ exitContents =
             AContents hc -> AnEntry $ contentsCursorParent hc
             _ -> cur
 
-enterTodoState :: SmosM ()
-enterTodoState =
-    modifyCursor $ \cur ->
-        case cur of
-            AnEntry ec -> AState $ entryCursorState ec
-            _ -> cur
-
 todoStateClear :: SmosM ()
 todoStateClear = do
     now <- liftIO getCurrentTime
@@ -409,13 +403,6 @@ todoStateSet :: TodoState -> SmosM ()
 todoStateSet ts = do
     now <- liftIO getCurrentTime
     modifyTodoState $ stateCursorSetState now ts
-
-exitTodoState :: SmosM ()
-exitTodoState =
-    modifyCursor $ \cur ->
-        case cur of
-            AState hc -> AnEntry $ stateCursorParent hc
-            _ -> cur
 
 enterTag :: SmosM ()
 enterTag =
@@ -434,6 +421,9 @@ enterTag =
 
 tagInsert :: Char -> SmosM ()
 tagInsert = modifyTag . tagCursorInsert
+
+tagAppend :: Char -> SmosM ()
+tagAppend = modifyTag . tagCursorAppend
 
 tagRemove :: SmosM ()
 tagRemove = modifyTagM tagCursorRemove
@@ -500,7 +490,8 @@ modifyTodoState :: (StateCursor -> StateCursor) -> SmosM ()
 modifyTodoState func =
     modifyCursor $ \cur ->
         case cur of
-            AState h -> AState $ func h
+            AnEntry ec ->
+                AnEntry $ stateCursorParent $ func $ entryCursorState ec
             _ -> cur
 
 modifyTagM :: (TagCursor -> Maybe TagCursor) -> SmosM ()
@@ -532,13 +523,6 @@ withHeaderCursor func = do
     ss <- get
     case smosStateCursor ss of
         Just (AHeader fc) -> func fc
-        _ -> pure ()
-
-withStateCursor :: (StateCursor -> SmosM ()) -> SmosM ()
-withStateCursor func = do
-    ss <- get
-    case smosStateCursor ss of
-        Just (AState fc) -> func fc
         _ -> pure ()
 
 withFullMod :: (SmosFile -> SmosFile) -> SmosM ()

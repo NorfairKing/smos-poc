@@ -31,10 +31,20 @@ defaultConfig =
                     , matchChar 'i' $ enterHeader >> headerStart
                     , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 'e' $ enterContents >> contentsStart
-                    , matchChar 't' enterTodoState
                     , matchChar 'g' enterTag
                     , afterChar 'c' $
                       mconcat [matchChar 'i' clockIn, matchChar 'o' clockOut]
+                    , afterChar 't' $
+                      mconcat
+                          [ matchChar ' ' todoStateClear
+                          , matchChar 't' $ todoStateSet "TODO"
+                          , matchChar 'n' $ todoStateSet "NEXT"
+                          , matchChar 's' $ todoStateSet "STARTED"
+                          , matchChar 'r' $ todoStateSet "READY"
+                          , matchChar 'w' $ todoStateSet "WAITING"
+                          , matchChar 'd' $ todoStateSet "DONE"
+                          , matchChar 'c' $ todoStateSet "CANCELLED"
+                          ]
                     , matchChar 'j' moveDown
                     , matchChar 'k' moveUp
                     , matchChar 'h' moveLeft
@@ -69,17 +79,6 @@ defaultConfig =
                     , matchKey KDown contentsDown
                     , matchKey KEnter contentsNewline
                     , matchKey KEsc exitContents
-                    ]
-              , inTodoState $
-                mconcat
-                    [ matchChar ' ' todoStateClear
-                    , matchChar 't' $ todoStateSet "TODO" >> exitTodoState
-                    , matchChar 'n' $ todoStateSet "NEXT" >> exitTodoState
-                    , matchChar 's' $ todoStateSet "STARTED" >> exitTodoState
-                    , matchChar 'r' $ todoStateSet "READY" >> exitTodoState
-                    , matchChar 'w' $ todoStateSet "WAITING" >> exitTodoState
-                    , matchChar 'd' $ todoStateSet "DONE" >> exitTodoState
-                    , matchChar 'c' $ todoStateSet "CANCELLED" >> exitTodoState
                     ]
               , inTag $
                 mconcat

@@ -23,7 +23,6 @@ module Smos.Keys
     , inEntry
     , inHeader
     , inContents
-    , inTodoState
     , inTag
     -- * Raw building blocks
     , filterKeymap
@@ -71,7 +70,11 @@ matchKey :: V.Key -> SmosM () -> Keymap
 matchKey k = satisfyKey (== k)
 
 satisfyKey :: (V.Key -> Bool) -> SmosM () -> Keymap
-satisfyKey pred_ = satisfyKeyPress $ \(KeyPress k []) -> pred_ k
+satisfyKey pred_ =
+    satisfyKeyPress $ \kp ->
+        case kp of
+            KeyPress k [] -> pred_ k
+            _ -> False
 
 onKey :: (V.Key -> SmosM ()) -> Keymap
 onKey func = onKeyM (Just . func)
@@ -152,13 +155,6 @@ inContents =
     filterKeymap $ \s ->
         case smosStateCursor s of
             Just (AContents _) -> True
-            _ -> False
-
-inTodoState :: Keymap -> Keymap
-inTodoState =
-    filterKeymap $ \s ->
-        case smosStateCursor s of
-            Just (AState _) -> True
             _ -> False
 
 inTag :: Keymap -> Keymap
