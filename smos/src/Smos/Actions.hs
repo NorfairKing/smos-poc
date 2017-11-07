@@ -74,6 +74,7 @@ module Smos.Actions
 
 import Import
 
+import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Data.Time
 import Data.Tree
@@ -447,7 +448,22 @@ tagSelectPrev :: SmosM ()
 tagSelectPrev = modifyTagM tagCursorSelectPrev
 
 tagSelectNext :: SmosM ()
-tagSelectNext = modifyTagM tagCursorSelectNext
+tagSelectNext =
+    modifyTagM $ \tc ->
+        case tagCursorSelectNext tc of
+            Just tc_ -> Just tc_
+            Nothing ->
+                let t = tagText $ build tc
+                in if T.null t
+                       then Nothing
+                       else let tsc = tagCursorParent tc
+                                tsc' =
+                                    tagsCursorInsertAt
+                                        (tagCursorIndex tc + 1)
+                                        ""
+                                        tsc
+                            in tagsCursorTags tsc' `atMay`
+                               (tagCursorIndex tc + 1)
 
 exitTag :: SmosM ()
 exitTag =

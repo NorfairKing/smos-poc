@@ -20,6 +20,7 @@ defaultConfig =
               [ inEmpty $
                 mconcat
                     [ matchChar 'h' $ insertTreeBelow >> enterHeader
+                    , matchChar 'H' $ insertTreeChild >> enterHeader
                     , matchChar 'q' stop
                     , matchKey KEsc stop
                     ]
@@ -82,12 +83,16 @@ defaultConfig =
                     ]
               , inTag $
                 mconcat
-                    [ onChar tagInsert
+                    [ onCharM $ \c ->
+                          if c == '\t'
+                              then Nothing
+                              else Just $ tagInsert c
                     , matchKey KBS tagRemove
                     , matchKey KDel tagDelete
                     , matchKey KLeft tagLeft
                     , matchKey KRight tagRight
-                    , matchKey KBackTab tagSelectNext
+                    , matchChar '\t' tagSelectNext
+                    , matchKey KBackTab tagSelectPrev
                     , matchKey KEnter exitTag
                     , matchKey KEsc exitTag
                     ]

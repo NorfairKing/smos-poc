@@ -170,6 +170,32 @@ spec = do
     describe "TagCursor" $ do
         describe "tagCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame tagCursorParent
+        describe "tagCursorInsert" $ do
+            it "makes the resulting tag one longer" $
+                forAll genValid $ \c ->
+                    forAll genValid $ \tc ->
+                        T.length (tagText (build (tagCursorInsert c tc))) `shouldBe`
+                        T.length (tagText (build tc)) +
+                        1
+            it "adds an element to the front if we're at the front" $
+                forAll genValid $ \c ->
+                    forAll genValid $ \tc ->
+                        tagText (build (tagCursorInsert c (tagCursorStart tc))) `shouldBe`
+                        T.cons c (tagText (build tc))
+        describe "tagCursorAppend" $ do
+            it "makes the resulting tag one longer" $
+                forAll genValid $ \c ->
+                    forAll genValid $ \tc ->
+                        T.length (tagText (build (tagCursorAppend c tc))) `shouldBe`
+                        T.length (tagText (build tc)) +
+                        1
+            it "adds an element to the end if we're at the end" $
+                forAll genValid $ \c ->
+                    forAll genValid $ \tc ->
+                        tagText (build (tagCursorAppend c (tagCursorEnd tc))) `shouldBe`
+                        T.cons c (tagText (build tc))
+        -- describe "tagCursorRemove" $
+        -- describe "tagCursorDelete"
         describe "tagCursorLeft" $
             it "rebuilds to the same" $ rebuildsToTheSameIfSuceeds tagCursorLeft
         describe "tagCursorRight" $

@@ -62,10 +62,14 @@ module Smos.Cursor.Entry
     , tagsCursorTags
     , tagsCursorSelectFirst
     , tagsCursorSelectLast
+    , tagsCursorInsertAt
     , tagsCursorInsertAtStart
     , tagsCursorAppendAtEnd
     , TagCursor
     , tagCursorParent
+    , tagCursorIndex
+    , tagCursorPrevElemens
+    , tagCursorNextElemens
     , tagCursorTag
     , tagCursorInsert
     , tagCursorAppend
