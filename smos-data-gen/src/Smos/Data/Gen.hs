@@ -61,3 +61,7 @@ instance GenValid Tag
 instance GenUnchecked Logbook
 
 instance GenValid Logbook
+
+instance GenUnchecked LogbookEntry
+
+instance GenValid LogbookEntry

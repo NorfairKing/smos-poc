@@ -13,12 +13,14 @@ module Smos.Data.Types
     , TodoState(..)
     , Header(..)
     , Contents(..)
+    , PropertyName(..)
+    , PropertyValue(..)
     , StateHistory(..)
     , StateHistoryEntry(..)
     , Tag(..)
     , Logbook(..)
-    , PropertyName(..)
-    , PropertyValue(..)
+    , emptyLogbook
+    , LogbookEntry(..)
     , TimestampName(..)
     -- Utils
     , ForYaml(..)
@@ -100,7 +102,7 @@ newEntry h =
     , entryProperties = HM.empty
     , entryStateHistory = StateHistory []
     , entryTags = []
-    , entryLogbook = LogEnd
+    , entryLogbook = emptyLogbook
     }
 
 instance Validity Entry
@@ -115,7 +117,7 @@ instance FromJSON Entry where
              o .:? "properties" .!= HM.empty <*>
              o .:? "state-history" .!= StateHistory [] <*>
              o .:? "tags" .!= [] <*>
-             o .:? "logbook" .!= LogEnd)
+             o .:? "logbook" .!= emptyLogbook)
             v
 
 instance ToJSON Entry where
@@ -125,7 +127,7 @@ instance ToJSON Entry where
                , HM.null entryProperties
                , null $ unStateHistory entryStateHistory
                , null entryTags
-               , entryLogbook == LogEnd
+               , entryLogbook == emptyLogbook
                ]
             then toJSON entryHeader
             else object $
@@ -141,7 +143,7 @@ instance ToJSON Entry where
                  | not $ null $ unStateHistory entryStateHistory
                  ] ++
                  ["tags" .= entryTags | not $ null entryTags] ++
-                 ["logbook" .= entryLogbook | entryLogbook /= LogEnd]
+                 ["logbook" .= entryLogbook | entryLogbook /= emptyLogbook]
 
 newtype Header = Header
     { headerText :: Text
@@ -238,12 +240,9 @@ newtype Tag = Tag
 instance Validity Tag
 
 data Logbook
-    = LogEnd
-    | LogEntry UTCTime
-               UTCTime
-               Logbook
-    | LogOpenEntry UTCTime
-                   Logbook
+    = LogOpen UTCTime
+              [LogbookEntry]
+    | LogClosed [LogbookEntry]
     deriving (Show, Eq, Generic)
 
 instance Validity Logbook
@@ -251,20 +250,41 @@ instance Validity Logbook
 instance FromJSON Logbook where
     parseJSON v = do
         els <- parseJSON v
-        es <- mapM parseTup (els :: [Value])
-        pure $ foldr makeLogbook LogEnd es
-      where
-        parseTup =
-            withObject "LogBook" $ \o -> (,) <$> o .: "start" <*> o .:? "end"
-        makeLogbook (start, mend) lb =
-            case mend of
-                Nothing -> LogOpenEntry start lb
-                Just end -> LogEntry start end lb
+        case els of
+            [] -> pure $ LogClosed []
+            (e:es) -> do
+                (start, mend) <-
+                    withObject
+                        "First logbook entry"
+                        (\o -> (,) <$> o .: "start" <*> o .:? "end")
+                        e
+                rest <- mapM parseJSON es
+                pure $
+                    case mend of
+                        Nothing -> LogOpen start rest
+                        Just end -> LogClosed $ LogbookEntry start end : rest
 
 instance ToJSON Logbook where
     toJSON = toJSON . go
       where
-        go LogEnd = []
-        go (LogEntry start end lb) =
-            object ["start" .= start, "end" .= end] : go lb
-        go (LogOpenEntry start lb) = object ["start" .= start] : go lb
+        go (LogOpen start rest) = object ["start" .= start] : map toJSON rest
+        go (LogClosed rest) = map toJSON rest
+
+emptyLogbook :: Logbook
+emptyLogbook = LogClosed []
+
+data LogbookEntry = LogbookEntry
+    { logbookEntryStart :: UTCTime
+    , logbookEntryEnd :: UTCTime
+    } deriving (Show, Eq, Generic)
+
+instance Validity LogbookEntry
+
+instance FromJSON LogbookEntry where
+    parseJSON =
+        withObject "LogbookEntry" $ \o ->
+            LogbookEntry <$> o .: "start" <*> o .: "end"
+
+instance ToJSON LogbookEntry where
+    toJSON LogbookEntry {..} =
+        object ["start" .= logbookEntryStart, "end" .= logbookEntryEnd]

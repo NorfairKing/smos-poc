@@ -53,16 +53,14 @@ prettySmosEntry Entry {..} = T.unpack $ headerText entryHeader
 clockInAt :: UTCTime -> Logbook -> Maybe Logbook
 clockInAt now lb =
     case lb of
-        LogEnd -> Just $ LogOpenEntry now LogEnd
-        LogEntry {} -> Just $ LogOpenEntry now lb
-        LogOpenEntry {} -> Nothing
+        LogClosed es -> Just $ LogOpen now es
+        LogOpen {} -> Nothing
 
 clockOutAt :: UTCTime -> Logbook -> Maybe Logbook
 clockOutAt now lb =
     case lb of
-        LogEnd -> Nothing
-        LogEntry {} -> Nothing
-        LogOpenEntry start lb' -> Just $ LogEntry start now lb'
+        LogClosed {} -> Nothing
+        LogOpen start es -> Just $ LogClosed $ LogbookEntry start now : es
 
 stateHistoryState :: StateHistory -> Maybe TodoState
 stateHistoryState (StateHistory tups) =

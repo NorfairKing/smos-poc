@@ -44,3 +44,6 @@ spec = do
     eqSpec @Logbook
     genValidSpec @Logbook
     jsonSpecOnValid @Logbook
+    eqSpec @LogbookEntry
+    genValidSpec @LogbookEntry
+    jsonSpecOnValid @LogbookEntry

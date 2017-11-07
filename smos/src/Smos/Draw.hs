@@ -137,18 +137,20 @@ drawLogbook msel = withSel msel . go
   where
     go lb =
         case lb of
-            LogEnd -> B.emptyWidget
-            LogEntry b e l ->
-                B.hBox
-                    [ str "["
-                    , drawTimestamp b
-                    , str "]--["
-                    , drawTimestamp e
-                    , str "]"
-                    ] <=>
-                go l
-            LogOpenEntry b l ->
-                B.hBox [str "[", drawTimestamp b, str "]"] <=> go l
+            LogOpen start es ->
+                B.hBox [str "[", drawTimestamp start, str "]"] <=>
+                B.vBox (map drawLogbookEntry es)
+            LogClosed es -> B.vBox $ map drawLogbookEntry es
+
+drawLogbookEntry :: LogbookEntry -> Widget n
+drawLogbookEntry LogbookEntry {..} =
+    B.hBox
+        [ str "["
+        , drawTimestamp logbookEntryStart
+        , str "]--["
+        , drawTimestamp logbookEntryEnd
+        , str "]"
+        ]
 
 withSel :: Maybe [Int] -> Widget n -> Widget n
 withSel msel =
