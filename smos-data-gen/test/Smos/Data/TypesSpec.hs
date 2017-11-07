@@ -32,6 +32,12 @@ spec = do
     eqSpec @TodoState
     genValidSpec @TodoState
     jsonSpecOnValid @TodoState
+    eqSpec @StateHistory
+    genValidSpec @StateHistory
+    jsonSpecOnValid @StateHistory
+    eqSpec @StateHistoryEntry
+    genValidSpec @StateHistoryEntry
+    jsonSpecOnValid @StateHistoryEntry
     eqSpec @Tag
     genValidSpec @Tag
     jsonSpecOnValid @Tag

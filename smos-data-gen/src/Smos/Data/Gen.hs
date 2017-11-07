@@ -50,6 +50,10 @@ instance GenUnchecked StateHistory
 
 instance GenValid StateHistory
 
+instance GenUnchecked StateHistoryEntry
+
+instance GenValid StateHistoryEntry
+
 instance GenUnchecked Tag
 
 instance GenValid Tag

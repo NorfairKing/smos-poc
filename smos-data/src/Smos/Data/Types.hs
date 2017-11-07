@@ -11,9 +11,10 @@ module Smos.Data.Types
     , Entry(..)
     , newEntry
     , TodoState(..)
-    , StateHistory(..)
     , Header(..)
     , Contents(..)
+    , StateHistory(..)
+    , StateHistoryEntry(..)
     , Tag(..)
     , Logbook(..)
     , PropertyName(..)
@@ -206,10 +207,29 @@ newtype TodoState = TodoState
 instance Validity TodoState
 
 newtype StateHistory = StateHistory
-    { unStateHistory :: [(Maybe TodoState, UTCTime)]
+    { unStateHistory :: [StateHistoryEntry]
     } deriving (Show, Eq, Generic, FromJSON, ToJSON)
 
 instance Validity StateHistory
+
+data StateHistoryEntry = StateHistoryEntry
+    { stateHistoryEntryNewState :: Maybe TodoState
+    , stateHistoryEntryTimestamp :: UTCTime
+    } deriving (Show, Eq, Generic)
+
+instance Validity StateHistoryEntry
+
+instance FromJSON StateHistoryEntry where
+    parseJSON =
+        withObject "StateHistoryEntry" $ \o ->
+            StateHistoryEntry <$> o .: "new-state" <*> o .: "timestamp"
+
+instance ToJSON StateHistoryEntry where
+    toJSON StateHistoryEntry {..} =
+        object
+            [ "new-state" .= stateHistoryEntryNewState
+            , "timestamp" .= stateHistoryEntryTimestamp
+            ]
 
 newtype Tag = Tag
     { tagText :: Text
@@ -228,6 +248,23 @@ data Logbook
 
 instance Validity Logbook
 
-instance FromJSON Logbook
+instance FromJSON Logbook where
+    parseJSON v = do
+        els <- parseJSON v
+        es <- mapM parseTup (els :: [Value])
+        pure $ foldr makeLogbook LogEnd es
+      where
+        parseTup =
+            withObject "LogBook" $ \o -> (,) <$> o .: "start" <*> o .:? "end"
+        makeLogbook (start, mend) lb =
+            case mend of
+                Nothing -> LogOpenEntry start lb
+                Just end -> LogEntry start end lb
 
-instance ToJSON Logbook
+instance ToJSON Logbook where
+    toJSON = toJSON . go
+      where
+        go LogEnd = []
+        go (LogEntry start end lb) =
+            object ["start" .= start, "end" .= end] : go lb
+        go (LogOpenEntry start lb) = object ["start" .= start] : go lb

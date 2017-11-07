@@ -68,12 +68,12 @@ stateHistoryState :: StateHistory -> Maybe TodoState
 stateHistoryState (StateHistory tups) =
     case tups of
         [] -> Nothing
-        ((mts, _):_) -> mts
+        (StateHistoryEntry mts _:_) -> mts
 
 stateHistorySetState ::
        UTCTime -> Maybe TodoState -> StateHistory -> StateHistory
 stateHistorySetState now mts sh =
-    sh {unStateHistory = (mts, now) : unStateHistory sh}
+    sh {unStateHistory = StateHistoryEntry mts now : unStateHistory sh}
 
 entryState :: Entry -> Maybe TodoState
 entryState = stateHistoryState . entryStateHistory
