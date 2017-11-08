@@ -50,10 +50,10 @@ spec =
                 forAll gen $ \(fc, ix_) ->
                     let cur = AnyForest fc
                     in selection cur `shouldBe` [1, ix_]
-        describe "reselect" $ do
+        describe "reselectCursor" $ do
             it "selects the top level forrest for an empty list" $
                 forAll genValid $ \sf ->
-                    reselect [] sf `shouldBe` makeAnyCursor sf
+                    reselectCursor [] sf `shouldBe` makeAnyCursor sf
             it "selects the tree with the right index for a singleton selection" $ do
                 let gen = do
                         sf <- genValid
@@ -62,7 +62,7 @@ spec =
                             [] -> scale (+ 1) gen
                             els -> elements els
                 forAll gen $ \tc ->
-                    reselect [treeCursorIndex tc] (SmosFile $ rebuild tc) `shouldBe`
+                    reselectCursor [treeCursorIndex tc] (SmosFile $ rebuild tc) `shouldBe`
                     AnyTree tc
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
@@ -74,10 +74,10 @@ spec =
                                 tc <- elements els
                                 pure (treeCursorForest tc, treeCursorIndex tc)
                 forAll gen $ \(fc, ix_) ->
-                    reselect [1, ix_] (SmosFile $ rebuild fc) `shouldBe`
+                    reselectCursor [1, ix_] (SmosFile $ rebuild fc) `shouldBe`
                     AnyForest fc
             it "selects the cursor that was handed to selection" $
                 forAll genValid $ \ac ->
                     let sel = selection ac
                         sf = rebuild ac
-                    in reselect sel sf `shouldBe` ac
+                    in reselectCursor sel sf `shouldBe` ac

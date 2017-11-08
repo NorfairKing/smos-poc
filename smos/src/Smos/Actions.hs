@@ -511,13 +511,13 @@ modifyTodoState func =
             _ -> cur
 
 modifyTagM :: (TagCursor -> Maybe TagCursor) -> SmosM ()
-modifyTagM func = modifyTag $ \hc -> fromMaybe hc $ func hc
+modifyTagM func = modifyTag $ \tc -> fromMaybe tc $ func tc
 
 modifyTag :: (TagCursor -> TagCursor) -> SmosM ()
 modifyTag func =
     modifyCursor $ \cur ->
         case cur of
-            ATag h -> ATag $ func h
+            ATag t -> ATag $ func t
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()
@@ -550,7 +550,7 @@ withFullMod func =
                 let sf = rebuild cur
                     sel = selection $ selectAnyCursor cur
                     sf' = func sf
-                    cur' = selectACursor $ reselect sel sf'
+                    cur' = selectACursor $ reselectCursor sel sf'
                 in ss {smosStateCursor = cur'}
 
 withAgendaFilesMod :: (Path Abs File -> SmosFile -> SmosFile) -> SmosM ()

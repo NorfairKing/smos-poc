@@ -1,4 +1,7 @@
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor.TestUtils
@@ -8,6 +11,7 @@ module Smos.Cursor.TestUtils
     , rebuildsToValid
     , rebuildsToTheSame
     , rebuildsToTheSameIfSuceeds
+    , reselectsToTheSameSelection
     ) where
 
 import TestImport
@@ -147,3 +151,11 @@ rebuildsToTheSameIfSuceeds func =
                           , "Changed cursor: " ++ show tc'
                           , "Final data: " ++ show t'
                           ]
+
+reselectsToTheSameSelection ::
+       forall a.
+       (Show a, GenValid a, Rebuild a, Reselect a, Rebuild (Reselection a))
+    => Property
+reselectsToTheSameSelection =
+    forAll (genValid @a) $ \cur ->
+        selection (reselect (selection cur) cur) `shouldBe` selection cur

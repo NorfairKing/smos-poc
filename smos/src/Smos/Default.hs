@@ -92,7 +92,9 @@ defaultConfig =
                     , matchKey KLeft tagLeft
                     , matchKey KRight tagRight
                     , matchChar '\t' tagSelectNext
-                    , matchKey KBackTab tagSelectPrev
+                    , matchKeyPress
+                          (KeyPress (KChar '\t') [MShift])
+                          tagSelectPrev
                     , matchKey KEnter exitTag
                     , matchKey KEsc exitTag
                     ]

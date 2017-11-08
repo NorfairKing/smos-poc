@@ -28,7 +28,9 @@ module Smos.Keys
     , filterKeymap
     , rawKeymap
     -- * Re-exports
+    , KeyPress(..)
     , V.Key(..)
+    , V.Modifier(..)
     , Monoid(..)
     ) where
 

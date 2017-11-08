@@ -41,16 +41,38 @@ instance Show a => Show (ListCursor a) where
             , "-|"
             ]
 
+instance Build (ListCursor a) where
+    type Building (ListCursor a) = Maybe a
+    build = buildListCursor
+
 instance Rebuild (ListCursor a) where
     type ReBuilding (ListCursor a) = [a]
     rebuild = rebuildListCursor
     selection = (: []) . length . listCursorPrev
+
+instance Reselect (ListCursor a) where
+    type Reselection (ListCursor a) = ListCursor a
+    reselect sel cur =
+        case sel of
+            [] -> cur
+            (ix_:_) ->
+                let els = rebuild cur
+                in ListCursor
+                   { listCursorPrev = reverse $ take ix_ els
+                   , listCursorNext = drop ix_ els
+                   }
 
 emptyListCursor :: ListCursor a
 emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}
 
 makeListCursor :: [a] -> ListCursor a
 makeListCursor ls = ListCursor {listCursorPrev = [], listCursorNext = ls}
+
+buildListCursor :: ListCursor a -> Maybe a
+buildListCursor ListCursor {..} =
+    case listCursorPrev of
+        [] -> Nothing
+        (c:_) -> Just c
 
 rebuildListCursor :: ListCursor a -> [a]
 rebuildListCursor ListCursor {..} = reverse listCursorPrev ++ listCursorNext

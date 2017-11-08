@@ -7,7 +7,9 @@ module Smos.Cursor.Class
     , Rebuild(..)
     , Build(..)
     , BuiltFrom(..)
+    , Reselect(..)
     , drillSel
+    , reselectLike
     ) where
 
 import Import
@@ -30,6 +32,10 @@ class BuiltFrom a b where
     type Parent a :: *
     makeWith :: Parent a -> b -> a
 
+class Reselect a where
+    type Reselection a :: *
+    reselect :: [Int] -> a -> Reselection a
+
 drillSel :: Maybe [Int] -> Int -> Maybe [Int]
 drillSel msel ix =
     case msel of
@@ -39,3 +45,6 @@ drillSel msel ix =
             if x == ix
                 then Just xs
                 else Nothing
+
+reselectLike :: (Reselect a, Rebuild b) => a -> b -> Reselection a
+reselectLike a b = reselect (selection b) a

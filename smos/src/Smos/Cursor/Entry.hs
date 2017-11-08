@@ -22,6 +22,8 @@ module Smos.Cursor.Entry
     , headerCursorParent
     , headerCursorHeader
     , headerCursorTextCursorL
+    , headerCursorSetHeader
+    , headerCursorHeaderL
     , headerCursorInsert
     , headerCursorAppend
     , headerCursorRemove
@@ -62,6 +64,7 @@ module Smos.Cursor.Entry
     , tagsCursorTags
     , tagsCursorSelectFirst
     , tagsCursorSelectLast
+    , tagsCursorSetTags
     , tagsCursorInsertAt
     , tagsCursorInsertAtStart
     , tagsCursorAppendAtEnd
@@ -71,6 +74,8 @@ module Smos.Cursor.Entry
     , tagCursorPrevElemens
     , tagCursorNextElemens
     , tagCursorTag
+    , tagCursorTextCursorL
+    , tagCursorModify
     , tagCursorInsert
     , tagCursorAppend
     , tagCursorRemove
@@ -208,6 +213,7 @@ entryCursorHeaderL = lens getter setter
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
             }
 
 entryCursorContentsL ::
@@ -337,12 +343,16 @@ headerCursorTextCursorL = lens getter setter
     getter = headerCursorHeader
     setter hc tc = hc'
       where
-        hc' =
-            HeaderCursor
-            { headerCursorParent =
-                  headerCursorParent hc & entryCursorHeaderL .~ hc'
-            , headerCursorHeader = tc
-            }
+        ec' = headerCursorParent hc & entryCursorHeaderL .~ hc'
+        hc' = HeaderCursor {headerCursorParent = ec', headerCursorHeader = tc}
+
+headerCursorSetHeader :: Header -> HeaderCursor -> HeaderCursor
+headerCursorSetHeader h hc =
+    hc & headerCursorTextCursorL .~ makeTextCursor (headerText h)
+
+headerCursorHeaderL ::
+       Functor f => (Header -> f Header) -> HeaderCursor -> f HeaderCursor
+headerCursorHeaderL = lens build $ flip headerCursorSetHeader
 
 headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
 headerCursorInsert c = headerCursorTextCursorL %~ textCursorInsert c
@@ -405,22 +415,6 @@ contentsCursor ec Contents {..} =
     , contentsCursorContents = makeTextFieldCursor contentsText
     }
 
-contentsCursorContentsL ::
-       Functor f
-    => (Contents -> f Contents)
-    -> ContentsCursor
-    -> f ContentsCursor
-contentsCursorContentsL = lens getter setter
-  where
-    getter = build
-    setter cc cs = cc'
-      where
-        ec' = contentsCursorParent cc & entryCursorContentsL .~ Just cc'
-        cc' = contentsCursor ec' cs
-
-contentsCursorSetContents :: Contents -> ContentsCursor -> ContentsCursor
-contentsCursorSetContents cs = contentsCursorContentsL .~ cs
-
 contentsCursorTextFieldL ::
        Functor f
     => (TextFieldCursor -> f TextFieldCursor)
@@ -433,6 +427,17 @@ contentsCursorTextFieldL = lens getter setter
       where
         ec' = contentsCursorParent cc & entryCursorContentsL .~ Just cc'
         cc' = cc {contentsCursorParent = ec', contentsCursorContents = tfc}
+
+contentsCursorSetContents :: Contents -> ContentsCursor -> ContentsCursor
+contentsCursorSetContents cs =
+    contentsCursorTextFieldL .~ makeTextFieldCursor (contentsText cs)
+
+contentsCursorContentsL ::
+       Functor f
+    => (Contents -> f Contents)
+    -> ContentsCursor
+    -> f ContentsCursor
+contentsCursorContentsL = lens build $ flip contentsCursorSetContents
 
 contentsCursorInsert :: Char -> ContentsCursor -> ContentsCursor
 contentsCursorInsert c = contentsCursorTextFieldL %~ textFieldCursorInsert c
@@ -578,9 +583,9 @@ tagElems tsc sts = tcs
             , tagCursorTag = makeTextCursor $ tagText t
             }
 
-tagsCursorTagsL ::
+tagsCursorTagCursorsL ::
        Functor f => ([TagCursor] -> f [TagCursor]) -> TagsCursor -> f TagsCursor
-tagsCursorTagsL = lens getter setter
+tagsCursorTagCursorsL = lens getter setter
   where
     getter = tagsCursorTags
     setter cc ts = cc'
@@ -600,11 +605,16 @@ tagsCursorSelectLast tsc =
         [] -> Nothing
         (tc:_) -> Just tc
 
+tagsCursorSetTags :: [Tag] -> TagsCursor -> TagsCursor
+tagsCursorSetTags tgs tsc = tsc'
+  where
+    tsc' = tsc {tagsCursorTags = tagElems tsc' tgs}
+
 tagsCursorInsertAt :: Int -> Tag -> TagsCursor -> TagsCursor
 tagsCursorInsertAt ix_ newTag tsc = tsc'
   where
     tsc' =
-        tsc & tagsCursorTagsL %~
+        tsc & tagsCursorTagCursorsL %~
         (\els ->
              tagElems tsc' $
              map build (prevs els) ++ [newTag] ++ map build (nexts els))
@@ -656,14 +666,17 @@ tagCursorTextCursorL = lens getter setter
     setter tc textC = tagCursorModify (const textC) tc
 
 tagCursorModify :: (TextCursor -> TextCursor) -> TagCursor -> TagCursor
-tagCursorModify tfunc tc = tc''
+tagCursorModify tfunc tc = tc'''
   where
-    tc' = tc {tagCursorTag = tfunc $ tagCursorTag tc}
-    tcs = reverse (tagCursorPrevElemens tc) ++ [tc'] ++ tagCursorNextElemens tc
+    tct' = tfunc $ tagCursorTag tc
+    tc' = tc {tagCursorTag = tct'}
+    tcs =
+        reverse (tagCursorPrevElemens tc') ++ [tc'] ++ tagCursorNextElemens tc'
     tags = map build tcs
-    fc = tagCursorParent tc & tagsCursorTagsL .~ els
+    fc = tagCursorParent tc' & tagsCursorTagCursorsL .~ els
     els = tagElems fc tags
-    tc'' = els !! tagCursorIndex tc
+    tc'' = els !! tagCursorIndex tc'
+    tc''' = tc'' {tagCursorTag = tagCursorTag tc'' `reselectLike` tct'}
 
 tagCursorInsert :: Char -> TagCursor -> TagCursor
 tagCursorInsert c = tagCursorTextCursorL %~ textCursorInsert c
@@ -691,7 +704,7 @@ tagCursorEnd = tagCursorTextCursorL %~ textCursorSelectEnd
 
 tagCursorSelectPrev :: TagCursor -> Maybe TagCursor
 tagCursorSelectPrev tc =
-    case tagCursorNextElemens tc of
+    case tagCursorPrevElemens tc of
         [] -> Nothing
         (tc':_) -> Just tc'
 

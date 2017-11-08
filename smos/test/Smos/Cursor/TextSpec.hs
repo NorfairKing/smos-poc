@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Smos.Cursor.TextSpec
     ( spec
@@ -20,6 +21,9 @@ spec = do
             rebuild (makeTextCursor "abc") `shouldBe` "abc"
         it "is the inverse of 'rebuildTextCursor'" $
             inverseFunctionsOnValid makeTextCursor rebuild
+    describe "reselect" $
+        it "reselects to the same selection" $
+        reselectsToTheSameSelection @TextCursor
     describe "textCursorSelectPrev" $ do
         it "rebuilds to the same text" $
             rebuildsToTheSameIfSuceeds textCursorSelectPrev
@@ -65,3 +69,7 @@ spec = do
                     tc' = textCursorInsert c tc
                     t' = rebuild tc'
                 in T.length t' `shouldBe` T.length t + 1
+        it "builds to the inserted character" $
+            forAll genValid $ \(t, c) ->
+                let tc = makeTextCursor t
+                in build (textCursorInsert c tc) `shouldBe` Just c

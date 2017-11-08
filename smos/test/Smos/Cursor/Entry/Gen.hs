@@ -9,6 +9,7 @@ module Smos.Cursor.Entry.Gen where
 import TestImport
 
 import Smos.Cursor.Entry
+import Smos.Cursor.Text.Gen ()
 import Smos.Cursor.Tree
 import Smos.Cursor.Tree.Gen ()
 import Smos.Data.Gen ()

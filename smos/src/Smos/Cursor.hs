@@ -6,7 +6,7 @@
 module Smos.Cursor
     ( AnyCursor(..)
     , makeAnyCursor
-    , reselect
+    , reselectCursor
     , ACursor(..)
     , selectACursor
     , selectAnyCursor
@@ -82,8 +82,8 @@ instance Rebuild ACursor where
 makeAnyCursor :: SmosFile -> AnyCursor
 makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor smosFileForest
 
-reselect :: [Int] -> SmosFile -> AnyCursor
-reselect s = go (reverse s) . makeAnyCursor
+reselectCursor :: [Int] -> SmosFile -> AnyCursor
+reselectCursor s = go (reverse s) . makeAnyCursor
   where
     go sel (AnyForest fc) = gof sel fc
     go sel (AnyTree tc) = got sel tc

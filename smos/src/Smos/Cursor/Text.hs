@@ -33,10 +33,18 @@ newtype TextCursor = TextCursor
 
 instance Validity TextCursor
 
+instance Build TextCursor where
+    type Building TextCursor = Maybe Char
+    build = build . unTextCursor
+
 instance Rebuild TextCursor where
     type ReBuilding TextCursor = Text
-    rebuild = T.pack . rebuildListCursor . unTextCursor
+    rebuild = T.pack . rebuild . unTextCursor
     selection = selection . unTextCursor
+
+instance Reselect TextCursor where
+    type Reselection TextCursor = TextCursor
+    reselect sel = textCursorListCursorL %~ reselect sel
 
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor
