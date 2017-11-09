@@ -1,6 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Smos.Report.Entry.Pretty where
+module Smos.Report.Entry.Pretty
+    ( prettyEntryReport
+    ) where
 
 import Import hiding ((<$>))
 
@@ -8,7 +10,7 @@ import qualified Data.Text as T
 import Text.PrettyPrint.ANSI.Leijen
 
 import Smos.Data
-import Smos.Report
+import Smos.Report.Entry.Types
 
 prettyEntryReport :: EntryReport -> Doc
 prettyEntryReport EntryReport {..} =
