@@ -6,6 +6,12 @@ module Smos.Report
     -- * EntryReport
     , EntryReport
     , entryReport
+    , prettyEntryReport
+    -- * Agenda report
+    , AgendaReport
+    , agendaReport
+    , prettyAgendaReport
+    -- * Helper functions
     , stateIs
     , hasTag
     , (&&&)
@@ -17,6 +23,7 @@ import Import
 import Text.PrettyPrint.ANSI.Leijen (putDoc)
 
 import Smos.Data
+import Smos.Report.Agenda
 import Smos.Report.Config
 import Smos.Report.Entry
 import Smos.Report.OptParse

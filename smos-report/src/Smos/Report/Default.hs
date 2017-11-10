@@ -9,7 +9,6 @@ import Import
 
 import Smos.Report
 import Smos.Report.Config
-import Smos.Report.Entry.Pretty
 
 defaultSmosReport :: IO ()
 defaultSmosReport = smosReport defaultReportConfig
@@ -26,5 +25,6 @@ defaultReportConfig =
           , ("next", prettyEntryReport . entryReport (stateIs "NEXT"))
           , ("done", prettyEntryReport . entryReport (stateIs "DONE"))
           , ("waiting", prettyEntryReport . entryReport (stateIs "WAITING"))
+          , ("agenda", prettyAgendaReport . agendaReport (const True))
           ]
     }
