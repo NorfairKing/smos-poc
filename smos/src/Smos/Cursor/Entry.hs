@@ -97,10 +97,11 @@ import Data.Tree
 
 import Lens.Micro
 
-import Smos.Cursor.Class
-import Smos.Cursor.Text
-import Smos.Cursor.TextField
-import Smos.Cursor.Tree
+import Cursor.Class
+import Cursor.Text
+import Cursor.TextField
+import Cursor.Tree
+
 import Smos.Data
 
 data EntryCursor = EntryCursor

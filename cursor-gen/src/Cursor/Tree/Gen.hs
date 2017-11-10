@@ -4,14 +4,12 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Smos.Cursor.Tree.Gen where
+module Cursor.Tree.Gen where
 
-import TestImport
+import Import
 
-import Smos.Cursor
-import Smos.Cursor.Class
-import Smos.Cursor.Tree
-import Smos.Data.Gen ()
+import Cursor.Class
+import Cursor.Tree
 
 instance ( GenUnchecked a
          , Build a

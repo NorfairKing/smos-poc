@@ -17,13 +17,14 @@ import Brick.Types as B
 import Brick.Widgets.Center as B
 import Brick.Widgets.Core as B
 
+import Cursor.Text
+import Cursor.TextField
+import Cursor.Tree
+
 import Smos.Data
 
 import Smos.Cursor
 import Smos.Cursor.Entry
-import Smos.Cursor.Text
-import Smos.Cursor.TextField
-import Smos.Cursor.Tree
 import Smos.Style
 import Smos.Types
 

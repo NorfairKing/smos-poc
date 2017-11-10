@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Smos.Cursor.List
+module Cursor.List
     ( ListCursor
     , emptyListCursor
     , makeListCursor
@@ -22,7 +22,7 @@ module Smos.Cursor.List
 
 import Import
 
-import Smos.Cursor.Class
+import Cursor.Class
 
 data ListCursor a = ListCursor
     { listCursorPrev :: [a]

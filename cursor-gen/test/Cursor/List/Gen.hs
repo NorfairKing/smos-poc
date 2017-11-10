@@ -1,10 +1,10 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Smos.Cursor.List.Gen where
+module Cursor.List.Gen where
 
 import TestImport
 
-import Smos.Cursor.List
+import Cursor.List
 
 instance GenUnchecked a => GenUnchecked (ListCursor a)
 

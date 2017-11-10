@@ -1,4 +1,6 @@
 packages:
+- cursor
+- cursor-gen
 - smos
 - smos-data
 - smos-data-gen

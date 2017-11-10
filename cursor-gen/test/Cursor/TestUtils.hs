@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Smos.Cursor.TestUtils
+module Cursor.TestUtils
     ( buildsToValid
     , buildsToTheSame
     , buildsToTheSameIfSuceeds

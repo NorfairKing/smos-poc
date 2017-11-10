@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstraintKinds #-}
 
-module Smos.Cursor.Class
+module Cursor.Class
     ( Cursor
     , Rebuild(..)
     , Build(..)

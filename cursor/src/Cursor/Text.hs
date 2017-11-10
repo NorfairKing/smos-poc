@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Smos.Cursor.Text
+module Cursor.Text
     ( TextCursor
     , emptyTextCursor
     , makeTextCursor
@@ -24,8 +24,8 @@ import Import
 import qualified Data.Text as T
 import Lens.Micro
 
-import Smos.Cursor.Class
-import Smos.Cursor.List
+import Cursor.Class
+import Cursor.List
 
 newtype TextCursor = TextCursor
     { unTextCursor :: ListCursor Char

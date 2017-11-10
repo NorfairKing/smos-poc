@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module Smos.Cursor.TextField.Gen where
+module Cursor.TextField.Gen where
 
 import TestImport
 
-import Smos.Cursor.Text.Gen ()
-import Smos.Cursor.TextField
+import Cursor.Text.Gen ()
+import Cursor.TextField
 
 instance GenUnchecked TextFieldCursor
 

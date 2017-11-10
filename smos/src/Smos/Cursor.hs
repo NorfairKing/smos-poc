@@ -16,10 +16,12 @@ module Smos.Cursor
 
 import Import
 
-import Smos.Cursor.Class
-import Smos.Cursor.Entry
-import Smos.Cursor.Tree
+import Cursor.Class
+import Cursor.Tree
+
 import Smos.Data
+
+import Smos.Cursor.Entry
 
 data AnyCursor
     = AnyForest (ForestCursor EntryCursor)

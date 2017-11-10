@@ -5,7 +5,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Smos.Cursor.Tree
+module Cursor.Tree
     ( ForestCursor
     , makeForestCursor
     , foldForestSel
@@ -43,7 +43,7 @@ import Data.Tree
 
 import Lens.Micro
 
-import Smos.Cursor.Class
+import Cursor.Class
 
 data ForestCursor a = ForestCursor
     { forestCursorParent :: Maybe (TreeCursor a)

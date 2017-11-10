@@ -1,0 +1,35 @@
+name: cursor
+version: '0.0.0.0'
+category: Tool
+author: Tom Sydney Kerckhove
+maintainer: syd.kerckhove@gmail.com
+copyright: ! 'Copyright: (c) 2017 Tom Sydney Kerckhove'
+license: AllRightsReserved
+homepage: https://github.com/NorfairKing/smos
+default-extensions:
+- NoImplicitPrelude
+
+dependencies:
+- base >=4.9 && <=5
+- bytestring >=0.10 && <0.11
+- containers >=0.5 && <0.6
+- microlens >=0.4 && <0.5
+- mtl >=2.2 && <2.3
+- text >=1.2 && <1.3
+- unordered-containers >=0.2 && <0.3
+- safe >=0.3 && <0.4
+- validity >=0.4 && <0.5
+- validity-containers >=0.2 && <0.3
+- validity-text >=0.2 && <0.3
+- validity-time >=0.1 && <0.2
+- validity-unordered-containers >=0.1 && <0.2
+
+library:
+  source-dirs: src/
+  ghc-options: -Wall
+  exposed-modules:
+  - Cursor.Class
+  - Cursor.List
+  - Cursor.Text
+  - Cursor.TextField
+  - Cursor.Tree

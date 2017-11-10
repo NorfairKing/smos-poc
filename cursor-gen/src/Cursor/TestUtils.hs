@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Smos.Cursor.TestUtils
+module Cursor.TestUtils
     ( buildsToValid
     , buildsToTheSame
     , buildsToTheSameIfSuceeds
@@ -14,7 +14,7 @@ module Smos.Cursor.TestUtils
     , reselectsToTheSameSelection
     ) where
 
-import TestImport
+import Import
 
 import Cursor.Class
 

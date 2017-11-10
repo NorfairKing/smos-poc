@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Smos.Cursor.TextFieldSpec
+module Cursor.TextFieldSpec
     ( spec
     ) where
 
@@ -8,10 +8,10 @@ import TestImport
 
 import qualified Data.Text as T
 
-import Smos.Cursor.Class
-import Smos.Cursor.TestUtils
-import Smos.Cursor.TextField
-import Smos.Cursor.TextField.Gen ()
+import Cursor.Class
+import Cursor.TestUtils
+import Cursor.TextField
+import Cursor.TextField.Gen ()
 
 spec :: Spec
 spec = do

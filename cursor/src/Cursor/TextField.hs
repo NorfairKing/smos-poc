@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Smos.Cursor.TextField
+module Cursor.TextField
     ( TextFieldCursor
     , textFieldCursorPrev
     , textFieldSelected
@@ -32,8 +32,8 @@ import Import
 import qualified Data.Text as T
 import Lens.Micro
 
-import Smos.Cursor.Class
-import Smos.Cursor.Text
+import Cursor.Class
+import Cursor.Text
 
 data TextFieldCursor = TextFieldCursor
     { textFieldCursorPrev :: [Text]

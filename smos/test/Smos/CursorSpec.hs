@@ -8,10 +8,11 @@ module Smos.CursorSpec
 
 import TestImport
 
+import Cursor.Tree
+
 import Smos.Cursor
 import Smos.Cursor.Entry
 import Smos.Cursor.Gen ()
-import Smos.Cursor.Tree
 import Smos.Data
 import Smos.Data.Gen ()
 
