@@ -1,6 +1,7 @@
 packages:
 - cursor
 - cursor-gen
+- fuzzy-time
 - smos
 - smos-data
 - smos-data-gen
