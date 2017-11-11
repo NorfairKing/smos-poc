@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor.EntrySpec
@@ -23,53 +24,70 @@ import Smos.Data.Gen ()
 
 {-# ANN module ("HLint: ignore Functor law" :: String) #-}
 
-sameCAfterSettingAAndThenBMM ::
+-- TODO this can probably be done better.
+-- mLens :: Lens' a b -> Lens' a (Maybe b)
+-- mLens l = lens getter setter
+--   where
+--     getter a = Just $ a ^. l
+--     setter a mb =
+--         case mb of
+--             Nothing -> a
+--             Just b -> a & l .~ b
+--
+-- sameCAfterSettingAAndThenBLMM ::
+--        (Show c, Eq c)
+--     => EntryCursor
+--     -> Lens' EntryCursor (Maybe a)
+--     -> (a -> a)
+--     -> Lens' EntryCursor (Maybe b)
+--     -> (b -> b)
+--     -> (EntryCursor -> c)
+--     -> Expectation
+-- sameCAfterSettingAAndThenBLMM ec la am lb bm cf =
+--     let ec' = ec & la %~ fmap am
+--         ec'' = ec' & lb %~ fmap bm
+--     in cf ec' `shouldBe` cf ec''
+sameCAfterSettingAAndThenBLM ::
        (Show c, Eq c)
     => EntryCursor
-    -> (EntryCursor -> a)
-    -> (a -> Maybe a)
-    -> (a -> EntryCursor)
-    -> (EntryCursor -> b)
-    -> (b -> Maybe b)
-    -> (b -> EntryCursor)
-    -> (EntryCursor -> Maybe c)
-    -> Expectation
-sameCAfterSettingAAndThenBMM ec af am ag bf bm bg cf =
-    let ac = af ec
-        mac' = am ac
-    in case mac' of
-           Nothing -> pure ()
-           Just ac' ->
-               let ec' = ag ac'
-                   bc = bf ec'
-                   mbc' = bm bc
-               in case mbc' of
-                      Nothing -> pure ()
-                      Just bc' ->
-                          let ec'' = bg bc'
-                          in cf ec' `shouldBe` cf ec''
-
-sameCAfterSettingAAndThenB ::
-       (Show c, Eq c)
-    => EntryCursor
-    -> (EntryCursor -> a)
+    -> Lens' EntryCursor a
     -> (a -> a)
-    -> (a -> EntryCursor)
-    -> (EntryCursor -> b)
+    -> Lens' EntryCursor (Maybe b)
     -> (b -> b)
-    -> (b -> EntryCursor)
     -> (EntryCursor -> c)
     -> Expectation
-sameCAfterSettingAAndThenB ec af am ag bf bm bg cf =
-    sameCAfterSettingAAndThenBMM
-        ec
-        af
-        (Just . am)
-        ag
-        bf
-        (Just . bm)
-        bg
-        (Just . cf)
+sameCAfterSettingAAndThenBLM ec la am lb bm cf =
+    let ec' = ec & la %~ am
+        ec'' = ec' & lb %~ fmap bm
+    in cf ec' `shouldBe` cf ec''
+
+sameCAfterSettingAAndThenBML ::
+       (Show c, Eq c)
+    => EntryCursor
+    -> Lens' EntryCursor (Maybe a)
+    -> (a -> a)
+    -> Lens' EntryCursor b
+    -> (b -> b)
+    -> (EntryCursor -> c)
+    -> Expectation
+sameCAfterSettingAAndThenBML ec la am lb bm cf =
+    let ec' = ec & la %~ fmap am
+        ec'' = ec' & lb %~ bm
+    in cf ec' `shouldBe` cf ec''
+
+sameCAfterSettingAAndThenBL ::
+       (Show c, Eq c)
+    => EntryCursor
+    -> Lens' EntryCursor a
+    -> (a -> a)
+    -> Lens' EntryCursor b
+    -> (b -> b)
+    -> (EntryCursor -> c)
+    -> Expectation
+sameCAfterSettingAAndThenBL ec la am lb bm cf =
+    let ec' = ec & la %~ am
+        ec'' = ec' & lb %~ bm
+    in cf ec' `shouldBe` cf ec''
 
 spec :: Spec
 spec = do
@@ -85,16 +103,6 @@ spec = do
             it "rebuilds to the same" $ rebuildsToTheSame entryCursorState
         describe "setting one after the other" $ do
             describe "state" $ do
-                let stateTest ts now ec a b c =
-                        sameCAfterSettingAAndThenB
-                            ec
-                            entryCursorState
-                            (stateCursorSetState now ts)
-                            stateCursorParent
-                            a
-                            b
-                            c
-                            (build . entryCursorState)
                 describe "header" $
                     it
                         "has the same state after setting the state and then changing the header" $
@@ -102,24 +110,42 @@ spec = do
                         forAll genValid $ \h ->
                             forAll genValid $ \ec ->
                                 forAll genValid $ \now ->
-                                    stateTest
-                                        ts
-                                        now
+                                    sameCAfterSettingAAndThenBL
                                         ec
-                                        entryCursorHeader
+                                        entryCursorStateL
+                                        (stateCursorSetState now ts)
+                                        entryCursorHeaderL
                                         (headerCursorSetHeader h)
-                                        headerCursorParent
+                                        (build . entryCursorState)
+                describe "tags" $
+                    it
+                        "has the same state after setting the state and then changing the tags" $
+                    forAll genValid $ \ts ->
+                        forAll genValid $ \now ->
+                            forAll genValid $ \tgs ->
+                                forAll genValid $ \ec ->
+                                    sameCAfterSettingAAndThenBL
+                                        ec
+                                        entryCursorStateL
+                                        (stateCursorSetState ts now)
+                                        entryCursorTagsL
+                                        (tagsCursorSetTags tgs)
+                                        (build . entryCursorHeader)
+                describe "contents" $
+                    it
+                        "has the same state after setting the state and then changing the contents" $
+                    forAll genValid $ \ts ->
+                        forAll genValid $ \cs ->
+                            forAll genValid $ \ec ->
+                                forAll genValid $ \now ->
+                                    sameCAfterSettingAAndThenBLM
+                                        ec
+                                        entryCursorStateL
+                                        (stateCursorSetState now ts)
+                                        entryCursorContentsL
+                                        (contentsCursorSetContents cs)
+                                        (build . entryCursorState)
             describe "header" $ do
-                let headerTest h ec a b c =
-                        sameCAfterSettingAAndThenB
-                            ec
-                            entryCursorHeader
-                            (headerCursorSetHeader h)
-                            headerCursorParent
-                            a
-                            b
-                            c
-                            (build . entryCursorHeader)
                 describe "state" $
                     it
                         "has the same header after setting the header and then changing the state" $
@@ -127,142 +153,121 @@ spec = do
                         forAll genValid $ \h ->
                             forAll genValid $ \ec ->
                                 forAll genValid $ \now ->
-                                    headerTest
-                                        h
+                                    sameCAfterSettingAAndThenBL
                                         ec
-                                        entryCursorState
+                                        entryCursorHeaderL
+                                        (headerCursorSetHeader h)
+                                        entryCursorStateL
                                         (stateCursorSetState now ts)
-                                        stateCursorParent
+                                        (build . entryCursorHeader)
                 describe "tags" $
                     it
                         "has the same header after setting the header and then changing the tags" $
                     forAll genValid $ \h ->
                         forAll genValid $ \tgs ->
                             forAll genValid $ \ec ->
-                                headerTest
-                                    h
+                                sameCAfterSettingAAndThenBL
                                     ec
-                                    entryCursorTags
+                                    entryCursorHeaderL
+                                    (headerCursorSetHeader h)
+                                    entryCursorTagsL
                                     (tagsCursorSetTags tgs)
-                                    tagsCursorParent
+                                    (build . entryCursorHeader)
+                describe "contents" $
+                    it
+                        "has the same header after setting the header and then changing the contents" $
+                    forAll genValid $ \h ->
+                        forAll genValid $ \cts ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBLM
+                                    ec
+                                    entryCursorHeaderL
+                                    (headerCursorSetHeader h)
+                                    entryCursorContentsL
+                                    (contentsCursorSetContents cts)
+                                    (build . entryCursorHeader)
             describe "tags" $ do
-                let headerTest tgs ec a b c =
-                        sameCAfterSettingAAndThenB
-                            ec
-                            entryCursorTags
-                            (tagsCursorSetTags tgs)
-                            tagsCursorParent
-                            a
-                            b
-                            c
-                            (build . entryCursorState)
+                describe "state" $
+                    it
+                        "has the same tags after setting the tags and then changing the state" $
+                    forAll genValid $ \tgs ->
+                        forAll genValid $ \ts ->
+                            forAll genValid $ \now ->
+                                forAll genValid $ \ec ->
+                                    sameCAfterSettingAAndThenBL
+                                        ec
+                                        entryCursorTagsL
+                                        (tagsCursorSetTags tgs)
+                                        entryCursorStateL
+                                        (stateCursorSetState now ts)
+                                        (build . entryCursorTags)
                 describe "header" $
                     it
                         "has the same tags after setting the tags and then changing the header" $
                     forAll genValid $ \tgs ->
                         forAll genValid $ \h ->
                             forAll genValid $ \ec ->
-                                headerTest
-                                    tgs
+                                sameCAfterSettingAAndThenBL
                                     ec
-                                    entryCursorHeader
+                                    entryCursorTagsL
+                                    (tagsCursorSetTags tgs)
+                                    entryCursorHeaderL
                                     (headerCursorSetHeader h)
-                                    headerCursorParent
-        describe "entryCursorHeaderL and entryCursorContentsL" $ do
-            it
-                "has the same contents after setting the contents and then changing the header" $
-                forAll genValid $ \cs ->
-                    forAll genValid $ \c ->
-                        forAll genValid $ \ec ->
-                            let ec' =
-                                    ec & entryCursorContentsL %~
-                                    fmap (contentsCursorSetContents cs)
-                                hc = entryCursorHeader ec'
-                                hc' = headerCursorInsert c hc
-                                ec'' = headerCursorParent hc'
-                            in build <$>
-                               entryCursorContents ec'' `shouldBe` build <$>
-                               entryCursorContents ec'
-            it
-                "has the same header after setting the header and then changing the contents" $
-                forAll genValid $ \h ->
-                    forAll genValid $ \cs ->
-                        forAll genValid $ \ec ->
-                            let ec' =
-                                    ec & entryCursorHeaderL %~
-                                    headerCursorSetHeader h
-                            in case entryCursorContents ec' of
-                                   Nothing -> pure () -- nevermind
-                                   Just cc ->
-                                       let cc' = contentsCursorSetContents cs cc
-                                           ec'' = contentsCursorParent cc'
-                                       in build (entryCursorHeader ec'') `shouldBe`
-                                          build (entryCursorHeader ec')
-        describe "entryCursorStateL and entryCursorContentsL" $ do
-            it
-                "has the same contents after setting the contents and then changing the state" $
-                forAll genValid $ \cs ->
-                    forAll genValid $ \ts ->
-                        forAll genValid $ \ec ->
-                            forAll genValid $ \now ->
-                                let ec' =
-                                        ec & entryCursorContentsL %~
-                                        fmap (contentsCursorSetContents cs)
-                                    sc = entryCursorState ec'
-                                    sc' = stateCursorSetState now ts sc
-                                    ec'' = stateCursorParent sc'
-                                in build <$>
-                                   entryCursorContents ec'' `shouldBe` build <$>
-                                   entryCursorContents ec'
-            it
-                "has the same state after setting the state and then changing the contents" $
-                forAll genValid $ \ts ->
-                    forAll genValid $ \cs ->
-                        forAll genValid $ \ec ->
-                            forAll genValid $ \now ->
-                                let ec' =
-                                        ec & entryCursorStateL %~
-                                        stateCursorSetState now ts
-                                in case entryCursorContents ec' of
-                                       Nothing -> pure () -- nevermind
-                                       Just cc ->
-                                           let cc' =
-                                                   contentsCursorSetContents
-                                                       cs
-                                                       cc
-                                               ec'' = contentsCursorParent cc'
-                                           in build (entryCursorState ec'') `shouldBe`
-                                              build (entryCursorState ec')
-        describe "entryCursorContents and entryCursorTagsL" $ do
-            it
-                "has the same contents after setting the contents and then changing the tags" $
-                forAll genValid $ \cs ->
+                                    (build . entryCursorTags)
+                describe "contents" $
+                    it
+                        "has the same tags after setting the tags and then changing the contents" $
                     forAll genValid $ \tgs ->
-                        forAll genValid $ \ec ->
-                            let ec' =
-                                    ec & entryCursorContentsL %~
-                                    fmap (contentsCursorSetContents cs)
-                                tsc = entryCursorTags ec'
-                                tsc' = tagsCursorSetTags tgs tsc
-                                ec'' = tagsCursorParent tsc'
-                            in build <$>
-                               entryCursorContents ec'' `shouldBe` build <$>
-                               entryCursorContents ec'
-            it
-                "has the same tags after setting the tags and then changing the contents" $
-                forAll genValid $ \tgs ->
+                        forAll genValid $ \cts ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBLM
+                                    ec
+                                    entryCursorTagsL
+                                    (tagsCursorSetTags tgs)
+                                    entryCursorContentsL
+                                    (contentsCursorSetContents cts)
+                                    (build . entryCursorTags)
+            describe "contents" $ do
+                describe "header" $
+                    it
+                        "has the same contents after setting the contents and then changing the header" $
+                    forAll genValid $ \cts ->
+                        forAll genValid $ \h ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBML
+                                    ec
+                                    entryCursorContentsL
+                                    (contentsCursorSetContents cts)
+                                    entryCursorHeaderL
+                                    (headerCursorSetHeader h)
+                                    (fmap build . entryCursorContents)
+                describe "state" $
+                    it
+                        "has the same contents after setting the contents and then changing the state" $
                     forAll genValid $ \cs ->
-                        forAll genValid $ \ec ->
-                            let ec' =
-                                    ec & entryCursorTagsL %~
-                                    tagsCursorSetTags tgs
-                            in case entryCursorContents ec' of
-                                   Nothing -> pure () -- nevermind
-                                   Just cc ->
-                                       let cc' = contentsCursorSetContents cs cc
-                                           ec'' = contentsCursorParent cc'
-                                       in build (entryCursorTags ec'') `shouldBe`
-                                          build (entryCursorTags ec')
+                        forAll genValid $ \ts ->
+                            forAll genValid $ \ec ->
+                                forAll genValid $ \now ->
+                                    sameCAfterSettingAAndThenBML
+                                        ec
+                                        entryCursorContentsL
+                                        (contentsCursorSetContents cs)
+                                        entryCursorStateL
+                                        (stateCursorSetState now ts)
+                                        (fmap build . entryCursorContents)
+                describe "tags" $
+                    it
+                        "has the same contents after setting the contents and then changing the tags" $
+                    forAll genValid $ \cs ->
+                        forAll genValid $ \tgs ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBML
+                                    ec
+                                    entryCursorContentsL
+                                    (contentsCursorSetContents cs)
+                                    entryCursorTagsL
+                                    (tagsCursorSetTags tgs)
+                                    (fmap build . entryCursorContents)
     describe "HeaderCursor" $ do
         describe "headerCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorParent
