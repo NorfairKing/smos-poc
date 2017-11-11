@@ -11,10 +11,12 @@ module Smos.Cursor.Entry
     , entryCursorContents
     , entryCursorState
     , entryCursorTags
+    , entryCursorTimestamps
     , entryCursorHeaderL
     , entryCursorContentsL
     , entryCursorStateL
     , entryCursorTagsL
+    , entryCursorTimestampsL
     , entryCursorLogbookL
     , entryCursorClockIn
     , HeaderCursor
@@ -86,6 +88,11 @@ module Smos.Cursor.Entry
     , tagCursorEnd
     , tagCursorSelectPrev
     , tagCursorSelectNext
+    , TimestampsCursor
+    , timestampsCursorParent
+    , timestampsCursorTimestamps
+    , timestampsCursorSetTimestamps
+    , timestampsCursorTimestampsL
     ) where
 
 import Import
@@ -108,7 +115,7 @@ data EntryCursor = EntryCursor
     { entryCursorParent :: TreeCursor EntryCursor
     , entryCursorHeader :: HeaderCursor
     , entryCursorContents :: Maybe ContentsCursor
-    , entryCursorTimestamps :: HashMap TimestampName UTCTime
+    , entryCursorTimestamps :: TimestampsCursor
     , entryCursorProperties :: HashMap PropertyName PropertyValue
     , entryCursorState :: StateCursor
     , entryCursorTags :: TagsCursor
@@ -126,8 +133,8 @@ instance Show EntryCursor where
              map
                  (" |- " ++)
                  [ "[Header]: " ++ show (build entryCursorHeader)
-                 , show entryCursorContents
-                 , show entryCursorTimestamps
+                 , "[Contents]: " ++ show (build <$> entryCursorContents)
+                 , "[Timestamps]: " ++ show (build entryCursorTimestamps)
                  , show entryCursorProperties
                  , "[State]: " ++ show (build entryCursorState)
                  , "[Tags]: " ++ show (build entryCursorTags)
@@ -148,7 +155,7 @@ instance Build EntryCursor where
         Entry
         { entryHeader = build entryCursorHeader
         , entryContents = build <$> entryCursorContents
-        , entryTimestamps = entryCursorTimestamps
+        , entryTimestamps = build entryCursorTimestamps
         , entryProperties = entryCursorProperties
         , entryStateHistory = build entryCursorState
         , entryTags = build entryCursorTags
@@ -167,7 +174,7 @@ entryCursor par Entry {..} = ec
         { entryCursorParent = par
         , entryCursorHeader = headerCursor ec entryHeader
         , entryCursorContents = contentsCursor ec <$> entryContents
-        , entryCursorTimestamps = entryTimestamps
+        , entryCursorTimestamps = timestampsCursor ec entryTimestamps
         , entryCursorProperties = entryProperties
         , entryCursorState = stateCursor ec entryStateHistory
         , entryCursorTags = tagsCursor ec entryTags
@@ -215,6 +222,8 @@ entryCursorHeaderL = lens getter setter
                   entryCursorContents ec
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
             , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps =
+                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             }
 
 entryCursorContentsL ::
@@ -235,6 +244,8 @@ entryCursorContentsL = lens getter setter
                   (entryCursorHeader ec) {headerCursorParent = ec'}
             , entryCursorContents = mcc
             , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps =
+                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             }
 
 entryCursorStateL ::
@@ -257,6 +268,8 @@ entryCursorStateL = lens getter setter
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
             , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps =
+                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             }
 
 entryCursorTagsL ::
@@ -276,6 +289,31 @@ entryCursorTagsL = lens getter setter
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
             , entryCursorTags = ts
+            , entryCursorTimestamps =
+                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
+            }
+
+entryCursorTimestampsL ::
+       Functor f
+    => (TimestampsCursor -> f TimestampsCursor)
+    -> EntryCursor
+    -> f EntryCursor
+entryCursorTimestampsL = lens getter setter
+  where
+    getter = entryCursorTimestamps
+    setter ec ts = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorContents =
+                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
+                  entryCursorContents ec
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps = ts
             }
 
 entryCursorLogbookL ::
@@ -295,6 +333,8 @@ entryCursorLogbookL = lens getter setter
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
             , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps =
+                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             , entryCursorLogbook = lb
             }
 
@@ -714,3 +754,52 @@ tagCursorSelectNext tc =
     case tagCursorNextElemens tc of
         [] -> Nothing
         (tc':_) -> Just tc'
+
+data TimestampsCursor = TimestampsCursor
+    { timestampsCursorParent :: EntryCursor
+    , timestampsCursorTimestamps :: HashMap TimestampName UTCTime
+    }
+
+instance Validity TimestampsCursor where
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+instance Show TimestampsCursor where
+    show TimestampsCursor {..} =
+        unlines ["[Timestamps]", " |-" ++ show timestampsCursorTimestamps]
+
+instance Eq TimestampsCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
+
+instance Rebuild TimestampsCursor where
+    type ReBuilding TimestampsCursor = Forest Entry
+    rebuild = rebuild . timestampsCursorParent
+    selection TimestampsCursor {..} = 3 : selection timestampsCursorParent
+
+instance Build TimestampsCursor where
+    type Building TimestampsCursor = HashMap TimestampName UTCTime
+    build TimestampsCursor {..} = timestampsCursorTimestamps
+
+timestampsCursor ::
+       EntryCursor -> HashMap TimestampName UTCTime -> TimestampsCursor
+timestampsCursor ec ts =
+    TimestampsCursor
+    {timestampsCursorParent = ec, timestampsCursorTimestamps = ts}
+
+timestampsCursorSetTimestamps ::
+       HashMap TimestampName UTCTime -> TimestampsCursor -> TimestampsCursor
+timestampsCursorSetTimestamps ts = timestampsCursorTimestampsL .~ ts
+
+timestampsCursorTimestampsL ::
+       Functor f
+    => (HashMap TimestampName UTCTime -> f (HashMap TimestampName UTCTime))
+    -> TimestampsCursor
+    -> f TimestampsCursor
+timestampsCursorTimestampsL = lens getter setter
+  where
+    getter = timestampsCursorTimestamps
+    setter tsc tss = tsc'
+      where
+        ec' = timestampsCursorParent tsc & entryCursorTimestampsL .~ tsc'
+        tsc' =
+            tsc {timestampsCursorParent = ec', timestampsCursorTimestamps = tss}

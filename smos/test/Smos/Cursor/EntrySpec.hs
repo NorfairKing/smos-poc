@@ -145,6 +145,20 @@ spec = do
                                         entryCursorContentsL
                                         (contentsCursorSetContents cs)
                                         (build . entryCursorState)
+                describe "timestamps" $
+                    it
+                        "has the same state after setting the state and then changing the timestamps" $
+                    forAll genValid $ \ts ->
+                        forAll genValid $ \tss ->
+                            forAll genValid $ \ec ->
+                                forAll genValid $ \now ->
+                                    sameCAfterSettingAAndThenBL
+                                        ec
+                                        entryCursorStateL
+                                        (stateCursorSetState now ts)
+                                        entryCursorTimestampsL
+                                        (timestampsCursorSetTimestamps tss)
+                                        (build . entryCursorState)
             describe "header" $ do
                 describe "state" $
                     it
@@ -185,6 +199,19 @@ spec = do
                                     (headerCursorSetHeader h)
                                     entryCursorContentsL
                                     (contentsCursorSetContents cts)
+                                    (build . entryCursorHeader)
+                describe "timestamps" $
+                    it
+                        "has the same header after setting the header and then changing the timestamps" $
+                    forAll genValid $ \h ->
+                        forAll genValid $ \tss ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBL
+                                    ec
+                                    entryCursorHeaderL
+                                    (headerCursorSetHeader h)
+                                    entryCursorTimestampsL
+                                    (timestampsCursorSetTimestamps tss)
                                     (build . entryCursorHeader)
             describe "tags" $ do
                 describe "state" $
@@ -227,6 +254,19 @@ spec = do
                                     entryCursorContentsL
                                     (contentsCursorSetContents cts)
                                     (build . entryCursorTags)
+                describe "timestamps" $
+                    it
+                        "has the same tags after setting the tags and then changing the timestamps" $
+                    forAll genValid $ \tgs ->
+                        forAll genValid $ \tss ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBL
+                                    ec
+                                    entryCursorTagsL
+                                    (tagsCursorSetTags tgs)
+                                    entryCursorTimestampsL
+                                    (timestampsCursorSetTimestamps tss)
+                                    (build . entryCursorTags)
             describe "contents" $ do
                 describe "header" $
                     it
@@ -268,6 +308,73 @@ spec = do
                                     entryCursorTagsL
                                     (tagsCursorSetTags tgs)
                                     (fmap build . entryCursorContents)
+                describe "timestamps" $
+                    it
+                        "has the same contents after setting the contents and then changing the timestamps" $
+                    forAll genValid $ \cs ->
+                        forAll genValid $ \tss ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBML
+                                    ec
+                                    entryCursorContentsL
+                                    (contentsCursorSetContents cs)
+                                    entryCursorTimestampsL
+                                    (timestampsCursorSetTimestamps tss)
+                                    (fmap build . entryCursorContents)
+            describe "timestamps" $ do
+                describe "state" $
+                    it
+                        "has the same timestamps after setting the timestamps and then changing the state" $
+                    forAll genValid $ \tss ->
+                        forAll genValid $ \ts ->
+                            forAll genValid $ \now ->
+                                forAll genValid $ \ec ->
+                                    sameCAfterSettingAAndThenBL
+                                        ec
+                                        entryCursorTimestampsL
+                                        (timestampsCursorSetTimestamps tss)
+                                        entryCursorStateL
+                                        (stateCursorSetState now ts)
+                                        (build . entryCursorTimestamps)
+                describe "header" $
+                    it
+                        "has the same timestamps after setting the timestamps and then changing the header" $
+                    forAll genValid $ \tss ->
+                        forAll genValid $ \h ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBL
+                                    ec
+                                    entryCursorTimestampsL
+                                    (timestampsCursorSetTimestamps tss)
+                                    entryCursorHeaderL
+                                    (headerCursorSetHeader h)
+                                    (build . entryCursorTimestamps)
+                describe "tags" $
+                    it
+                        "has the same timestamps after setting the timestamps and then changing the tags" $
+                    forAll genValid $ \tss ->
+                        forAll genValid $ \tgs ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBL
+                                    ec
+                                    entryCursorTimestampsL
+                                    (timestampsCursorSetTimestamps tss)
+                                    entryCursorTagsL
+                                    (tagsCursorSetTags tgs)
+                                    (build . entryCursorTimestamps)
+                describe "contents" $
+                    it
+                        "has the same timestamps after setting the timestamps and then changing the contents" $
+                    forAll genValid $ \tss ->
+                        forAll genValid $ \cts ->
+                            forAll genValid $ \ec ->
+                                sameCAfterSettingAAndThenBLM
+                                    ec
+                                    entryCursorTimestampsL
+                                    (timestampsCursorSetTimestamps tss)
+                                    entryCursorContentsL
+                                    (contentsCursorSetContents cts)
+                                    (build . entryCursorTimestamps)
     describe "HeaderCursor" $ do
         describe "headerCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorParent
