@@ -4,8 +4,11 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Data.FuzzyTime
-    ( parseFuzzyDateTime
-    , FuzzyDateTime(..)
+    ( FuzzyDay(..)
+    , fuzzyDayP
+    , FuzzyDayOfTheWeek(..)
+    , fuzzyDayOfTheWeekP
+    , Parser
     ) where
 
 import Import
@@ -14,7 +17,16 @@ import Data.Tree
 
 import Text.Megaparsec
 
--- Can handle:
+type Parser = Parsec Dec String
+
+data FuzzyDay
+    = Yesterday
+    | Now
+    | Today
+    | Tomorrow
+    deriving (Show, Eq, Generic)
+
+-- | Can handle:
 --
 -- - yesterday
 -- - now
@@ -22,31 +34,58 @@ import Text.Megaparsec
 -- - tomorrow
 --
 -- and all non-ambiguous prefixes
-parseFuzzyDateTime :: String -> Maybe FuzzyDateTime
-parseFuzzyDateTime = parseMaybe fuzzyDateTimeParser
+fuzzyDayP :: Parser FuzzyDay
+fuzzyDayP =
+    recTreeParser
+        [ ("yesterday", Yesterday)
+        , ("now", Now)
+        , ("today", Today)
+        , ("tomorrow", Tomorrow)
+        ]
 
-type Parser = Parsec Dec String
+data FuzzyDayOfTheWeek
+    = Monday
+    | Tuesday
+    | Wednesday
+    | Thursday
+    | Friday
+    | Saturday
+    | Sunday
+    deriving (Show, Eq, Generic)
 
-fuzzyDateTimeParser :: Parser FuzzyDateTime
-fuzzyDateTimeParser = do
-    let pf =
-            makeParseForest
-                [ ("yesterday", Yesterday)
-                , ("now", Now)
-                , ("today", Today)
-                , ("tomorrow", Tomorrow)
-                ]
+-- | Can handle:
+--
+-- - monday
+-- - tuesday
+-- - wednesday
+-- - thursday
+-- - friday
+-- - saturday
+-- - sunday
+--
+-- and all non-ambiguous prefixes
+fuzzyDayOfTheWeekP :: Parser FuzzyDayOfTheWeek
+fuzzyDayOfTheWeekP =
+    recTreeParser
+        [ ("monday", Monday)
+        , ("tuesday", Tuesday)
+        , ("wednesday", Wednesday)
+        , ("thursday", Thursday)
+        , ("friday", Friday)
+        , ("saturday", Saturday)
+        , ("sunday", Sunday)
+        ]
+
+recTreeParser :: [(String, a)] -> Parser a
+recTreeParser tups = do
+    let pf = makeParseForest tups
     s <- some letterChar
     case lookupInParseForest s pf of
-        Nothing -> fail "nope"
+        Nothing ->
+            fail $
+            "Could not parse any of these recursively unambiguously: " ++
+            show (map fst tups)
         Just f -> pure f
-
-data FuzzyDateTime
-    = Yesterday
-    | Now
-    | Today
-    | Tomorrow
-    deriving (Show, Eq, Generic)
 
 lookupInParseForest :: Eq c => [c] -> Forest (c, Maybe a) -> Maybe a
 lookupInParseForest = gof
