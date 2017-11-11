@@ -6,6 +6,8 @@ import Prelude as X hiding (head, init, last, tail)
 
 import GHC.Generics as X hiding (Selector)
 
+import Data.List as X
+
 import Data.GenValidity as X
 import Data.GenValidity.Time as X ()
 

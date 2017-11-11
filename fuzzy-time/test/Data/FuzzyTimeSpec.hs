@@ -8,13 +8,16 @@ module Data.FuzzyTimeSpec
 
 import TestImport
 
-import Data.Time
-
 import Data.FuzzyTime
 
 spec :: Spec
 spec =
-    describe "parseFuzzyDay" $
-    it "parses 'now' as the day of the UTCTime" $
-    forAll genValid $ \now ->
-        parseFuzzyDay now "now" `shouldBe` Just (utctDay now)
+    describe "parseFuzzyDateTime" $ do
+        let lit s fd =
+                it (unwords ["parses", show s, "as", show fd]) $
+                parseFuzzyDateTime s `shouldBe` Just fd
+        let litR i s fd = mapM_ (`lit` fd) $ drop i $ inits s
+        litR 1 "yesterday" Yesterday
+        litR 3 "today" Today
+        litR 3 "tomorrow" Tomorrow
+        litR 1 "now" Now
