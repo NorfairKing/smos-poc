@@ -37,6 +37,8 @@ module Cursor.Tree
     , treeCursorDeleteCurrent
     , treeCursorMoveUp
     , treeCursorMoveDown
+    , treeCursorMoveLeft
+    , treeCursorMoveRight
     ) where
 
 import Import
@@ -403,6 +405,35 @@ treeCursorMoveDown tc =
                forestCursorSelectIx (treeCursorIndex tc + 1) $
                forestCursorInsertAt (treeCursorIndex tc + 1) t $
                treeCursorParent tc_
+
+treeCursorMoveLeft ::
+       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+    => TreeCursor a
+    -> Maybe (TreeCursor a)
+treeCursorMoveLeft tc =
+    let t = build tc
+        fc =
+            case treeCursorDeleteCurrent tc of
+                Left fc_ -> fc_
+                Right tc_ -> treeCursorParent tc_
+    in do ptc <- forestCursorParent fc
+          pure $ treeCursorInsertBelow ptc t
+
+treeCursorMoveRight ::
+       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+    => TreeCursor a
+    -> Maybe (TreeCursor a)
+treeCursorMoveRight tc =
+    let t = build tc
+    in case treeCursorDeleteCurrent tc of
+           Left _ -> Nothing
+           Right tc_ -> do
+               tca <-
+                   forestCursorSelectIx
+                       (treeCursorIndex tc - 1)
+                       (treeCursorParent tc_)
+               forestCursorSelectLast $
+                   treeCursorForest $ treeCursorInsertChildAtEnd t tca
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b

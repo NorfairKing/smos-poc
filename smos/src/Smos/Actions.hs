@@ -16,6 +16,8 @@ module Smos.Actions
     , moveRight
     , swapUp
     , swapDown
+    , swapLeft
+    , swapRight
     -- * Clock action
     , clockIn
     , clockOut
@@ -245,37 +247,29 @@ moveDown =
         in ec'
 
 moveLeft :: SmosM ()
-moveLeft =
-    modifyEntry $ \ec ->
-        let tc = entryCursorParent ec
-            tc' = fromMaybe tc $ forestCursorParent $ treeCursorParent tc
-            ec' = treeCursorValue tc'
-        in ec'
+moveLeft = modifyTreeM $ forestCursorParent . treeCursorParent
 
 moveRight :: SmosM ()
-moveRight =
-    modifyEntry $ \ec ->
-        let tc = entryCursorParent ec
-            fc = treeCursorForest tc
-            tc' = fromMaybe tc $ forestCursorSelectFirst fc
-            ec' = treeCursorValue tc'
-        in ec'
+moveRight = modifyTreeM $ forestCursorSelectFirst . treeCursorForest
 
 swapUp :: SmosM ()
-swapUp =
-    modifyEntry $ \ec ->
-        let tc = entryCursorParent ec
-            tc' = fromMaybe tc $ treeCursorMoveUp tc
-            ec' = treeCursorValue tc'
-        in ec'
+swapUp = modifyTreeM treeCursorMoveUp
 
 swapDown :: SmosM ()
-swapDown =
-    modifyEntry $ \ec ->
-        let tc = entryCursorParent ec
-            tc' = fromMaybe tc $ treeCursorMoveDown tc
-            ec' = treeCursorValue tc'
-        in ec'
+swapDown = modifyTreeM treeCursorMoveDown
+
+swapLeft :: SmosM ()
+swapLeft = modifyTreeM treeCursorMoveLeft
+
+swapRight :: SmosM ()
+swapRight = modifyTreeM treeCursorMoveRight
+
+modifyTreeM ::
+       (TreeCursor EntryCursor -> Maybe (TreeCursor EntryCursor)) -> SmosM ()
+modifyTreeM func = modifyTree $ \tc -> fromMaybe tc $ func tc
+
+modifyTree :: (TreeCursor EntryCursor -> TreeCursor EntryCursor) -> SmosM ()
+modifyTree func = modifyEntry $ treeCursorValue . func . entryCursorParent
 
 clockIn :: SmosM ()
 clockIn = do

@@ -131,3 +131,11 @@ spec = do
             it "rebuilds to something valid if it succeeds" $
             rebuildsToValidIfSucceeds
                 (treeCursorMoveDown :: TreeCursor IntCursor -> Maybe (TreeCursor IntCursor))
+        describe "treeCursorMoveLeft" $
+            it "rebuilds to something valid if it succeeds" $
+            rebuildsToValidIfSucceeds
+                (treeCursorMoveLeft :: TreeCursor IntCursor -> Maybe (TreeCursor IntCursor))
+        describe "treeCursorMoveRight" $
+            it "rebuilds to something valid if it succeeds" $
+            rebuildsToValidIfSucceeds
+                (treeCursorMoveRight :: TreeCursor IntCursor -> Maybe (TreeCursor IntCursor))

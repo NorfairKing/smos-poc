@@ -66,6 +66,8 @@ defaultConfig =
                     , matchKey KRight moveRight
                     , matchKeyPress (KeyPress KUp [MShift]) swapUp
                     , matchKeyPress (KeyPress KDown [MShift]) swapDown
+                    , matchKeyPress (KeyPress KLeft [MShift]) swapLeft
+                    , matchKeyPress (KeyPress KRight [MShift]) swapRight
                     , afterChar 'v' $
                       let editor = "urxvt -e vim"
                       in mconcat
