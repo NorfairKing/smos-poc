@@ -41,7 +41,7 @@ module Smos.Actions
     , contentsDown
     , contentsStart
     , contentsEnd
-    , commandOnContentsFile
+    , editorOnContents
     , exitContents
     -- * Tags actions
     , enterTag
@@ -75,15 +75,11 @@ module Smos.Actions
 import Import
 
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Data.Time
 import Data.Tree
 
 import Control.Monad.Reader
 import Control.Monad.State
-
-import System.Exit
-import System.Process
 
 import Lens.Micro
 
@@ -91,6 +87,7 @@ import Smos.Data
 
 import Cursor.Tree
 
+import Smos.Actions.Editor
 import Smos.Cursor
 import Smos.Cursor.Entry
 import Smos.Types
@@ -352,42 +349,25 @@ contentsStart = modifyContents contentsCursorStart
 contentsEnd :: SmosM ()
 contentsEnd = modifyContents contentsCursorEnd
 
-commandOnContentsFile :: String -> SmosM ()
-commandOnContentsFile cmd = do
-    cur <- gets smosStateCursor
-    case cur of
-        Just (AnEntry ec) -> do
-            mNewContents <-
-                liftIO $
-                withSystemTempDir "smos" $ \d -> do
-                    p <- resolveFile d "edit.tmp"
-                    T.writeFile (toFilePath p) $
-                        contentsText $
-                        maybe (Contents "") build $ entryCursorContents ec
-                    let cp =
-                            (shell $ unwords [cmd, toFilePath p])
-                            { std_in = NoStream
-                            , std_out = NoStream
-                            , std_err = NoStream
-                            }
-                    (Nothing, Nothing, Nothing, ph) <- createProcess cp
-                    c <- waitForProcess ph
-                    case c of
-                        ExitSuccess -> Just <$> T.readFile (toFilePath p)
-                        ExitFailure _ -> pure Nothing -- TODO show a message
-            case mNewContents of
-                Nothing -> pure ()
-                Just ct ->
-                    modify $ \s ->
-                        s
-                        { smosStateCursor =
-                              Just $
-                              AnEntry
-                                  (ec & entryCursorContentsL %~
-                                   fmap
-                                       (contentsCursorSetContents (Contents ct)))
-                        }
-        _ -> pure ()
+editorOnContents :: String -> SmosM ()
+editorOnContents cmd =
+    modifyCursorS $ \cur ->
+        case cur of
+            AnEntry ec -> do
+                er <-
+                    liftIO $
+                    startEditorOnContentsAsIs cmd $
+                    maybe (Contents "") build $ entryCursorContents ec
+                case er of
+                    EditorUnchanged -> pure cur
+                    EditorChangedTo nc ->
+                        pure $
+                        AnEntry $
+                        ec & entryCursorContentsL %~
+                        fmap (contentsCursorSetContents nc)
+                    EditorError {} -> pure cur
+                    EditorParsingError _ _ -> pure cur
+            _ -> pure cur
 
 exitContents :: SmosM ()
 exitContents =
@@ -497,11 +477,14 @@ modifyContentsM :: (ContentsCursor -> Maybe ContentsCursor) -> SmosM ()
 modifyContentsM func = modifyContents $ \cc -> fromMaybe cc $ func cc
 
 modifyContents :: (ContentsCursor -> ContentsCursor) -> SmosM ()
-modifyContents func =
-    modifyCursor $ \cur ->
+modifyContents func = modifyContentsS $ pure . func
+
+modifyContentsS :: (ContentsCursor -> SmosM ContentsCursor) -> SmosM ()
+modifyContentsS func =
+    modifyCursorS $ \cur ->
         case cur of
-            AContents cc -> AContents $ func cc
-            _ -> cur
+            AContents cc -> AContents <$> func cc
+            _ -> pure cur
 
 modifyTodoState :: (StateCursor -> StateCursor) -> SmosM ()
 modifyTodoState func =
@@ -524,9 +507,23 @@ modifyTag func =
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()
 modifyCursor func = modifyMCursor $ \mc -> func <$> mc
 
+modifyCursorS :: (ACursor -> SmosM ACursor) -> SmosM ()
+modifyCursorS func =
+    modifyMCursorS $ \mc ->
+        case mc of
+            Nothing -> pure Nothing
+            Just c -> Just <$> func c
+
 modifyMCursor :: (Maybe ACursor -> Maybe ACursor) -> SmosM ()
-modifyMCursor func =
-    modify $ \ss -> ss {smosStateCursor = func $ smosStateCursor ss}
+modifyMCursor func = modifyMCursorS $ pure . func
+
+modifyMCursorS :: (Maybe ACursor -> SmosM (Maybe ACursor)) -> SmosM ()
+modifyMCursorS func = do
+    ss <- get
+    let msc = smosStateCursor ss
+    msc' <- func msc
+    let ss' = ss {smosStateCursor = msc'}
+    put ss'
 
 withEntryCursor :: (EntryCursor -> SmosM ()) -> SmosM ()
 withEntryCursor func = do

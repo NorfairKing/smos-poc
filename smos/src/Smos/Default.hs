@@ -54,7 +54,7 @@ defaultConfig =
                     , matchKey KUp moveUp
                     , matchKey KLeft moveLeft
                     , matchKey KRight moveRight
-                    , matchChar 'v' $ commandOnContentsFile "urxvt -e vim"
+                    , matchChar 'v' $ editorOnContents "urxvt -e vim"
                     , matchChar 's' save
                     , matchChar 'q' stop
                     , matchKey KEsc stop
