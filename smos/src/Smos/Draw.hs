@@ -16,6 +16,7 @@ import Data.Tree hiding (drawForest, drawTree)
 import Brick.Types as B
 import Brick.Widgets.Center as B
 import Brick.Widgets.Core as B
+import Graphics.Vty.Input.Events (Key(..), Modifier(..))
 
 import Cursor.Text
 import Cursor.TextField
@@ -34,7 +35,7 @@ smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
     renderCursor :: ACursor -> Widget ResourceName
     renderCursor cur =
         drawForest msel for <=> str (show rsel) <=>
-        strWrap (show smosStateKeyHistory)
+        drawHistory smosStateKeyHistory
       where
         msel = Just rsel
         rsel = reverse $ selection $ selectAnyCursor cur
@@ -183,3 +184,18 @@ withTextFieldSel =
                Just (yix_, xix_) ->
                    withAttr selectedAttr $
                    B.showCursor textCursorName (B.Location (xix_, yix_)) tw
+
+drawHistory :: [KeyPress] -> Widget n
+drawHistory = strWrap . unwords . map showKeypress . reverse
+  where
+    showKeypress (KeyPress key mods) =
+        case mods of
+            [] -> showKey key
+            _ -> intercalate "-" $ map showMod mods ++ [showKey key]
+    showKey (KChar c) = [c]
+    showKey (KFun i) = "F" ++ show i
+    showKey k = show k
+    showMod MShift = "S"
+    showMod MCtrl = "C"
+    showMod MMeta = "M"
+    showMod MAlt = "A"
