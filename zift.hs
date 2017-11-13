@@ -20,7 +20,7 @@ main :: IO ()
 main =
     ziftWith $ do
         recursiveZift
-        preprocessor $ ziftP [hindentZift, cabalFormatZift]
+        preprocessor hindentZift
         prechecker gitAddAllZift
         checker $ do
             hlintZift
