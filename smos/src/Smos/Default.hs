@@ -40,6 +40,8 @@ defaultConfig =
                           , matchChar 'a' $ enterTag >> tagsSelectEnd
                           , matchChar 'A' $
                             enterTag >> tagsSelectEnd >> tagsSelectNext
+                          , matchChar 'w' $ tagToggle "work"
+                          , matchChar 'h' $ tagToggle "home"
                           ]
                     , afterChar 'c' $
                       mconcat [matchChar 'i' clockIn, matchChar 'o' clockOut]

@@ -54,6 +54,9 @@ module Smos.Actions
     , exitContents
     -- * Tags actions
     , enterTag
+    , tagToggle
+    , tagSet
+    , tagUnset
     , editorOnTags
     , exitTag
     -- ** Single Tag Actions
@@ -412,6 +415,29 @@ enterTag =
                                   Just tc -> ATag tc
                        Just tc -> ATag tc
             _ -> cur
+
+tagToggle :: Tag -> SmosM ()
+tagToggle t =
+    modifyEntry $ \ec ->
+        ec & entryCursorTagsL . tagsCursorTagsL %~
+        (\ts ->
+             if t `elem` ts
+                 then filter (/= t) ts
+                 else t : ts)
+
+tagSet :: Tag -> SmosM ()
+tagSet t =
+    modifyEntry $ \ec ->
+        ec & entryCursorTagsL . tagsCursorTagsL %~
+        (\ts ->
+             if t `elem` ts
+                 then ts
+                 else t : ts)
+
+tagUnset :: Tag -> SmosM ()
+tagUnset t =
+    modifyEntry $ \ec ->
+        ec & entryCursorTagsL . tagsCursorTagsL %~ filter (/= t)
 
 tagInsert :: Char -> SmosM ()
 tagInsert = modifyTag . tagCursorInsert
