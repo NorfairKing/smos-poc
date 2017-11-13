@@ -9,6 +9,7 @@ module Cursor.TestUtils
     , buildsToTheSame
     , buildsToTheSameIfSuceeds
     , rebuildsToValid
+    , rebuildsToValidIfSucceeds
     , rebuildsToTheSame
     , rebuildsToTheSameIfSuceeds
     , reselectsToTheSameSelection
@@ -96,6 +97,19 @@ rebuildsToValid ::
     => (a -> b)
     -> Property
 rebuildsToValid func = forAll genValid $ shouldBeValid . rebuild . func
+
+rebuildsToValidIfSucceeds ::
+       ( Show a
+       , Show b
+       , GenValid a
+       , Rebuild b
+       , Validity (ReBuilding b)
+       , Show (ReBuilding b)
+       )
+    => (a -> Maybe b)
+    -> Property
+rebuildsToValidIfSucceeds func =
+    forAll genValid $ shouldBeValid . fmap rebuild . func
 
 rebuildsToTheSame ::
        ( Show a

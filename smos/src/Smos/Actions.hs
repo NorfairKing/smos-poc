@@ -14,6 +14,8 @@ module Smos.Actions
     , moveDown
     , moveLeft
     , moveRight
+    , swapUp
+    , swapDown
     -- * Clock action
     , clockIn
     , clockOut
@@ -256,6 +258,22 @@ moveRight =
         let tc = entryCursorParent ec
             fc = treeCursorForest tc
             tc' = fromMaybe tc $ forestCursorSelectFirst fc
+            ec' = treeCursorValue tc'
+        in ec'
+
+swapUp :: SmosM ()
+swapUp =
+    modifyEntry $ \ec ->
+        let tc = entryCursorParent ec
+            tc' = fromMaybe tc $ treeCursorMoveUp tc
+            ec' = treeCursorValue tc'
+        in ec'
+
+swapDown :: SmosM ()
+swapDown =
+    modifyEntry $ \ec ->
+        let tc = entryCursorParent ec
+            tc' = fromMaybe tc $ treeCursorMoveDown tc
             ec' = treeCursorValue tc'
         in ec'
 

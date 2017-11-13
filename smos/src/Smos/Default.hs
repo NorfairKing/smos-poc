@@ -60,10 +60,12 @@ defaultConfig =
                     , matchChar 'k' moveUp
                     , matchChar 'h' moveLeft
                     , matchChar 'l' moveRight
-                    , matchKey KDown moveDown
                     , matchKey KUp moveUp
+                    , matchKey KDown moveDown
                     , matchKey KLeft moveLeft
                     , matchKey KRight moveRight
+                    , matchKeyPress (KeyPress KUp [MShift]) swapUp
+                    , matchKeyPress (KeyPress KDown [MShift]) swapDown
                     , afterChar 'v' $
                       let editor = "urxvt -e vim"
                       in mconcat

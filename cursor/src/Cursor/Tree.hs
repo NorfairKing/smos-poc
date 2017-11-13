@@ -35,6 +35,8 @@ module Cursor.Tree
     , treeCursorInsertChildAtStart
     , treeCursorInsertChildAtEnd
     , treeCursorDeleteCurrent
+    , treeCursorMoveUp
+    , treeCursorMoveDown
     ) where
 
 import Import
@@ -133,8 +135,8 @@ rebuildForestParentCursor ::
 rebuildForestParentCursor func mtc =
     (\tc -> tc & treeCursorForestL %~ func) <$> mtc
 
-forestCursorSelectIx :: ForestCursor a -> Int -> Maybe (TreeCursor a)
-forestCursorSelectIx fc = atMay $ forestCursorElems fc
+forestCursorSelectIx :: Int -> ForestCursor a -> Maybe (TreeCursor a)
+forestCursorSelectIx ix_ fc = forestCursorElems fc `atMay` ix_
 
 forestCursorSelectFirst :: ForestCursor a -> Maybe (TreeCursor a)
 forestCursorSelectFirst fc =
@@ -318,7 +320,7 @@ treeCursorInsertAbove ::
     => TreeCursor a
     -> Tree (Building a)
     -> TreeCursor a
-treeCursorInsertAbove tc t = fromJust $ forestCursorSelectIx newpar newIx
+treeCursorInsertAbove tc t = fromJust $ forestCursorSelectIx newIx newpar
   where
     newIx = treeCursorIndex tc
     newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
@@ -329,7 +331,7 @@ treeCursorInsertBelow ::
     -> Tree (Building a)
     -> TreeCursor a
 treeCursorInsertBelow tc t =
-    fromJust $ forestCursorSelectIx newpar $ treeCursorIndex tc + 1
+    fromJust $ forestCursorSelectIx (treeCursorIndex tc + 1) newpar
   where
     newIx = treeCursorIndex tc + 1
     newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
@@ -375,6 +377,32 @@ treeCursorDeleteCurrent tc = tc''
         let ix_ = treeCursorIndex tc
         in maybe (Left for) Right $
            (els `atMay` ix_) `mplus` (els `atMay` (ix_ - 1))
+
+treeCursorMoveUp ::
+       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+    => TreeCursor a
+    -> Maybe (TreeCursor a)
+treeCursorMoveUp tc =
+    let t = build tc
+    in case treeCursorDeleteCurrent tc of
+           Left _ -> Nothing
+           Right tc_ ->
+               forestCursorSelectIx (treeCursorIndex tc - 1) $
+               forestCursorInsertAt (treeCursorIndex tc - 1) t $
+               treeCursorParent tc_
+
+treeCursorMoveDown ::
+       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+    => TreeCursor a
+    -> Maybe (TreeCursor a)
+treeCursorMoveDown tc =
+    let t = build tc
+    in case treeCursorDeleteCurrent tc of
+           Left _ -> Nothing
+           Right tc_ ->
+               forestCursorSelectIx (treeCursorIndex tc + 1) $
+               forestCursorInsertAt (treeCursorIndex tc + 1) t $
+               treeCursorParent tc_
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b

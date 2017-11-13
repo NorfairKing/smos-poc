@@ -63,7 +63,7 @@ spec = do
             it "rebuilds to the same" $
             forAll genUnchecked $ \i ->
                 rebuildsToTheSameIfSuceeds
-                    ((`forestCursorSelectIx` i) :: ForestCursor IntCursor -> Maybe (TreeCursor IntCursor))
+                    (forestCursorSelectIx i :: ForestCursor IntCursor -> Maybe (TreeCursor IntCursor))
         describe "forestCursorSelectFirst" $
             it "rebuilds to the same" $
             rebuildsToTheSameIfSuceeds
@@ -123,3 +123,11 @@ spec = do
                 case treeCursorDeleteCurrent tc :: Either (ForestCursor IntCursor) (TreeCursor IntCursor) of
                     Left fc' -> shouldBeValid fc'
                     Right tc' -> shouldBeValid tc'
+        describe "treeCursorMoveUp" $
+            it "rebuilds to something valid if it succeeds" $
+            rebuildsToValidIfSucceeds
+                (treeCursorMoveUp :: TreeCursor IntCursor -> Maybe (TreeCursor IntCursor))
+        describe "treeCursorMoveDown" $
+            it "rebuilds to something valid if it succeeds" $
+            rebuildsToValidIfSucceeds
+                (treeCursorMoveDown :: TreeCursor IntCursor -> Maybe (TreeCursor IntCursor))
