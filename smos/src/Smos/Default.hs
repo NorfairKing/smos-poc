@@ -32,7 +32,15 @@ defaultConfig =
                     , matchChar 'i' $ enterHeader >> headerStart
                     , matchChar 'a' $ enterHeader >> headerEnd
                     , matchChar 'e' $ enterContents >> contentsStart
-                    , matchChar 'g' enterTag
+                    , afterChar 'g' $
+                      mconcat
+                          [ matchChar 'i' $ enterTag >> tagsSelectStart
+                          , matchChar 'I' $
+                            enterTag >> tagsSelectStart >> tagsSelectPrev
+                          , matchChar 'a' $ enterTag >> tagsSelectEnd
+                          , matchChar 'A' $
+                            enterTag >> tagsSelectEnd >> tagsSelectNext
+                          ]
                     , afterChar 'c' $
                       mconcat [matchChar 'i' clockIn, matchChar 'o' clockOut]
                     , afterChar 't' $
@@ -99,10 +107,11 @@ defaultConfig =
                     , matchKey KDel tagDelete
                     , matchKey KLeft tagLeft
                     , matchKey KRight tagRight
-                    , matchChar '\t' tagSelectNext
+                    , matchChar '\t' tagsSelectNext
+                    , matchKey KBackTab tagsSelectPrev
                     , matchKeyPress
                           (KeyPress (KChar '\t') [MShift])
-                          tagSelectPrev
+                          tagsSelectPrev
                     , matchKey KEnter exitTag
                     , matchKey KEsc exitTag
                     ]

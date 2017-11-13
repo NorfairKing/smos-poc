@@ -54,6 +54,9 @@ module Smos.Actions
     , exitContents
     -- * Tags actions
     , enterTag
+    , editorOnTags
+    , exitTag
+    -- ** Single Tag Actions
     , tagInsert
     , tagAppend
     , tagRemove
@@ -62,10 +65,11 @@ module Smos.Actions
     , tagRight
     , tagStart
     , tagEnd
-    , tagSelectPrev
-    , tagSelectNext
-    , editorOnTags
-    , exitTag
+    -- ** Tags actions
+    , tagsSelectPrev
+    , tagsSelectNext
+    , tagsSelectStart
+    , tagsSelectEnd
     -- * Helper functions to define your own actions
     , modifyEntryM
     , modifyEntry
@@ -433,11 +437,25 @@ tagStart = modifyTag tagCursorStart
 tagEnd :: SmosM ()
 tagEnd = modifyTag tagCursorEnd
 
-tagSelectPrev :: SmosM ()
-tagSelectPrev = modifyTagM tagCursorSelectPrev
+tagsSelectPrev :: SmosM ()
+tagsSelectPrev =
+    modifyTagM $ \tc ->
+        case tagCursorSelectPrev tc of
+            Just tc_ -> Just tc_
+            Nothing ->
+                let t = tagText $ build tc
+                in if T.null t
+                       then Nothing
+                       else let tsc = tagCursorParent tc
+                                tsc' =
+                                    tagsCursorInsertAt
+                                        (tagCursorIndex tc)
+                                        ""
+                                        tsc
+                            in tagsCursorTags tsc' `atMay` tagCursorIndex tc
 
-tagSelectNext :: SmosM ()
-tagSelectNext =
+tagsSelectNext :: SmosM ()
+tagsSelectNext =
     modifyTagM $ \tc ->
         case tagCursorSelectNext tc of
             Just tc_ -> Just tc_
@@ -453,6 +471,36 @@ tagSelectNext =
                                         tsc
                             in tagsCursorTags tsc' `atMay`
                                (tagCursorIndex tc + 1)
+
+tagsSelectStart :: SmosM ()
+tagsSelectStart =
+    modifyCursor $ \cur ->
+        case cur of
+            ATag tc_ ->
+                let tsc = tagCursorParent tc_
+                in case tagsCursorSelectFirst tsc of
+                       Nothing ->
+                           let tsc' = tagsCursorInsertAtStart "" tsc
+                           in case tagsCursorSelectFirst tsc' of
+                                  Nothing -> cur -- Should never happen, but fine if it does.
+                                  Just tc -> ATag tc
+                       Just tc -> ATag tc
+            _ -> cur
+
+tagsSelectEnd :: SmosM ()
+tagsSelectEnd =
+    modifyCursor $ \cur ->
+        case cur of
+            ATag tc_ ->
+                let tsc = tagCursorParent tc_
+                in case tagsCursorSelectLast tsc of
+                       Nothing ->
+                           let tsc' = tagsCursorAppendAtEnd "" tsc
+                           in case tagsCursorSelectLast tsc' of
+                                  Nothing -> cur -- Should never happen, but fine if it does.
+                                  Just tc -> ATag tc
+                       Just tc -> ATag tc
+            _ -> cur
 
 editorOnTags :: String -> SmosM ()
 editorOnTags =
