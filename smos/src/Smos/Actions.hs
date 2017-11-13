@@ -55,6 +55,7 @@ module Smos.Actions
     , tagEnd
     , tagSelectPrev
     , tagSelectNext
+    , editorOnTags
     , exitTag
     -- * Helper functions to define your own actions
     , modifyEntryM
@@ -351,23 +352,18 @@ contentsEnd = modifyContents contentsCursorEnd
 
 editorOnContents :: String -> SmosM ()
 editorOnContents cmd =
-    modifyCursorS $ \cur ->
-        case cur of
-            AnEntry ec -> do
-                er <-
-                    liftIO $
-                    startEditorOnContentsAsIs cmd $
-                    maybe (Contents "") build $ entryCursorContents ec
-                case er of
-                    EditorUnchanged -> pure cur
-                    EditorChangedTo nc ->
-                        pure $
-                        AnEntry $
-                        ec & entryCursorContentsL %~
-                        fmap (contentsCursorSetContents nc)
-                    EditorError {} -> pure cur
-                    EditorParsingError _ _ -> pure cur
-            _ -> pure cur
+    modifyEntryS $ \ec -> do
+        er <-
+            liftIO $
+            startEditorOnContentsAsIs cmd $
+            maybe (Contents "") build $ entryCursorContents ec
+        case er of
+            EditorUnchanged -> pure ec
+            EditorChangedTo nc ->
+                pure $
+                ec & entryCursorContentsL %~ fmap (contentsCursorSetContents nc)
+            EditorError {} -> pure ec
+            EditorParsingError _ _ -> pure ec
 
 exitContents :: SmosM ()
 exitContents =
@@ -446,6 +442,17 @@ tagSelectNext =
                             in tagsCursorTags tsc' `atMay`
                                (tagCursorIndex tc + 1)
 
+editorOnTags :: String -> SmosM ()
+editorOnTags cmd =
+    modifyEntryS $ \ec -> do
+        er <- liftIO $ startEditorOnTagsAsIs cmd $ build $ entryCursorTags ec
+        case er of
+            EditorUnchanged -> pure ec
+            EditorChangedTo tgs ->
+                pure $ ec & entryCursorTagsL %~ tagsCursorSetTags tgs
+            EditorError {} -> pure ec
+            EditorParsingError _ _ -> pure ec
+
 exitTag :: SmosM ()
 exitTag =
     modifyCursor $ \cur ->
@@ -457,11 +464,14 @@ modifyEntryM :: (EntryCursor -> Maybe EntryCursor) -> SmosM ()
 modifyEntryM func = modifyEntry $ \hc -> fromMaybe hc $ func hc
 
 modifyEntry :: (EntryCursor -> EntryCursor) -> SmosM ()
-modifyEntry func =
-    modifyCursor $ \cur ->
+modifyEntry func = modifyEntryS $ pure . func
+
+modifyEntryS :: (EntryCursor -> SmosM EntryCursor) -> SmosM ()
+modifyEntryS func =
+    modifyCursorS $ \cur ->
         case cur of
-            AnEntry h -> AnEntry $ func h
-            _ -> cur
+            AnEntry h -> AnEntry <$> func h
+            _ -> pure cur
 
 modifyHeaderM :: (HeaderCursor -> Maybe HeaderCursor) -> SmosM ()
 modifyHeaderM func = modifyHeader $ \hc -> fromMaybe hc $ func hc

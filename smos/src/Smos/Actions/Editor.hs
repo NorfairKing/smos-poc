@@ -4,6 +4,8 @@
 module Smos.Actions.Editor
     ( startEditorOnContents
     , startEditorOnContentsAsIs
+    , startEditorOnTags
+    , startEditorOnTagsAsIs
     , startEditorOnText
     , startEditorOn
     , EditorStart(..)
@@ -12,6 +14,7 @@ module Smos.Actions.Editor
 
 import Import
 
+import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
 import System.Exit
@@ -85,12 +88,20 @@ startEditorOn inFunc parseFunc cmd start = do
             EditorError t i ms -> EditorError t i ms
             EditorParsingError t s -> EditorParsingError t s
 
+asIs :: a -> EditorStart a
+asIs a = EditorStart {editorStartData = a, editorStartContents = a}
+
 startEditorOnContents ::
        String -> EditorStart Contents -> IO (EditorResult Contents)
 startEditorOnContents = startEditorOn contentsText (pure . Contents)
 
 startEditorOnContentsAsIs :: String -> Contents -> IO (EditorResult Contents)
 startEditorOnContentsAsIs cmd contents =
-    startEditorOnContents
-        cmd
-        EditorStart {editorStartData = contents, editorStartContents = contents}
+    startEditorOnContents cmd $ asIs contents
+
+startEditorOnTags :: String -> EditorStart [Tag] -> IO (EditorResult [Tag])
+startEditorOnTags =
+    startEditorOn (T.unlines . map tagText) (pure . map Tag . T.lines)
+
+startEditorOnTagsAsIs :: String -> [Tag] -> IO (EditorResult [Tag])
+startEditorOnTagsAsIs cmd tags = startEditorOnTags cmd $ asIs tags

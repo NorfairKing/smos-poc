@@ -54,7 +54,12 @@ defaultConfig =
                     , matchKey KUp moveUp
                     , matchKey KLeft moveLeft
                     , matchKey KRight moveRight
-                    , matchChar 'v' $ editorOnContents "urxvt -e vim"
+                    , afterChar 'v' $
+                      let editor = "urxvt -e vim"
+                      in mconcat
+                             [ matchChar 'c' $ editorOnContents editor
+                             , matchChar 'g' $ editorOnTags editor
+                             ]
                     , matchChar 's' save
                     , matchChar 'q' stop
                     , matchKey KEsc stop
