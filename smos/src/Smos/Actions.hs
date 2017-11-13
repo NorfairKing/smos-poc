@@ -19,6 +19,10 @@ module Smos.Actions
     , clockOut
     -- * Logbook
     , editorOnLogbook
+    -- * Properties
+    , editorOnProperties
+    -- * Timestamps
+    , editorOnTimestamps
     -- * Todo state actions
     , todoStateClear
     , todoStateSet
@@ -262,6 +266,15 @@ clockOut = do
 
 editorOnLogbook :: String -> SmosM ()
 editorOnLogbook = editorOn entryCursorLogbookL startEditorOnLogbookAsIs
+
+editorOnProperties :: String -> SmosM ()
+editorOnProperties = editorOn entryCursorPropertiesL startEditorOnPropertiesAsIs
+
+editorOnTimestamps :: String -> SmosM ()
+editorOnTimestamps =
+    editorOn
+        (entryCursorTimestampsL . timestampsCursorTimestampsL)
+        startEditorOnTimestampsAsIs
 
 clockOutMod :: UTCTime -> (SmosFile -> SmosFile)
 clockOutMod now = SmosFile . gof . smosFileForest

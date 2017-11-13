@@ -2,7 +2,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Smos.Actions.Editor
-    ( startEditorOnLogbook
+    ( startEditorOnProperties
+    , startEditorOnPropertiesAsIs
+    , startEditorOnTimestamps
+    , startEditorOnTimestampsAsIs
+    , startEditorOnLogbook
     , startEditorOnLogbookAsIs
     , startEditorOnContents
     , startEditorOnContentsAsIs
@@ -18,6 +22,8 @@ module Smos.Actions.Editor
 
 import Import
 
+import Data.HashMap.Lazy (HashMap)
+import Data.Time
 import Data.Yaml as Yaml
 
 import qualified Data.Text as T
@@ -136,3 +142,27 @@ startEditorOnLogbook = startEditorOnYaml
 
 startEditorOnLogbookAsIs :: String -> Logbook -> IO (EditorResult Logbook)
 startEditorOnLogbookAsIs = startAsIs startEditorOnLogbook
+
+startEditorOnTimestamps ::
+       String
+    -> EditorStart (HashMap TimestampName UTCTime)
+    -> IO (EditorResult (HashMap TimestampName UTCTime))
+startEditorOnTimestamps = startEditorOnYaml
+
+startEditorOnTimestampsAsIs ::
+       String
+    -> HashMap TimestampName UTCTime
+    -> IO (EditorResult (HashMap TimestampName UTCTime))
+startEditorOnTimestampsAsIs = startAsIs startEditorOnTimestamps
+
+startEditorOnProperties ::
+       String
+    -> EditorStart (HashMap PropertyName PropertyValue)
+    -> IO (EditorResult (HashMap PropertyName PropertyValue))
+startEditorOnProperties = startEditorOnYaml
+
+startEditorOnPropertiesAsIs ::
+       String
+    -> HashMap PropertyName PropertyValue
+    -> IO (EditorResult (HashMap PropertyName PropertyValue))
+startEditorOnPropertiesAsIs = startAsIs startEditorOnProperties

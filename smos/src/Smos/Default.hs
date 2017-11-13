@@ -60,6 +60,8 @@ defaultConfig =
                              [ matchChar 'c' $ editorOnContents editor
                              , matchChar 'g' $ editorOnTags editor
                              , matchChar 'l' $ editorOnLogbook editor
+                             , matchChar 't' $ editorOnTimestamps editor
+                             , matchChar 'p' $ editorOnProperties editor
                              ]
                     , matchChar 's' save
                     , matchChar 'q' stop

@@ -18,6 +18,7 @@ module Smos.Cursor.Entry
     , entryCursorTagsL
     , entryCursorTimestampsL
     , entryCursorLogbookL
+    , entryCursorPropertiesL
     , entryCursorClockIn
     , entryCursorContentsML
     , HeaderCursor
@@ -334,6 +335,31 @@ entryCursorLogbookL = lens getter setter
             , entryCursorTimestamps =
                   (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             , entryCursorLogbook = lb
+            }
+
+entryCursorPropertiesL ::
+       Functor f
+    => (HashMap PropertyName PropertyValue -> f (HashMap PropertyName PropertyValue))
+    -> EntryCursor
+    -> f EntryCursor
+entryCursorPropertiesL = lens getter setter
+  where
+    getter = entryCursorProperties
+    setter ec ps = ec'
+      where
+        ec' =
+            ec
+            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
+            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
+            , entryCursorHeader =
+                  (entryCursorHeader ec) {headerCursorParent = ec'}
+            , entryCursorContents =
+                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
+                  entryCursorContents ec
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps =
+                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
+            , entryCursorProperties = ps
             }
 
 entryCursorClockIn :: UTCTime -> EntryCursor -> Maybe EntryCursor
