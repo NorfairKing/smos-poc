@@ -60,6 +60,10 @@ defaultConfig =
                     , matchChar 'k' moveUp
                     , matchChar 'h' moveLeft
                     , matchChar 'l' moveRight
+                    , matchChar 'J' swapDown
+                    , matchChar 'K' swapUp
+                    , matchChar 'H' swapLeft
+                    , matchChar 'L' swapRight
                     , matchKey KUp moveUp
                     , matchKey KDown moveDown
                     , matchKey KLeft moveLeft
