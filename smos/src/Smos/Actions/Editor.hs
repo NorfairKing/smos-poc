@@ -2,10 +2,14 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Smos.Actions.Editor
-    ( startEditorOnContents
+    ( startEditorOnLogbook
+    , startEditorOnLogbookAsIs
+    , startEditorOnContents
     , startEditorOnContentsAsIs
     , startEditorOnTags
     , startEditorOnTagsAsIs
+    , startEditorOnYamlAsIs
+    , startEditorOnYaml
     , startEditorOnText
     , startEditorOn
     , EditorStart(..)
@@ -14,7 +18,10 @@ module Smos.Actions.Editor
 
 import Import
 
+import Data.Yaml as Yaml
+
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Text.IO as T
 
 import System.Exit
@@ -91,17 +98,41 @@ startEditorOn inFunc parseFunc cmd start = do
 asIs :: a -> EditorStart a
 asIs a = EditorStart {editorStartData = a, editorStartContents = a}
 
+startAsIs ::
+       (String -> EditorStart a -> IO (EditorResult a))
+    -> String
+    -> a
+    -> IO (EditorResult a)
+startAsIs func cmd = func cmd . asIs
+
 startEditorOnContents ::
        String -> EditorStart Contents -> IO (EditorResult Contents)
 startEditorOnContents = startEditorOn contentsText (pure . Contents)
 
 startEditorOnContentsAsIs :: String -> Contents -> IO (EditorResult Contents)
-startEditorOnContentsAsIs cmd contents =
-    startEditorOnContents cmd $ asIs contents
+startEditorOnContentsAsIs = startAsIs startEditorOnContents
 
 startEditorOnTags :: String -> EditorStart [Tag] -> IO (EditorResult [Tag])
 startEditorOnTags =
     startEditorOn (T.unlines . map tagText) (pure . map Tag . T.lines)
 
 startEditorOnTagsAsIs :: String -> [Tag] -> IO (EditorResult [Tag])
-startEditorOnTagsAsIs cmd tags = startEditorOnTags cmd $ asIs tags
+startEditorOnTagsAsIs = startAsIs startEditorOnTags
+
+startEditorOnYaml ::
+       (ToJSON a, FromJSON a) => String -> EditorStart a -> IO (EditorResult a)
+startEditorOnYaml =
+    startEditorOn
+        (TE.decodeUtf8 . Yaml.encode)
+        (Yaml.decodeEither . TE.encodeUtf8)
+
+startEditorOnYamlAsIs ::
+       (ToJSON a, FromJSON a) => String -> a -> IO (EditorResult a)
+startEditorOnYamlAsIs = startAsIs startEditorOnYaml
+
+startEditorOnLogbook ::
+       String -> EditorStart Logbook -> IO (EditorResult Logbook)
+startEditorOnLogbook = startEditorOnYaml
+
+startEditorOnLogbookAsIs :: String -> Logbook -> IO (EditorResult Logbook)
+startEditorOnLogbookAsIs = startAsIs startEditorOnLogbook

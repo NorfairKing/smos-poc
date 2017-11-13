@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Smos.Actions
@@ -13,8 +14,12 @@ module Smos.Actions
     , moveDown
     , moveLeft
     , moveRight
+    -- * Clock action
     , clockIn
     , clockOut
+    -- * Logbook
+    , editorOnLogbook
+    -- * Todo state actions
     , todoStateClear
     , todoStateSet
     -- * Header actions
@@ -255,6 +260,9 @@ clockOut = do
     withFullMod $ clockOutMod now
     withAgendaFilesMod $ const $ clockOutMod now
 
+editorOnLogbook :: String -> SmosM ()
+editorOnLogbook = editorOn entryCursorLogbookL startEditorOnLogbookAsIs
+
 clockOutMod :: UTCTime -> (SmosFile -> SmosFile)
 clockOutMod now = SmosFile . gof . smosFileForest
   where
@@ -351,19 +359,10 @@ contentsEnd :: SmosM ()
 contentsEnd = modifyContents contentsCursorEnd
 
 editorOnContents :: String -> SmosM ()
-editorOnContents cmd =
-    modifyEntryS $ \ec -> do
-        er <-
-            liftIO $
-            startEditorOnContentsAsIs cmd $
-            maybe (Contents "") build $ entryCursorContents ec
-        case er of
-            EditorUnchanged -> pure ec
-            EditorChangedTo nc ->
-                pure $
-                ec & entryCursorContentsL %~ fmap (contentsCursorSetContents nc)
-            EditorError {} -> pure ec
-            EditorParsingError _ _ -> pure ec
+editorOnContents =
+    editorOn
+        (entryCursorContentsML . non (Contents ""))
+        startEditorOnContentsAsIs
 
 exitContents :: SmosM ()
 exitContents =
@@ -443,15 +442,8 @@ tagSelectNext =
                                (tagCursorIndex tc + 1)
 
 editorOnTags :: String -> SmosM ()
-editorOnTags cmd =
-    modifyEntryS $ \ec -> do
-        er <- liftIO $ startEditorOnTagsAsIs cmd $ build $ entryCursorTags ec
-        case er of
-            EditorUnchanged -> pure ec
-            EditorChangedTo tgs ->
-                pure $ ec & entryCursorTagsL %~ tagsCursorSetTags tgs
-            EditorError {} -> pure ec
-            EditorParsingError _ _ -> pure ec
+editorOnTags =
+    editorOn (entryCursorTagsL . tagsCursorTagsL) startEditorOnTagsAsIs
 
 exitTag :: SmosM ()
 exitTag =
@@ -459,6 +451,20 @@ exitTag =
         case cur of
             ATag tc -> AnEntry $ tagsCursorParent $ tagCursorParent tc
             _ -> cur
+
+editorOn ::
+       Lens' EntryCursor a
+    -> (String -> a -> IO (EditorResult a))
+    -> String
+    -> SmosM ()
+editorOn l editFunc cmd =
+    modifyEntryS $ \ec -> do
+        er <- liftIO $ editFunc cmd $ ec ^. l
+        case er of
+            EditorUnchanged -> pure ec
+            EditorChangedTo nc -> pure $ ec & l .~ nc
+            EditorError {} -> pure ec
+            EditorParsingError _ _ -> pure ec
 
 modifyEntryM :: (EntryCursor -> Maybe EntryCursor) -> SmosM ()
 modifyEntryM func = modifyEntry $ \hc -> fromMaybe hc $ func hc

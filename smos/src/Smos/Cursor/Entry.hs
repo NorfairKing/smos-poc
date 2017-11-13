@@ -19,6 +19,7 @@ module Smos.Cursor.Entry
     , entryCursorTimestampsL
     , entryCursorLogbookL
     , entryCursorClockIn
+    , entryCursorContentsML
     , HeaderCursor
     , headerCursor
     , headerCursorParent
@@ -64,6 +65,7 @@ module Smos.Cursor.Entry
     , foldTagsSel
     , tagsCursorParent
     , tagsCursorTags
+    , tagsCursorTagsL
     , tagsCursorSelectFirst
     , tagsCursorSelectLast
     , tagsCursorSetTags
@@ -226,11 +228,7 @@ entryCursorHeaderL = lens getter setter
                   (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             }
 
-entryCursorContentsL ::
-       Functor f
-    => (Maybe ContentsCursor -> f (Maybe ContentsCursor))
-    -> EntryCursor
-    -> f EntryCursor
+entryCursorContentsL :: Lens' EntryCursor (Maybe ContentsCursor)
 entryCursorContentsL = lens getter setter
   where
     getter = entryCursorContents
@@ -340,6 +338,13 @@ entryCursorLogbookL = lens getter setter
 
 entryCursorClockIn :: UTCTime -> EntryCursor -> Maybe EntryCursor
 entryCursorClockIn now = entryCursorLogbookL $ clockInAt now
+
+entryCursorContentsML :: Lens' EntryCursor (Maybe Contents)
+entryCursorContentsML = lens (fmap build . entryCursorContents) setter
+  where
+    setter ec mc = ec'
+      where
+        ec' = ec & entryCursorContentsL .~ (contentsCursor ec' <$> mc)
 
 data HeaderCursor = HeaderCursor
     { headerCursorParent :: EntryCursor
@@ -473,11 +478,7 @@ contentsCursorSetContents :: Contents -> ContentsCursor -> ContentsCursor
 contentsCursorSetContents cs =
     contentsCursorTextFieldL .~ makeTextFieldCursor (contentsText cs)
 
-contentsCursorContentsL ::
-       Functor f
-    => (Contents -> f Contents)
-    -> ContentsCursor
-    -> f ContentsCursor
+contentsCursorContentsL :: Lens' ContentsCursor Contents
 contentsCursorContentsL = lens build $ flip contentsCursorSetContents
 
 contentsCursorInsert :: Char -> ContentsCursor -> ContentsCursor
@@ -633,6 +634,14 @@ tagsCursorTagCursorsL = lens getter setter
       where
         ec' = tagsCursorParent cc & entryCursorTagsL .~ cc'
         cc' = cc {tagsCursorParent = ec', tagsCursorTags = ts}
+
+tagsCursorTagsL :: Functor f => ([Tag] -> f [Tag]) -> TagsCursor -> f TagsCursor
+tagsCursorTagsL = lens build setter
+  where
+    setter tc tgs = tc'
+      where
+        ec' = tagsCursorParent tc & entryCursorTagsL .~ tc'
+        tc' = tagsCursor ec' tgs
 
 tagsCursorSelectFirst :: TagsCursor -> Maybe TagCursor
 tagsCursorSelectFirst tsc =

@@ -59,6 +59,7 @@ defaultConfig =
                       in mconcat
                              [ matchChar 'c' $ editorOnContents editor
                              , matchChar 'g' $ editorOnTags editor
+                             , matchChar 'l' $ editorOnLogbook editor
                              ]
                     , matchChar 's' save
                     , matchChar 'q' stop
