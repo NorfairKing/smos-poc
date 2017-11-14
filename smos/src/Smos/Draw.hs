@@ -62,14 +62,14 @@ drawTree = foldTreeSel drawEntry drawForest (<=>)
 drawEntry :: Maybe [Int] -> Entry -> Widget ResourceName
 drawEntry msel =
     foldEntrySel
-        drawTodoState
+        drawTodoStateInfo
         drawHeader
         drawTags
         drawTimestamps
         drawProperties
         drawContents
         drawLogbook
-        (\mts h tgs tss pss mc lb ->
+        (\(mts, tsh) h tgs tss pss mc lb ->
              withSel msel $
              B.vBox
                  [ B.hBox $
@@ -79,16 +79,39 @@ drawEntry msel =
                  , pss
                  , fromMaybe emptyWidget mc
                  , lb
+                 , tsh
                  ])
         msel
 
-drawTodoState :: Maybe [Int] -> StateHistory -> Maybe (Widget ResourceName)
+drawTodoStateInfo ::
+       Maybe [Int]
+    -> StateHistory
+    -> (Maybe (Widget ResourceName), Widget ResourceName)
+drawTodoStateInfo msel sh =
+    (drawTodoState msel sh, drawTodoStateHistory msel sh)
+
+drawTodoState :: Maybe [Int] -> StateHistory -> Maybe (Widget n)
 drawTodoState msel sh = do
     ts <- stateHistoryState sh
     pure $
         withSel msel $
         withAttr todoStateAttr $
         withAttr (todoStateSpecificAttr ts) $ B.txt $ todoStateText ts
+
+drawTodoStateHistory :: Maybe [Int] -> StateHistory -> Widget n
+drawTodoStateHistory msel sh =
+    let es = unStateHistory sh
+    in withSel msel $
+       withAttr todoStateHistoryAttr $
+       B.vBox $
+       flip map es $ \StateHistoryEntry {..} ->
+           hBox
+               [ drawBoxedTimestamp stateHistoryEntryTimestamp
+               , B.txt " "
+               , case stateHistoryEntryNewState of
+                     Just ts -> B.txt $ todoStateText ts
+                     Nothing -> B.txt ""
+               ]
 
 drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
 drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
@@ -131,9 +154,6 @@ drawProperties msel pss =
             , B.txt $ propertyValueText p
             ]
 
-drawTimestamp :: UTCTime -> Widget n
-drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
-
 drawLogbook :: Maybe [Int] -> Logbook -> Widget n
 drawLogbook msel = withSel msel . go
   where
@@ -147,12 +167,16 @@ drawLogbook msel = withSel msel . go
 drawLogbookEntry :: LogbookEntry -> Widget n
 drawLogbookEntry LogbookEntry {..} =
     B.hBox
-        [ str "["
-        , drawTimestamp logbookEntryStart
-        , str "]--["
-        , drawTimestamp logbookEntryEnd
-        , str "]"
+        [ drawBoxedTimestamp logbookEntryStart
+        , str "--"
+        , drawBoxedTimestamp logbookEntryEnd
         ]
+
+drawBoxedTimestamp :: UTCTime -> Widget n
+drawBoxedTimestamp ts = B.hBox [str "[", drawTimestamp ts, str "]"]
+
+drawTimestamp :: UTCTime -> Widget n
+drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
 withSel :: Maybe [Int] -> Widget n -> Widget n
 withSel msel =

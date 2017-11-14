@@ -7,6 +7,7 @@ module Smos.Style
     , contentsAttr
     , todoStateAttr
     , todoStateSpecificAttr
+    , todoStateHistoryAttr
     , tagAttr
     , tagSpecificAttr
     -- * Names of widgets
@@ -49,6 +50,9 @@ todoStateAttr = "todostate"
 todoStateSpecificAttr :: TodoState -> AttrName
 todoStateSpecificAttr tss =
     fromString $ "todostate-" ++ T.unpack (todoStateText tss)
+
+todoStateHistoryAttr :: AttrName
+todoStateHistoryAttr = "todostatehistory"
 
 tagAttr :: AttrName
 tagAttr = "tag"
