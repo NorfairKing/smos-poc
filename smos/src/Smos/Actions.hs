@@ -120,7 +120,7 @@ emptyTree = Node {rootLabel = newEntry "", subForest = []}
 
 initEntryCursor :: Maybe ACursor
 initEntryCursor =
-    let fc = makeForestCursor []
+    let fc = makeForestCursor' []
         fc' = forestCursorInsertAtStart emptyTree fc
         mtc' = forestCursorSelectFirst fc'
     in (AnEntry . treeCursorValue) <$> mtc'

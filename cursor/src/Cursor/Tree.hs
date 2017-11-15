@@ -1,12 +1,16 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Cursor.Tree
-    ( ForestCursor
+    ( ForestView(..)
+    , TreeView(..)
+    , ForestCursor
+    , makeForestCursor'
     , makeForestCursor
     , foldForestSel
     , forestCursorParent
@@ -49,6 +53,29 @@ import Lens.Micro
 
 import Cursor.Class
 
+data ForestView a = ForestView
+    { forestViewTrees :: [TreeView a]
+    } deriving (Show, Eq, Generic)
+
+instance Validity a => Validity (ForestView a)
+
+instance View a => View (ForestView a) where
+    type Source (ForestView a) = Forest (Source a)
+    source ForestView {..} = map source forestViewTrees
+    view = ForestView . map view
+
+data TreeView a = TreeView
+    { treeViewValue :: a
+    , treeViewForest :: ForestView a
+    } deriving (Show, Eq, Generic)
+
+instance Validity a => Validity (TreeView a)
+
+instance View a => View (TreeView a) where
+    type Source (TreeView a) = Tree (Source a)
+    source TreeView {..} = Node (source treeViewValue) (source treeViewForest)
+    view (Node v f) = TreeView {treeViewValue = view v, treeViewForest = view f}
+
 data ForestCursor a = ForestCursor
     { forestCursorParent :: Maybe (TreeCursor a)
     , forestCursorElems :: [TreeCursor a]
@@ -71,7 +98,7 @@ instance (Eq a, Build a, Eq (Building a)) => Eq (ForestCursor a) where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Build a => Rebuild (ForestCursor a) where
-    type ReBuilding (ForestCursor a) = Forest (Building a)
+    type ReBuilding (ForestCursor a) = ForestView (Building a)
     rebuild fc =
         case forestCursorParent fc of
             Nothing -> build fc
@@ -82,25 +109,49 @@ instance Build a => Rebuild (ForestCursor a) where
             Just p -> 1 : selection p
 
 instance Build a => Build (ForestCursor a) where
-    type Building (ForestCursor a) = Forest (Building a)
-    build = map build . forestCursorElems
+    type Building (ForestCursor a) = ForestView (Building a)
+    build = ForestView . map build . forestCursorElems
+
+makeForestCursor' ::
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building a ~ b
+       )
+    => Forest (Source b)
+    -> ForestCursor a
+makeForestCursor' = makeForestCursor Nothing
 
 makeForestCursor ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
-    => Forest (Building a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building a ~ b
+       )
+    => Maybe (TreeCursor a)
+    -> Forest (Source b)
     -> ForestCursor a
-makeForestCursor = forestCursor Nothing
+makeForestCursor par for = forestCursor par $ view for
 
 forestCursor ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building a ~ b
+       )
     => Maybe (TreeCursor a)
-    -> Forest (Building a)
+    -> ForestView b
     -> ForestCursor a
 forestCursor mpar sf = fc
   where
     fc =
         ForestCursor
-        {forestCursorParent = mpar, forestCursorElems = treeElems fc sf}
+        { forestCursorParent = mpar
+        , forestCursorElems = treeElems fc $ forestViewTrees sf
+        }
 
 foldForestSel ::
        (Maybe [Int] -> Tree a -> r)
@@ -113,7 +164,12 @@ foldForestSel rFunc combFunc msel sf =
     flip map (zip [0 ..] sf) $ \(ix_, st) -> (ix_, rFunc (drillSel msel ix_) st)
 
 forestElemsL ::
-       (Functor f, a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( Functor f
+       , a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View (Building a)
+       )
     => ([TreeCursor a] -> f [TreeCursor a])
     -> ForestCursor a
     -> f (ForestCursor a)
@@ -130,7 +186,11 @@ forestElemsL = lens getter setter
             }
 
 rebuildForestParentCursor ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View (Building a)
+       )
     => (ForestCursor a -> ForestCursor a)
     -> Maybe (TreeCursor a)
     -> Maybe (TreeCursor a)
@@ -153,12 +213,30 @@ forestCursorSelectLast fc =
         (tc:_) -> Just tc
 
 forestCursorInsertAt ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building (ForestCursor a) ~ ForestView b
+       )
     => Int
-    -> Tree (Building a)
+    -> Tree (Source b)
     -> ForestCursor a
     -> ForestCursor a
-forestCursorInsertAt ix_ newTree fc = fc'
+forestCursorInsertAt ix_ newTree = forestCursorInsertViewAt ix_ $ view newTree
+
+forestCursorInsertViewAt ::
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building a ~ b
+       )
+    => Int
+    -> TreeView b
+    -> ForestCursor a
+    -> ForestCursor a
+forestCursorInsertViewAt ix_ newTree fc = fc'
   where
     fc' =
         fc & forestElemsL %~
@@ -170,15 +248,25 @@ forestCursorInsertAt ix_ newTree fc = fc'
     nexts = ffilter (>=)
 
 forestCursorInsertAtStart ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
-    => Tree (Building a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building a ~ b
+       )
+    => Tree (Source b)
     -> ForestCursor a
     -> ForestCursor a
 forestCursorInsertAtStart = forestCursorInsertAt 0
 
 forestCursorInsertAtEnd ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
-    => Tree (Building a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View b
+       , Building a ~ b
+       )
+    => Tree (Source b)
     -> ForestCursor a
     -> ForestCursor a
 forestCursorInsertAtEnd t fc =
@@ -202,16 +290,18 @@ instance (Eq a, Build a, Eq (Building a)) => Eq (TreeCursor a) where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Build a => Rebuild (TreeCursor a) where
-    type ReBuilding (TreeCursor a) = Forest (Building a)
+    type ReBuilding (TreeCursor a) = ForestView (Building a)
     rebuild = rebuild . treeCursorParent
     selection TreeCursor {..} =
         length treeCursorPrevElemens : selection treeCursorParent
 
 instance Build a => Build (TreeCursor a) where
-    type Building (TreeCursor a) = Tree (Building a)
+    type Building (TreeCursor a) = TreeView (Building a)
     build TreeCursor {..} =
-        Node
-        {rootLabel = build treeCursorValue, subForest = build treeCursorForest}
+        TreeView
+        { treeViewValue = build treeCursorValue
+        , treeViewForest = build treeCursorForest
+        }
 
 instance (Show a, Build a, Show (Building a)) => Show (TreeCursor a) where
     show TreeCursor {..} =
@@ -233,7 +323,12 @@ instance (Show a, Build a, Show (Building a)) => Show (TreeCursor a) where
                       ]))
 
 treeCursorValueL ::
-       (Functor f, a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( Functor f
+       , a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View (Building a)
+       )
     => (a -> f a)
     -> TreeCursor a
     -> f (TreeCursor a)
@@ -243,7 +338,12 @@ treeCursorValueL = lens getter setter
     setter tc ec = treeCursorModify (const ec) id tc
 
 treeCursorForestL ::
-       (Functor f, a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( Functor f
+       , a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View (Building a)
+       )
     => (ForestCursor a -> f (ForestCursor a))
     -> TreeCursor a
     -> f (TreeCursor a)
@@ -253,7 +353,11 @@ treeCursorForestL = lens getter setter
     setter tc fc = treeCursorModify id (const fc) tc
 
 treeCursorModify ::
-       (a `BuiltFrom` (Building a), Parent a ~ TreeCursor a, Build a)
+       ( a `BuiltFrom` (Building a)
+       , Parent a ~ TreeCursor a
+       , Build a
+       , View (Building a)
+       )
     => (a -> a)
     -> (ForestCursor a -> ForestCursor a)
     -> TreeCursor a
@@ -273,13 +377,20 @@ treeCursorModify efunc ffunc tc = tc''
     tc'' = els !! treeCursorIndex tc
 
 treeElems ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       forall a b.
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
     => ForestCursor a
-    -> [Tree (Building a)]
+    -> [TreeView b]
     -> [TreeCursor a]
 treeElems fc sts = tcs
   where
     tcs = zipWith tc [0 ..] sts
+    tc :: Int -> TreeView b -> TreeCursor a
     tc i st = cur
       where
         cur =
@@ -289,10 +400,10 @@ treeElems fc sts = tcs
                   reverse $ filter ((< i) . treeCursorIndex) tcs
             , treeCursorNextElemens = filter ((> i) . treeCursorIndex) tcs
             , treeCursorIndex = i
-            , treeCursorValue = makeWith cur $ rootLabel st
+            , treeCursorValue = makeWith cur $ treeViewValue st
             , treeCursorForest = fc'
             }
-        fc' = forestCursor (Just cur) (subForest st)
+        fc' = forestCursor (Just cur) (treeViewForest st)
 
 foldTreeSel ::
        (Maybe [Int] -> a -> r)
@@ -318,9 +429,14 @@ treeCursorSelectNext tc =
         (tc':_) -> Just tc'
 
 treeCursorInsertAbove ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
     => TreeCursor a
-    -> Tree (Building a)
+    -> Tree (Source b)
     -> TreeCursor a
 treeCursorInsertAbove tc t = fromJust $ forestCursorSelectIx newIx newpar
   where
@@ -328,45 +444,106 @@ treeCursorInsertAbove tc t = fromJust $ forestCursorSelectIx newIx newpar
     newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
 
 treeCursorInsertBelow ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
     => TreeCursor a
-    -> Tree (Building a)
+    -> Tree (Source b)
     -> TreeCursor a
-treeCursorInsertBelow tc t =
+treeCursorInsertBelow tc t = treeCursorInsertViewBelow tc $ view t
+
+treeCursorInsertViewBelow ::
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
+    => TreeCursor a
+    -> TreeView b
+    -> TreeCursor a
+treeCursorInsertViewBelow tc t =
     fromJust $ forestCursorSelectIx (treeCursorIndex tc + 1) newpar
   where
     newIx = treeCursorIndex tc + 1
-    newpar = forestCursorInsertAt newIx t (treeCursorParent tc)
+    newpar = forestCursorInsertViewAt newIx t (treeCursorParent tc)
 
 treeCursorInsertChildAt ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
     => Int
-    -> Tree (Building a)
+    -> Tree (Source b)
     -> TreeCursor a
     -> TreeCursor a
-treeCursorInsertChildAt ix_ t tc =
-    tc & treeCursorForestL %~ forestCursorInsertAt ix_ t
+treeCursorInsertChildAt ix_ t = treeCursorInsertChildViewAt ix_ (view t)
+
+treeCursorInsertChildViewAt ::
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
+    => Int
+    -> TreeView b
+    -> TreeCursor a
+    -> TreeCursor a
+treeCursorInsertChildViewAt ix_ t tc =
+    tc & treeCursorForestL %~ forestCursorInsertViewAt ix_ t
 
 treeCursorInsertChildAtStart ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
-    => Tree (Building a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
+    => Tree (Source b)
     -> TreeCursor a
     -> TreeCursor a
 treeCursorInsertChildAtStart = treeCursorInsertChildAt 0
 
 treeCursorInsertChildAtEnd ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
-    => Tree (Building a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
+    => Tree (Source b)
     -> TreeCursor a
     -> TreeCursor a
-treeCursorInsertChildAtEnd t tc =
-    treeCursorInsertChildAt
+treeCursorInsertChildAtEnd t = treeCursorInsertChildViewAtEnd (view t)
+
+treeCursorInsertChildViewAtEnd ::
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View b
+       , Building a ~ b
+       )
+    => TreeView b
+    -> TreeCursor a
+    -> TreeCursor a
+treeCursorInsertChildViewAtEnd t tc =
+    treeCursorInsertChildViewAt
         (length $ forestCursorElems $ treeCursorForest tc)
         t
         tc
 
 treeCursorDeleteCurrent ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View (Building a)
+       )
     => TreeCursor a
     -> Either (ForestCursor a) (TreeCursor a)
 treeCursorDeleteCurrent tc = tc''
@@ -381,7 +558,11 @@ treeCursorDeleteCurrent tc = tc''
            (els `atMay` ix_) `mplus` (els `atMay` (ix_ - 1))
 
 treeCursorMoveUp ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View (Building a)
+       )
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveUp tc =
@@ -390,11 +571,15 @@ treeCursorMoveUp tc =
            Left _ -> Nothing
            Right tc_ ->
                forestCursorSelectIx (treeCursorIndex tc - 1) $
-               forestCursorInsertAt (treeCursorIndex tc - 1) t $
+               forestCursorInsertViewAt (treeCursorIndex tc - 1) t $
                treeCursorParent tc_
 
 treeCursorMoveDown ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View (Building a)
+       )
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveDown tc =
@@ -403,11 +588,15 @@ treeCursorMoveDown tc =
            Left _ -> Nothing
            Right tc_ ->
                forestCursorSelectIx (treeCursorIndex tc + 1) $
-               forestCursorInsertAt (treeCursorIndex tc + 1) t $
+               forestCursorInsertViewAt (treeCursorIndex tc + 1) t $
                treeCursorParent tc_
 
 treeCursorMoveLeft ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View (Building a)
+       )
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveLeft tc =
@@ -417,10 +606,10 @@ treeCursorMoveLeft tc =
                 Left fc_ -> fc_
                 Right tc_ -> treeCursorParent tc_
     in do ptc <- forestCursorParent fc
-          pure $ treeCursorInsertBelow ptc t
+          pure $ treeCursorInsertViewBelow ptc t
 
 treeCursorMoveRight ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a)
+       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a, View (Building a))
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveRight tc =
@@ -433,7 +622,7 @@ treeCursorMoveRight tc =
                        (treeCursorIndex tc - 1)
                        (treeCursorParent tc_)
                forestCursorSelectLast $
-                   treeCursorForest $ treeCursorInsertChildAtEnd t tca
+                   treeCursorForest $ treeCursorInsertChildViewAtEnd t tca
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b

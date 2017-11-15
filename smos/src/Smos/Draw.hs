@@ -25,6 +25,7 @@ import Cursor.Tree
 import Smos.Data
 
 import Smos.Cursor
+import Smos.View
 import Smos.Cursor.Entry
 import Smos.Style
 import Smos.Types
@@ -39,7 +40,7 @@ smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
       where
         msel = Just rsel
         rsel = reverse $ selection $ selectAnyCursor cur
-        for = smosFileForest $ rebuild cur
+        for = smosFileViewForest $ rebuild cur
 
 drawNoContent :: Widget n
 drawNoContent =
