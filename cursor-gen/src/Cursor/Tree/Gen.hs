@@ -13,13 +13,14 @@ import Cursor.Tree
 
 instance ( GenUnchecked a
          , Build a
-         , GenUnchecked (Building a)
+         , GenUnchecked (Source (Building a))
          , Parent a ~ TreeCursor a
          , a `BuiltFrom` (Building a)
+         , View (Building a)
          ) =>
          GenUnchecked (ForestCursor a) where
     genUnchecked = do
-        fc <- makeForestCursor <$> genUnchecked
+        fc <- makeForestCursor' <$> genUnchecked
         let go fc_ = do
                 b <- genUnchecked
                 if b
@@ -34,14 +35,15 @@ instance ( GenUnchecked a
 
 instance ( GenValid a
          , Build a
-         , GenValid (Building a)
+         , GenValid (Source (Building a))
          , Validity (Building a)
          , Parent a ~ TreeCursor a
          , a `BuiltFrom` (Building a)
+         , View (Building a)
          ) =>
          GenValid (ForestCursor a) where
     genValid = do
-        fc <- makeForestCursor <$> genValid
+        fc <- makeForestCursor' <$> genValid
         let go fc_ = do
                 b <- genValid
                 if b
@@ -55,9 +57,10 @@ instance ( GenValid a
 
 instance ( GenUnchecked a
          , Build a
-         , GenUnchecked (Building a)
+         , GenUnchecked (Source (Building a))
          , Parent a ~ TreeCursor a
          , a `BuiltFrom` (Building a)
+         , View (Building a)
          ) =>
          GenUnchecked (TreeCursor a) where
     genUnchecked = do
@@ -76,10 +79,11 @@ instance ( GenUnchecked a
 
 instance ( GenValid a
          , Build a
-         , GenValid (Building a)
+         , GenValid (Source (Building a))
          , Validity (Building a)
          , Parent a ~ TreeCursor a
          , a `BuiltFrom` (Building a)
+         , View (Building a)
          ) =>
          GenValid (TreeCursor a) where
     genValid = do

@@ -7,11 +7,9 @@ module Smos.Draw
 
 import Import
 
-import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.Text as T
 import Data.Time
-import Data.Tree hiding (drawForest, drawTree)
 
 import Brick.Types as B
 import Brick.Widgets.Center as B
@@ -25,10 +23,10 @@ import Cursor.Tree
 import Smos.Data
 
 import Smos.Cursor
-import Smos.View
 import Smos.Cursor.Entry
 import Smos.Style
 import Smos.Types
+import Smos.View
 
 smosDraw :: SmosState -> [Widget ResourceName]
 smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
@@ -54,13 +52,13 @@ drawNoContent =
         , str "Smos is open source and freely distributable"
         ]
 
-drawForest :: Maybe [Int] -> Forest Entry -> Widget ResourceName
+drawForest :: Maybe [Int] -> ForestView EntryView -> Widget ResourceName
 drawForest = foldForestSel drawTree $ padLeft (Pad 2) . B.vBox . map snd
 
-drawTree :: Maybe [Int] -> Tree Entry -> Widget ResourceName
+drawTree :: Maybe [Int] -> TreeView EntryView -> Widget ResourceName
 drawTree = foldTreeSel drawEntry drawForest (<=>)
 
-drawEntry :: Maybe [Int] -> Entry -> Widget ResourceName
+drawEntry :: Maybe [Int] -> EntryView -> Widget ResourceName
 drawEntry msel =
     foldEntrySel
         drawTodoStateInfo
@@ -86,22 +84,22 @@ drawEntry msel =
 
 drawTodoStateInfo ::
        Maybe [Int]
-    -> StateHistory
+    -> TodostateView
     -> (Maybe (Widget ResourceName), Widget ResourceName)
 drawTodoStateInfo msel sh =
     (drawTodoState msel sh, drawTodoStateHistory msel sh)
 
-drawTodoState :: Maybe [Int] -> StateHistory -> Maybe (Widget n)
+drawTodoState :: Maybe [Int] -> TodostateView -> Maybe (Widget n)
 drawTodoState msel sh = do
-    ts <- stateHistoryState sh
+    ts <- stateHistoryState $ source sh
     pure $
         withSel msel $
         withAttr todoStateAttr $
         withAttr (todoStateSpecificAttr ts) $ B.txt $ todoStateText ts
 
-drawTodoStateHistory :: Maybe [Int] -> StateHistory -> Widget n
+drawTodoStateHistory :: Maybe [Int] -> TodostateView -> Widget n
 drawTodoStateHistory msel sh =
-    let es = unStateHistory sh
+    let es = unStateHistory $ source sh
     in withSel msel $
        withAttr todoStateHistoryAttr $
        B.vBox $
@@ -114,14 +112,14 @@ drawTodoStateHistory msel sh =
                      Nothing -> B.txt ""
                ]
 
-drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
-drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
+drawHeader :: Maybe [Int] -> HeaderView -> Widget ResourceName
+drawHeader msel = withAttr headerAttr . withTextSel msel . headerText . source
 
-drawContents :: Maybe [Int] -> Contents -> Widget ResourceName
-drawContents msel Contents {..} =
-    withAttr contentsAttr $ withTextFieldSel msel contentsText
+drawContents :: Maybe [Int] -> ContentsView -> Widget ResourceName
+drawContents msel =
+    withAttr contentsAttr . withTextFieldSel msel . contentsText . source
 
-drawTags :: Maybe [Int] -> [Tag] -> Widget ResourceName
+drawTags :: Maybe [Int] -> TagsView -> Widget ResourceName
 drawTags msel =
     withSel msel . foldTagsSel drawTag (B.hBox . addColons . map snd) msel
   where
@@ -132,31 +130,29 @@ drawTags msel =
       where
         colon = B.txt ":"
 
-drawTag :: Maybe [Int] -> Tag -> Widget ResourceName
-drawTag msel Tag {..} = withAttr tagAttr $ withTextSel msel tagText
+drawTag :: Maybe [Int] -> TagView -> Widget ResourceName
+drawTag msel = withAttr tagAttr . withTextSel msel . source
 
-drawTimestamps ::
-       Maybe [Int] -> HashMap TimestampName UTCTime -> Widget ResourceName
+drawTimestamps :: Maybe [Int] -> TimestampsView -> Widget ResourceName
 drawTimestamps msel tss =
     withSel msel $
     B.vBox $
-    flip map (HM.toList tss) $ \(k, ts) ->
+    flip map (HM.toList $ timestampsViewTimestamps tss) $ \(k, ts) ->
         B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
 
-drawProperties ::
-       Maybe [Int] -> HashMap PropertyName PropertyValue -> Widget ResourceName
+drawProperties :: Maybe [Int] -> PropertiesView -> Widget ResourceName
 drawProperties msel pss =
     withSel msel $
     B.vBox $
-    flip map (HM.toList pss) $ \(k, p) ->
+    flip map (HM.toList $ propertiesViewProperties pss) $ \(k, p) ->
         B.hBox
             [ B.txt $ propertyNameText k
             , B.txt ": "
             , B.txt $ propertyValueText p
             ]
 
-drawLogbook :: Maybe [Int] -> Logbook -> Widget n
-drawLogbook msel = withSel msel . go
+drawLogbook :: Maybe [Int] -> LogbookView -> Widget n
+drawLogbook msel = withSel msel . go . source
   where
     go lb =
         case lb of

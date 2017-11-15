@@ -22,8 +22,8 @@ import Import
 
 import Data.HashMap.Lazy (HashMap)
 import Data.Time
--- import Data.Tree
 
+-- import Data.Tree
 import Smos.Data
 
 import Cursor.Class
@@ -64,7 +64,7 @@ instance View EntryView where
         , entryViewLogbook = view entryLogbook
         }
 
-data TodostateView = TodostateView
+newtype TodostateView = TodostateView
     { todostateViewTodostate :: StateHistory
     } deriving (Show, Eq, Generic)
 
@@ -75,7 +75,7 @@ instance View TodostateView where
     source = todostateViewTodostate
     view = TodostateView
 
-data HeaderView = HeaderView
+newtype HeaderView = HeaderView
     { headerViewHeader :: Header
     } deriving (Show, Eq, Generic)
 
@@ -86,7 +86,7 @@ instance View HeaderView where
     source = headerViewHeader
     view = HeaderView
 
-data TagsView = TagsView
+newtype TagsView = TagsView
     { tagsViewTags :: [TagView]
     } deriving (Show, Eq, Generic)
 
@@ -97,7 +97,7 @@ instance View TagsView where
     source = filter isValid . map (Tag . source) . tagsViewTags
     view = TagsView . map tagView
 
-data TagView = TagView
+newtype TagView = TagView
     { tagViewText :: Text
     } deriving (Show, Eq, Generic)
 
@@ -111,7 +111,7 @@ instance View TagView where
 tagView :: Tag -> TagView
 tagView t = TagView {tagViewText = tagText t}
 
-data ContentsView = ContentsView
+newtype ContentsView = ContentsView
     { contentsViewContents :: Contents
     } deriving (Show, Eq, Generic)
 
@@ -122,7 +122,7 @@ instance View ContentsView where
     source = contentsViewContents
     view = ContentsView
 
-data TimestampsView = TimestampsView
+newtype TimestampsView = TimestampsView
     { timestampsViewTimestamps :: HashMap TimestampName UTCTime
     } deriving (Show, Eq, Generic)
 
@@ -133,18 +133,18 @@ instance View TimestampsView where
     source = timestampsViewTimestamps
     view = TimestampsView
 
-data PropertiesView = PropertiesView
-    { propertiesCursorPropertys :: HashMap PropertyName PropertyValue
+newtype PropertiesView = PropertiesView
+    { propertiesViewProperties :: HashMap PropertyName PropertyValue
     } deriving (Show, Eq, Generic)
 
 instance Validity PropertiesView
 
 instance View PropertiesView where
     type Source PropertiesView = HashMap PropertyName PropertyValue
-    source = propertiesCursorPropertys
+    source = propertiesViewProperties
     view = PropertiesView
 
-data LogbookView = LogbookView
+newtype LogbookView = LogbookView
     { logbookViewLogbook :: Logbook
     } deriving (Show, Eq, Generic)
 

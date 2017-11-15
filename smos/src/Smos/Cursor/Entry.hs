@@ -4,6 +4,7 @@
 
 module Smos.Cursor.Entry
     ( EntryCursor
+    , makeEntryCursor
     , entryCursor
     , foldEntrySel
     , entryCursorParent
@@ -22,6 +23,7 @@ module Smos.Cursor.Entry
     , entryCursorClockIn
     , entryCursorContentsML
     , HeaderCursor
+    , makeHeaderCursor
     , headerCursor
     , headerCursorParent
     , headerCursorHeader
@@ -38,6 +40,7 @@ module Smos.Cursor.Entry
     , headerCursorEnd
     , ContentsCursor
     , emptyContentsCursor
+    , makeContentsCursor
     , contentsCursor
     , contentsCursorParent
     , contentsCursorContents
@@ -56,12 +59,14 @@ module Smos.Cursor.Entry
     , contentsCursorStart
     , contentsCursorEnd
     , StateCursor
+    , makeStateCursor
     , stateCursor
     , stateCursorParent
     , stateCursorStateHistory
     , stateCursorClear
     , stateCursorSetState
     , TagsCursor
+    , makeTagsCursor
     , tagsCursor
     , foldTagsSel
     , tagsCursorParent
@@ -92,6 +97,8 @@ module Smos.Cursor.Entry
     , tagCursorSelectPrev
     , tagCursorSelectNext
     , TimestampsCursor
+    , makeTimestampsCursor
+    , timestampsCursor
     , timestampsCursorParent
     , timestampsCursorTimestamps
     , timestampsCursorSetTimestamps
@@ -103,7 +110,6 @@ import Import
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.Text as T
 import Data.Time
-import Data.Tree
 
 import Lens.Micro
 
@@ -189,26 +195,26 @@ entryCursor par EntryView {..} = ec
         }
 
 foldEntrySel ::
-       (Maybe [Int] -> StateHistory -> a)
-    -> (Maybe [Int] -> Header -> b)
-    -> (Maybe [Int] -> [Tag] -> c)
-    -> (Maybe [Int] -> HashMap TimestampName UTCTime -> d)
-    -> (Maybe [Int] -> HashMap PropertyName PropertyValue -> e)
-    -> (Maybe [Int] -> Contents -> f)
-    -> (Maybe [Int] -> Logbook -> g)
+       (Maybe [Int] -> TodostateView -> a)
+    -> (Maybe [Int] -> HeaderView -> b)
+    -> (Maybe [Int] -> TagsView -> c)
+    -> (Maybe [Int] -> TimestampsView -> d)
+    -> (Maybe [Int] -> PropertiesView -> e)
+    -> (Maybe [Int] -> ContentsView -> f)
+    -> (Maybe [Int] -> LogbookView -> g)
     -> (a -> b -> c -> d -> e -> Maybe f -> g -> r)
     -> Maybe [Int]
-    -> Entry
+    -> EntryView
     -> r
-foldEntrySel tsFunc hFunc tgsFunc tssFunc psFunc cFunc lFunc combFunc msel Entry {..} =
+foldEntrySel tsFunc hFunc tgsFunc tssFunc psFunc cFunc lFunc combFunc msel EntryView {..} =
     combFunc
-        (tsFunc (drillSel msel 0) entryStateHistory)
-        (hFunc (drillSel msel 1) entryHeader)
-        (tgsFunc (drillSel msel 2) entryTags)
-        (tssFunc (drillSel msel 3) entryTimestamps)
-        (psFunc (drillSel msel 4) entryProperties)
-        (cFunc (drillSel msel 5) <$> entryContents)
-        (lFunc (drillSel msel 6) entryLogbook)
+        (tsFunc (drillSel msel 0) entryViewTodostate)
+        (hFunc (drillSel msel 1) entryViewHeader)
+        (tgsFunc (drillSel msel 2) entryViewTags)
+        (tssFunc (drillSel msel 3) entryViewTimestamps)
+        (psFunc (drillSel msel 4) entryViewProperties)
+        (cFunc (drillSel msel 5) <$> entryViewContents)
+        (lFunc (drillSel msel 6) entryViewLogbook)
 
 entryCursorHeaderL ::
        Functor f
@@ -649,14 +655,15 @@ tagsCursor ec tags = tsc
         }
 
 foldTagsSel ::
-       (Maybe [Int] -> Tag -> r)
-    -> ([(Int, r)] -> r)
+       (Maybe [Int] -> TagView -> q)
+    -> ([(Int, q)] -> r)
     -> Maybe [Int]
-    -> [Tag]
+    -> TagsView
     -> r
 foldTagsSel tFunc combFunc msel tgs =
     combFunc $
-    flip map (zip [0 ..] tgs) $ \(ix_, t) -> (ix_, tFunc (drillSel msel ix_) t)
+    flip map (zip [0 ..] $ tagsViewTags tgs) $ \(ix_, t) ->
+        (ix_, tFunc (drillSel msel ix_) t)
 
 tagElems :: TagsCursor -> [TagView] -> [TagCursor]
 tagElems tsc sts = tcs

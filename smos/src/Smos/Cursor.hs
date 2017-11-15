@@ -4,12 +4,14 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor
-    ( AnyCursor(..)
+    ( SmosFileView(..)
+    , AnyCursor(..)
     , makeAnyCursor
     , reselectCursor
     , ACursor(..)
     , selectACursor
     , selectAnyCursor
+    , View(..)
     , Rebuild(..)
     , Build(..)
     ) where
@@ -24,7 +26,7 @@ import Smos.Data
 import Smos.Cursor.Entry
 import Smos.View
 
-data SmosFileView = SmosFileView
+newtype SmosFileView = SmosFileView
     { smosFileViewForest :: ForestView EntryView
     }
 

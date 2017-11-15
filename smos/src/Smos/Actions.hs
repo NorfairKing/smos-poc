@@ -112,6 +112,7 @@ import Smos.Actions.Editor
 import Smos.Cursor
 import Smos.Cursor.Entry
 import Smos.Types
+import Smos.View
 
 {-# ANN module ("HLint: ignore Use fromMaybe" :: String) #-}
 
@@ -132,7 +133,7 @@ save = do
     let sf =
             case mcur of
                 Nothing -> SmosFile []
-                Just cur -> rebuild cur
+                Just cur -> source $ rebuild cur
     writeSmosFile file sf
 
 insertTreeAbove :: SmosM ()
@@ -481,7 +482,7 @@ tagsSelectPrev =
         case tagCursorSelectPrev tc of
             Just tc_ -> Just tc_
             Nothing ->
-                let t = tagText $ build tc
+                let t = tagViewText $ build tc
                 in if T.null t
                        then Nothing
                        else let tsc = tagCursorParent tc
@@ -498,7 +499,7 @@ tagsSelectNext =
         case tagCursorSelectNext tc of
             Just tc_ -> Just tc_
             Nothing ->
-                let t = tagText $ build tc
+                let t = tagViewText $ build tc
                 in if T.null t
                        then Nothing
                        else let tsc = tagCursorParent tc
@@ -662,7 +663,7 @@ withFullMod func =
             Just cur ->
                 let sf = rebuild cur
                     sel = selection $ selectAnyCursor cur
-                    sf' = func sf
+                    sf' = func $ source sf
                     cur' = selectACursor $ reselectCursor sel sf'
                 in ss {smosStateCursor = cur'}
 

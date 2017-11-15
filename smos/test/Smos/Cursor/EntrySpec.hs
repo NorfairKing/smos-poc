@@ -19,6 +19,7 @@ import Smos.Cursor.Gen ()
 import Smos.Cursor.TestUtils
 import Smos.Data
 import Smos.Data.Gen ()
+import Smos.View
 
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
@@ -382,29 +383,35 @@ spec = do
             it "inserts a character at the front" $
             forAll genUnchecked $ \c ->
                 forAll genValid $ \hc ->
-                    build (headerCursorInsert c hc) `shouldBe`
-                    Header (T.cons c (headerText (build hc)))
+                    headerViewHeader (build (headerCursorInsert c hc)) `shouldBe`
+                    Header (T.cons c (headerText (headerViewHeader (build hc))))
         describe "headerCursorRemove" $
             it "removes a character at the front" $
             forAll genValid $ \hc ->
                 case headerCursorRemove hc of
                     Nothing -> pure ()
                     Just hc' ->
-                        case T.uncons $ headerText (build hc') of
+                        case T.uncons $
+                             headerText $ headerViewHeader $ build hc' of
                             Nothing ->
                                 expectationFailure "Something went wrong."
-                            Just (_, t) -> t `shouldBe` headerText (build hc)
+                            Just (_, t) ->
+                                t `shouldBe`
+                                headerText (headerViewHeader (build hc))
         describe "headerCursorDelete" $
             it "removes a character at the end" $
             forAll genValid $ \hc ->
                 case headerCursorRemove hc of
                     Nothing -> pure ()
                     Just hc' ->
-                        case T.uncons $ T.reverse $ headerText (build hc') of
+                        case T.uncons $
+                             T.reverse $
+                             headerText $ headerViewHeader $ build hc' of
                             Nothing ->
                                 expectationFailure "Something went wrong."
                             Just (_, t) ->
-                                T.reverse t `shouldBe` headerText (build hc)
+                                T.reverse t `shouldBe`
+                                headerText (headerViewHeader (build hc))
         describe "headerCursorLeft" $
             it "rebuilds to the same" $
             rebuildsToTheSameIfSuceeds headerCursorLeft
@@ -422,7 +429,9 @@ spec = do
             it "builds to the given contents" $
             forAll genValid $ \cs ->
                 forAll genValid $ \cc ->
-                    build (contentsCursorSetContents cs cc) `shouldBe` cs
+                    contentsViewContents
+                        (build (contentsCursorSetContents cs cc)) `shouldBe`
+                    cs
     describe "StateCursor" $ do
         describe "stateCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame stateCursorParent
@@ -430,15 +439,18 @@ spec = do
             it "builds to an empty state" $
             forAll genValid $ \sc ->
                 forAll genValid $ \now ->
-                    stateHistoryState (build (stateCursorClear now sc)) `shouldBe`
+                    stateHistoryState
+                        (todostateViewTodostate
+                             (build (stateCursorClear now sc))) `shouldBe`
                     Nothing
         describe "stateCursorSetState" $
-            it "builds to a state with the given contents" $
+            it "builds to a state view with the given contents" $
             forAll genValid $ \ts ->
                 forAll genValid $ \sc ->
                     forAll genValid $ \now ->
                         stateHistoryState
-                            (build (stateCursorSetState now ts sc)) `shouldBe`
+                            (todostateViewTodostate
+                                 (build (stateCursorSetState now ts sc))) `shouldBe`
                         Just ts
     describe "TagsCursor" $
         describe "tagsCursorParent" $
@@ -472,26 +484,28 @@ spec = do
             it "makes the resulting tag one longer" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        T.length (tagText (build (tagCursorInsert c tc))) `shouldBe`
-                        T.length (tagText (build tc)) +
+                        T.length (tagViewText (build (tagCursorInsert c tc))) `shouldBe`
+                        T.length (tagViewText (build tc)) +
                         1
             it "adds an element to the front if we're at the front" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        tagText (build (tagCursorInsert c (tagCursorStart tc))) `shouldBe`
-                        T.cons c (tagText (build tc))
+                        tagViewText
+                            (build (tagCursorInsert c (tagCursorStart tc))) `shouldBe`
+                        T.cons c (tagViewText (build tc))
         describe "tagCursorAppend" $ do
             it "makes the resulting tag one longer" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        T.length (tagText (build (tagCursorAppend c tc))) `shouldBe`
-                        T.length (tagText (build tc)) +
+                        T.length (tagViewText (build (tagCursorAppend c tc))) `shouldBe`
+                        T.length (tagViewText (build tc)) +
                         1
             it "adds an element to the end if we're at the end" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        tagText (build (tagCursorAppend c (tagCursorEnd tc))) `shouldBe`
-                        T.snoc (tagText (build tc)) c
+                        tagViewText
+                            (build (tagCursorAppend c (tagCursorEnd tc))) `shouldBe`
+                        T.snoc (tagViewText (build tc)) c
         -- describe "tagCursorRemove" $
         -- describe "tagCursorDelete"
         describe "tagCursorLeft" $

@@ -44,6 +44,11 @@ a subset of YAML:
 This format is very easy to work with programmatically, and convenience
 functions in the `smos-data` library are provided to operate on Smos data.
 
+## Great for version control
+
+Files are made to make git diffs easy and disjoint.
+Derived data is never stored, but instead computed or rendered with `smos-report`.
+
 ## Installation
 
 Clone the repository:

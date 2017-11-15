@@ -53,7 +53,7 @@ import Lens.Micro
 
 import Cursor.Class
 
-data ForestView a = ForestView
+newtype ForestView a = ForestView
     { forestViewTrees :: [TreeView a]
     } deriving (Show, Eq, Generic)
 
@@ -154,14 +154,15 @@ forestCursor mpar sf = fc
         }
 
 foldForestSel ::
-       (Maybe [Int] -> Tree a -> r)
-    -> ([(Int, r)] -> r)
+       (Maybe [Int] -> TreeView a -> q)
+    -> ([(Int, q)] -> r)
     -> Maybe [Int]
-    -> Forest a
+    -> ForestView a
     -> r
 foldForestSel rFunc combFunc msel sf =
     combFunc $
-    flip map (zip [0 ..] sf) $ \(ix_, st) -> (ix_, rFunc (drillSel msel ix_) st)
+    flip map (zip [0 ..] $ forestViewTrees sf) $ \(ix_, st) ->
+        (ix_, rFunc (drillSel msel ix_) st)
 
 forestElemsL ::
        ( Functor f
@@ -406,15 +407,15 @@ treeElems fc sts = tcs
         fc' = forestCursor (Just cur) (treeViewForest st)
 
 foldTreeSel ::
-       (Maybe [Int] -> a -> r)
-    -> (Maybe [Int] -> Forest a -> r)
-    -> (r -> r -> r)
+       (Maybe [Int] -> a -> p)
+    -> (Maybe [Int] -> ForestView a -> q)
+    -> (p -> q -> r)
     -> Maybe [Int]
-    -> Tree a
+    -> TreeView a
     -> r
-foldTreeSel eFunc fFunc combFunc msel Node {..} =
-    eFunc (drillSel msel 0) rootLabel `combFunc`
-    fFunc (drillSel msel 1) subForest
+foldTreeSel eFunc fFunc combFunc msel TreeView {..} =
+    eFunc (drillSel msel 0) treeViewValue `combFunc`
+    fFunc (drillSel msel 1) treeViewForest
 
 treeCursorSelectPrev :: TreeCursor a -> Maybe (TreeCursor a)
 treeCursorSelectPrev tc =
@@ -609,7 +610,11 @@ treeCursorMoveLeft tc =
           pure $ treeCursorInsertViewBelow ptc t
 
 treeCursorMoveRight ::
-       (a `BuiltFrom` (Building a), Build a, Parent a ~ TreeCursor a, View (Building a))
+       ( a `BuiltFrom` (Building a)
+       , Build a
+       , Parent a ~ TreeCursor a
+       , View (Building a)
+       )
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveRight tc =

@@ -17,7 +17,6 @@ import Import
 
 type Cursor a = (Build a, Rebuild a)
 
-
 -- | The datastructure that represents what the cursor should look like.
 -- This structure should contain data about representation like, for example,
 -- whether or not a subsection should be shown. The 'Source' is the data that
@@ -26,7 +25,6 @@ class View a where
     type Source a :: *
     source :: a -> Source a
     view :: Source a -> a
-
 
 class Rebuild a where
     type ReBuilding a :: *

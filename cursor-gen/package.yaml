@@ -52,6 +52,7 @@ tests:
     dependencies:
     - QuickCheck
     - cursor
+    - cursor-gen
     - genvalidity
     - genvalidity-containers
     - genvalidity-hspec

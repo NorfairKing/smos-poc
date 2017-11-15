@@ -24,6 +24,17 @@ import Cursor.Tree.Gen ()
 {-# ANN module ("HLint: ignore Functor law" :: String) #-}
 
 -- A degenerate cursor
+newtype IntView = IntView
+    { intViewInt :: Int
+    } deriving (Show, Eq, Generic)
+
+instance Validity IntView
+
+instance View IntView where
+    type Source IntView = Int
+    source = intViewInt
+    view = IntView
+
 data IntCursor = IntCursor
     { intTreeCursor :: TreeCursor IntCursor
     , intValue :: Int
@@ -36,20 +47,21 @@ instance GenUnchecked IntCursor
 instance GenValid IntCursor
 
 instance Build IntCursor where
-    type Building IntCursor = Int
-    build = intValue
+    type Building IntCursor = IntView
+    build = view . intValue
 
 instance Rebuild IntCursor where
-    type ReBuilding IntCursor = Forest Int
+    type ReBuilding IntCursor = ForestView IntView
     rebuild = rebuild . intTreeCursor
     selection IntCursor {..} = 0 : selection intTreeCursor
 
-instance BuiltFrom IntCursor Int where
+instance BuiltFrom IntCursor IntView where
     type Parent IntCursor = TreeCursor IntCursor
     makeWith tc i = ic'
       where
         ic' =
-            IntCursor {intTreeCursor = tc {treeCursorValue = ic'}, intValue = i}
+            IntCursor
+            {intTreeCursor = tc {treeCursorValue = ic'}, intValue = source i}
 
 spec :: Spec
 spec = do
@@ -57,8 +69,8 @@ spec = do
         describe "makeForestCurser" $
             it "is the inverse of 'build'" $
             inverseFunctionsOnValid
-                (makeForestCursor :: Forest Int -> ForestCursor IntCursor)
-                build
+                (makeForestCursor' :: Forest Int -> ForestCursor IntCursor)
+                (source . build)
         describe "forestCursorSelectIx" $
             it "rebuilds to the same" $
             forAll genUnchecked $ \i ->

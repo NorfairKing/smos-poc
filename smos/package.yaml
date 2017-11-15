@@ -45,6 +45,7 @@ library:
   - Smos.Default
   - Smos.Style
   - Smos.Types
+  - Smos.View
 
 executables:
   smos:
