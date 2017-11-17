@@ -52,3 +52,22 @@ Should you wish to change the key controls, you can do this by making your own
 little Haskell project (also with stack), define the configuration you want to
 use and pass it to the [`smos`](https://github.com/NorfairKing/smos/blob/development/smos/src/Smos.hs#L29)
 library function.
+
+## Contributing
+
+Smos uses [hpack](https://github.com/sol/hpack) in addition to `stack`. It
+uses a [Zifter](https://github.com/NorfairKing/zifter) script to maintain
+consistency, enforce code quality, and run tests.
+
+There is a `stack.yaml` in the project root, then a `project.yaml` under
+each project directory, e.g. `smos/project.yaml`. `hpack` generates `.cabal`
+files from these `.yaml` files, so if you need to make changes to the project
+configuration then make these changes in the appropriate `package.yaml`.
+
+To run the Zifter script, execute the following from the root project directory:
+
+```
+$ ./zift.hs run
+```
+
+This will take a long time on the initial execution.
