@@ -52,29 +52,35 @@ import Data.Tree
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.Select
 
 newtype ForestView a = ForestView
-    { forestViewTrees :: [TreeView a]
+    { forestViewTrees :: [Select (TreeView a)]
     } deriving (Show, Eq, Generic)
 
 instance Validity a => Validity (ForestView a)
 
 instance View a => View (ForestView a) where
     type Source (ForestView a) = Forest (Source a)
-    source ForestView {..} = map source forestViewTrees
-    view = ForestView . map view
+    source ForestView {..} = map (source . selectValue) forestViewTrees
+    view = ForestView . map (select . view)
 
 data TreeView a = TreeView
-    { treeViewValue :: a
-    , treeViewForest :: ForestView a
+    { treeViewValue :: Select a
+    , treeViewForest :: Select (ForestView a)
     } deriving (Show, Eq, Generic)
 
 instance Validity a => Validity (TreeView a)
 
 instance View a => View (TreeView a) where
     type Source (TreeView a) = Tree (Source a)
-    source TreeView {..} = Node (source treeViewValue) (source treeViewForest)
-    view (Node v f) = TreeView {treeViewValue = view v, treeViewForest = view f}
+    source TreeView {..} =
+        Node
+            (source $ selectValue treeViewValue)
+            (source $ selectValue treeViewForest)
+    view (Node v f) =
+        TreeView
+        {treeViewValue = select $ view v, treeViewForest = select $ view f}
 
 data ForestCursor a = ForestCursor
     { forestCursorParent :: Maybe (TreeCursor a)
@@ -97,8 +103,12 @@ instance (Show a, Build a, Show (Building a)) => Show (ForestCursor a) where
 instance (Eq a, Build a, Eq (Building a)) => Eq (ForestCursor a) where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
+instance Build a => Build (ForestCursor a) where
+    type Building (ForestCursor a) = Select (ForestView (Building a))
+    build = select . ForestView . map build . forestCursorElems
+
 instance Build a => Rebuild (ForestCursor a) where
-    type ReBuilding (ForestCursor a) = ForestView (Building a)
+    type ReBuilding (ForestCursor a) = Select (ForestView (Building a))
     rebuild fc =
         case forestCursorParent fc of
             Nothing -> build fc
@@ -107,10 +117,6 @@ instance Build a => Rebuild (ForestCursor a) where
         case forestCursorParent of
             Nothing -> []
             Just p -> 1 : selection p
-
-instance Build a => Build (ForestCursor a) where
-    type Building (ForestCursor a) = ForestView (Building a)
-    build = ForestView . map build . forestCursorElems
 
 makeForestCursor' ::
        ( a `BuiltFrom` (Building a)
@@ -150,11 +156,12 @@ forestCursor mpar sf = fc
     fc =
         ForestCursor
         { forestCursorParent = mpar
-        , forestCursorElems = treeElems fc $ forestViewTrees sf
+        , forestCursorElems =
+              treeElems fc $ map selectValue $ forestViewTrees sf
         }
 
 foldForestSel ::
-       (Maybe [Int] -> TreeView a -> q)
+       (Maybe [Int] -> Select (TreeView a) -> q)
     -> ([(Int, q)] -> r)
     -> Maybe [Int]
     -> ForestView a
@@ -243,7 +250,8 @@ forestCursorInsertViewAt ix_ newTree fc = fc'
         fc & forestElemsL %~
         (\els ->
              treeElems fc' $
-             map build (prevs els) ++ [newTree] ++ map build (nexts els))
+             map (selectValue . build) (prevs els) ++
+             [newTree] ++ map (selectValue . build) (nexts els))
     ffilter rel = filter ((`rel` ix_) . treeCursorIndex)
     prevs = ffilter (<)
     nexts = ffilter (>=)
@@ -290,19 +298,19 @@ instance (Validity a, Build a, Validity (Building a)) =>
 instance (Eq a, Build a, Eq (Building a)) => Eq (TreeCursor a) where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
-instance Build a => Rebuild (TreeCursor a) where
-    type ReBuilding (TreeCursor a) = ForestView (Building a)
-    rebuild = rebuild . treeCursorParent
-    selection TreeCursor {..} =
-        length treeCursorPrevElemens : selection treeCursorParent
-
 instance Build a => Build (TreeCursor a) where
-    type Building (TreeCursor a) = TreeView (Building a)
+    type Building (TreeCursor a) = Select (TreeView (Building a))
     build TreeCursor {..} =
         TreeView
         { treeViewValue = build treeCursorValue
         , treeViewForest = build treeCursorForest
         }
+
+instance Build a => Rebuild (TreeCursor a) where
+    type ReBuilding (TreeCursor a) = Select (ForestView (Building a))
+    rebuild = rebuild . treeCursorParent
+    selection TreeCursor {..} =
+        length treeCursorPrevElemens : selection treeCursorParent
 
 instance (Show a, Build a, Show (Building a)) => Show (TreeCursor a) where
     show TreeCursor {..} =
