@@ -6,6 +6,7 @@ module Cursor.TextFieldSpec
 
 import TestImport
 
+import Data.Text (Text)
 import qualified Data.Text as T
 
 import Cursor.Class
@@ -25,8 +26,11 @@ spec = do
             "is the inverse of 'rebuildTextFieldCursor' for this simple example ending in a newline" $
             rebuildTextFieldCursor (makeTextFieldCursor "abc\ndef\n") `shouldBe`
             "abc\ndef\n"
-        it "is the inverse of 'rebuildTextCursor'" $
+        it "is the inverse of 'rebuildTextFieldCursor'" $
             inverseFunctionsOnValid makeTextFieldCursor rebuildTextFieldCursor
+    describe "view" $ do
+        it "is the inverse of 'source" $
+            inverseFunctionsOnValid view (source :: TextFieldView -> Text)
     describe "textFieldCursorSelectPrev" $ do
         it "builds to the same text" $
             buildsToTheSameIfSuceeds textFieldCursorSelectPrev
@@ -34,9 +38,9 @@ spec = do
             buildsToTheSameIfSuceeds
                 (textFieldCursorSelectPrev >=> textFieldCursorSelectPrev)
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textFieldCursorSelectPrev
+            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectPrev
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textFieldCursorSelectPrev >=> textFieldCursorSelectPrev)
     describe "textFieldCursorSelectNext" $ do
         it "builds to the same text" $
@@ -45,26 +49,26 @@ spec = do
             buildsToTheSameIfSuceeds
                 (textFieldCursorSelectNext >=> textFieldCursorSelectNext)
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textFieldCursorSelectNext
+            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectNext
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textFieldCursorSelectNext >=> textFieldCursorSelectNext)
     describe "textFieldCursorSelectUp" $ do
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textFieldCursorSelectUp
+            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectUp
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textFieldCursorSelectUp >=> textFieldCursorSelectUp)
     describe "textFieldCursorSelectDown" $ do
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textFieldCursorSelectDown
+            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectDown
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textFieldCursorSelectDown >=> textFieldCursorSelectDown)
     describe "textCursorInsert" $ do
         it "builds to the right character when inserting into an empty cursor" $
             forAll genValid $ \c ->
-                build (textFieldCursorInsert c emptyTextFieldCursor) `shouldBe`
+                (source . build) (textFieldCursorInsert c emptyTextFieldCursor) `shouldBe`
                 T.pack [c]
         it
             "builds to the right two character when inserting into an empty cursor twice" $
@@ -72,7 +76,7 @@ spec = do
                 let tc = emptyTextFieldCursor
                     tc' = textFieldCursorInsert c1 tc
                     tc'' = textFieldCursorInsert c2 tc'
-                    t' = build tc''
+                    t' = rebuildTextFieldCursor tc''
                 in unless (t' == T.pack [c1, c2]) $
                    expectationFailure $
                    unlines
@@ -91,9 +95,9 @@ spec = do
             buildsToTheSame
                 (textFieldCursorSelectStart . textFieldCursorSelectStart)
         it "rebuilds to the same text" $
-            rebuildsToTheSame textFieldCursorSelectStart
+            rebuildsToTheSameText textFieldCursorSelectStart
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSame
+            rebuildsToTheSameText
                 (textFieldCursorSelectStart . textFieldCursorSelectStart)
     describe "textFieldCursorSelectEnd" $ do
         it "builds to the same text" $ buildsToTheSame textFieldCursorSelectEnd
@@ -101,7 +105,41 @@ spec = do
             buildsToTheSame
                 (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
         it "rebuilds to the same text" $
-            rebuildsToTheSame textFieldCursorSelectEnd
+            rebuildsToTheSameText textFieldCursorSelectEnd
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSame
+            rebuildsToTheSameText
                 (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
+
+rebuildsToTheSameText :: (TextFieldCursor -> TextFieldCursor) -> Property
+rebuildsToTheSameText func =
+    forAll genValid $ \tc ->
+        let t = rebuildTextFieldCursor tc
+            tc' = func tc
+            t' = rebuildTextFieldCursor tc'
+        in unless (t' == t) $
+           expectationFailure $
+           unlines
+               [ "Initial Text: " ++ show t
+               , "Built cursor: " ++ show tc
+               , "Changed cursor: " ++ show tc'
+               , "Final Text: " ++ show t'
+               ]
+
+rebuildsToTheSameTextIfSucceeds ::
+       (TextFieldCursor -> Maybe TextFieldCursor) -> Property
+rebuildsToTheSameTextIfSucceeds func =
+    forAll genValid $ \tc ->
+        let t = rebuildTextFieldCursor tc
+            mtc' = func tc
+        in case mtc' of
+               Nothing -> pure ()
+               Just tc' ->
+                   let t' = rebuildTextFieldCursor tc'
+                   in unless (t' == t) $
+                      expectationFailure $
+                      unlines
+                          [ "Initial Text: " ++ show t
+                          , "Built cursor: " ++ show tc
+                          , "Changed cursor: " ++ show tc'
+                          , "Final Text: " ++ show t'
+                          ]

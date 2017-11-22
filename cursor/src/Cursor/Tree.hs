@@ -225,7 +225,7 @@ forestCursorInsertAt ::
        , Parent a ~ TreeCursor a
        , Build a
        , View b
-       , Building (ForestCursor a) ~ ForestView b
+       , Building a ~ b
        )
     => Int
     -> Tree (Source b)
@@ -301,8 +301,9 @@ instance (Eq a, Build a, Eq (Building a)) => Eq (TreeCursor a) where
 instance Build a => Build (TreeCursor a) where
     type Building (TreeCursor a) = Select (TreeView (Building a))
     build TreeCursor {..} =
+        select $
         TreeView
-        { treeViewValue = build treeCursorValue
+        { treeViewValue = select $ build treeCursorValue
         , treeViewForest = build treeCursorForest
         }
 
@@ -380,7 +381,7 @@ treeCursorModify efunc ffunc tc = tc''
         }
     tcs =
         reverse (treeCursorPrevElemens tc) ++ [tc'] ++ treeCursorNextElemens tc
-    trees = map build tcs
+    trees = map (selectValue . build) tcs
     fc = treeCursorParent tc & forestElemsL .~ els
     els = treeElems fc trees
     tc'' = els !! treeCursorIndex tc
@@ -409,14 +410,14 @@ treeElems fc sts = tcs
                   reverse $ filter ((< i) . treeCursorIndex) tcs
             , treeCursorNextElemens = filter ((> i) . treeCursorIndex) tcs
             , treeCursorIndex = i
-            , treeCursorValue = makeWith cur $ treeViewValue st
+            , treeCursorValue = makeWith cur $ selectValue $ treeViewValue st
             , treeCursorForest = fc'
             }
-        fc' = forestCursor (Just cur) (treeViewForest st)
+        fc' = forestCursor (Just cur) (selectValue $ treeViewForest st)
 
 foldTreeSel ::
-       (Maybe [Int] -> a -> p)
-    -> (Maybe [Int] -> ForestView a -> q)
+       (Maybe [Int] -> Select a -> p)
+    -> (Maybe [Int] -> Select (ForestView a) -> q)
     -> (p -> q -> r)
     -> Maybe [Int]
     -> TreeView a
@@ -558,7 +559,7 @@ treeCursorDeleteCurrent ::
 treeCursorDeleteCurrent tc = tc''
   where
     tcs = reverse (treeCursorPrevElemens tc) ++ treeCursorNextElemens tc
-    trees = map build tcs
+    trees = map (selectValue . build) tcs
     for = treeCursorParent tc & forestElemsL .~ els
     els = treeElems for trees
     tc'' =
@@ -575,7 +576,7 @@ treeCursorMoveUp ::
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveUp tc =
-    let t = build tc
+    let t = selectValue $ build tc
     in case treeCursorDeleteCurrent tc of
            Left _ -> Nothing
            Right tc_ ->
@@ -592,7 +593,7 @@ treeCursorMoveDown ::
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveDown tc =
-    let t = build tc
+    let t = selectValue $ build tc
     in case treeCursorDeleteCurrent tc of
            Left _ -> Nothing
            Right tc_ ->
@@ -609,7 +610,7 @@ treeCursorMoveLeft ::
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveLeft tc =
-    let t = build tc
+    let t = selectValue $ build tc
         fc =
             case treeCursorDeleteCurrent tc of
                 Left fc_ -> fc_
@@ -626,7 +627,7 @@ treeCursorMoveRight ::
     => TreeCursor a
     -> Maybe (TreeCursor a)
 treeCursorMoveRight tc =
-    let t = build tc
+    let t = selectValue $ build tc
     in case treeCursorDeleteCurrent tc of
            Left _ -> Nothing
            Right tc_ -> do

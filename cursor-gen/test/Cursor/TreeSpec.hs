@@ -15,6 +15,7 @@ import TestImport
 import Data.Tree
 
 import Cursor.Class
+import Cursor.Select
 import Cursor.TestUtils
 import Cursor.Tree
 import Cursor.Tree.Gen ()
@@ -51,7 +52,7 @@ instance Build IntCursor where
     build = view . intValue
 
 instance Rebuild IntCursor where
-    type ReBuilding IntCursor = ForestView IntView
+    type ReBuilding IntCursor = Select (ForestView IntView)
     rebuild = rebuild . intTreeCursor
     selection IntCursor {..} = 0 : selection intTreeCursor
 
@@ -70,7 +71,7 @@ spec = do
             it "is the inverse of 'build'" $
             inverseFunctionsOnValid
                 (makeForestCursor' :: Forest Int -> ForestCursor IntCursor)
-                (source . build)
+                (source . selectValue . build)
         describe "forestCursorSelectIx" $
             it "rebuilds to the same" $
             forAll genUnchecked $ \i ->
