@@ -12,7 +12,6 @@ module Cursor.Tree
     , ForestCursor
     , makeForestCursor'
     , makeForestCursor
-    , foldForestSel
     , forestCursorParent
     , forestCursorElems
     , forestCursorSelectIx
@@ -28,7 +27,6 @@ module Cursor.Tree
     , treeCursorIndex
     , treeCursorValue
     , treeCursorForest
-    , foldTreeSel
     , treeCursorSelectPrev
     , treeCursorSelectNext
     , treeCursorValueL
@@ -65,27 +63,11 @@ instance View a => View (ForestView a) where
     source ForestView {..} = map (source . selectValue) forestViewTrees
     view = ForestView . map (select . view)
 
-data TreeView a = TreeView
-    { treeViewValue :: Select a
-    , treeViewForest :: Select (ForestView a)
-    } deriving (Show, Eq, Generic)
-
-instance Validity a => Validity (TreeView a)
-
-instance View a => View (TreeView a) where
-    type Source (TreeView a) = Tree (Source a)
-    source TreeView {..} =
-        Node
-            (source $ selectValue treeViewValue)
-            (source $ selectValue treeViewForest)
-    view (Node v f) =
-        TreeView
-        {treeViewValue = select $ view v, treeViewForest = select $ view f}
-
-data ForestCursor a = ForestCursor
-    { forestCursorParent :: Maybe (TreeCursor a)
-    , forestCursorElems :: [TreeCursor a]
-    }
+instance Selectable a => Selectable (ForestView a) where
+    applySelection msel ForestView {..} =
+        ForestView $
+        flip map (zip [0 ..] forestViewTrees) $ \(ix_, st) ->
+            drillApply ix_ msel st
 
 instance (Validity a, Build a, Validity (Building a)) =>
          Validity (ForestCursor a) where
@@ -159,17 +141,6 @@ forestCursor mpar sf = fc
         , forestCursorElems =
               treeElems fc $ map selectValue $ forestViewTrees sf
         }
-
-foldForestSel ::
-       (Maybe [Int] -> Select (TreeView a) -> q)
-    -> ([(Int, q)] -> r)
-    -> Maybe [Int]
-    -> ForestView a
-    -> r
-foldForestSel rFunc combFunc msel sf =
-    combFunc $
-    flip map (zip [0 ..] $ forestViewTrees sf) $ \(ix_, st) ->
-        (ix_, rFunc (drillSel msel ix_) st)
 
 forestElemsL ::
        ( Functor f
@@ -280,6 +251,35 @@ forestCursorInsertAtEnd ::
     -> ForestCursor a
 forestCursorInsertAtEnd t fc =
     forestCursorInsertAt (length $ forestCursorElems fc) t fc
+
+data TreeView a = TreeView
+    { treeViewValue :: Select a
+    , treeViewForest :: Select (ForestView a)
+    } deriving (Show, Eq, Generic)
+
+instance Validity a => Validity (TreeView a)
+
+instance View a => View (TreeView a) where
+    type Source (TreeView a) = Tree (Source a)
+    source TreeView {..} =
+        Node
+            (source $ selectValue treeViewValue)
+            (source $ selectValue treeViewForest)
+    view (Node v f) =
+        TreeView
+        {treeViewValue = select $ view v, treeViewForest = select $ view f}
+
+instance Selectable a => Selectable (TreeView a) where
+    applySelection msel TreeView {..} =
+        TreeView
+        { treeViewValue = drillApply 0 msel treeViewValue
+        , treeViewForest = drillApply 1 msel treeViewForest
+        }
+
+data ForestCursor a = ForestCursor
+    { forestCursorParent :: Maybe (TreeCursor a)
+    , forestCursorElems :: [TreeCursor a]
+    }
 
 data TreeCursor a = TreeCursor
     { treeCursorParent :: ForestCursor a
@@ -414,17 +414,6 @@ treeElems fc sts = tcs
             , treeCursorForest = fc'
             }
         fc' = forestCursor (Just cur) (selectValue $ treeViewForest st)
-
-foldTreeSel ::
-       (Maybe [Int] -> Select a -> p)
-    -> (Maybe [Int] -> Select (ForestView a) -> q)
-    -> (p -> q -> r)
-    -> Maybe [Int]
-    -> TreeView a
-    -> r
-foldTreeSel eFunc fFunc combFunc msel TreeView {..} =
-    eFunc (drillSel msel 0) treeViewValue `combFunc`
-    fFunc (drillSel msel 1) treeViewForest
 
 treeCursorSelectPrev :: TreeCursor a -> Maybe (TreeCursor a)
 treeCursorSelectPrev tc =

@@ -6,7 +6,6 @@ module Smos.Cursor.Entry
     ( EntryCursor
     , makeEntryCursor
     , entryCursor
-    , foldEntrySel
     , entryCursorParent
     , entryCursorHeader
     , entryCursorContents
@@ -68,7 +67,6 @@ module Smos.Cursor.Entry
     , TagsCursor
     , makeTagsCursor
     , tagsCursor
-    , foldTagsSel
     , tagsCursorParent
     , tagsCursorTags
     , tagsCursorTagsL
@@ -114,6 +112,7 @@ import Data.Time
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
 import Cursor.Tree
@@ -155,7 +154,7 @@ instance Eq EntryCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild EntryCursor where
-    type ReBuilding EntryCursor = ForestView EntryView
+    type ReBuilding EntryCursor = Select (ForestView EntryView)
     rebuild = rebuild . entryCursorParent
     selection EntryCursor {..} = 0 : selection entryCursorParent
 
@@ -166,10 +165,10 @@ instance Build EntryCursor where
         { entryViewHeader = build entryCursorHeader
         , entryViewContents = build <$> entryCursorContents
         , entryViewTimestamps = build entryCursorTimestamps
-        , entryViewProperties = view entryCursorProperties
+        , entryViewProperties = select $ view entryCursorProperties
         , entryViewTodostate = build entryCursorState
         , entryViewTags = build entryCursorTags
-        , entryViewLogbook = view entryCursorLogbook
+        , entryViewLogbook = select $ view entryCursorLogbook
         }
 
 instance BuiltFrom EntryCursor EntryView where
@@ -185,36 +184,16 @@ entryCursor par EntryView {..} = ec
     ec =
         EntryCursor
         { entryCursorParent = par
-        , entryCursorHeader = headerCursor ec entryViewHeader
-        , entryCursorContents = contentsCursor ec <$> entryViewContents
-        , entryCursorTimestamps = timestampsCursor ec entryViewTimestamps
-        , entryCursorProperties = source entryViewProperties
-        , entryCursorState = stateCursor ec entryViewTodostate
-        , entryCursorTags = tagsCursor ec entryViewTags
-        , entryCursorLogbook = source entryViewLogbook
+        , entryCursorHeader = headerCursor ec $ selectValue entryViewHeader
+        , entryCursorContents =
+              (contentsCursor ec . selectValue) <$> entryViewContents
+        , entryCursorTimestamps =
+              timestampsCursor ec $ selectValue entryViewTimestamps
+        , entryCursorProperties = source $ selectValue entryViewProperties
+        , entryCursorState = stateCursor ec $ selectValue entryViewTodostate
+        , entryCursorTags = tagsCursor ec $ selectValue entryViewTags
+        , entryCursorLogbook = source $ selectValue entryViewLogbook
         }
-
-foldEntrySel ::
-       (Maybe [Int] -> TodostateView -> a)
-    -> (Maybe [Int] -> HeaderView -> b)
-    -> (Maybe [Int] -> TagsView -> c)
-    -> (Maybe [Int] -> TimestampsView -> d)
-    -> (Maybe [Int] -> PropertiesView -> e)
-    -> (Maybe [Int] -> ContentsView -> f)
-    -> (Maybe [Int] -> LogbookView -> g)
-    -> (a -> b -> c -> d -> e -> Maybe f -> g -> r)
-    -> Maybe [Int]
-    -> EntryView
-    -> r
-foldEntrySel tsFunc hFunc tgsFunc tssFunc psFunc cFunc lFunc combFunc msel EntryView {..} =
-    combFunc
-        (tsFunc (drillSel msel 0) entryViewTodostate)
-        (hFunc (drillSel msel 1) entryViewHeader)
-        (tgsFunc (drillSel msel 2) entryViewTags)
-        (tssFunc (drillSel msel 3) entryViewTimestamps)
-        (psFunc (drillSel msel 4) entryViewProperties)
-        (cFunc (drillSel msel 5) <$> entryViewContents)
-        (lFunc (drillSel msel 6) entryViewLogbook)
 
 entryCursorHeaderL ::
        Functor f
@@ -377,7 +356,7 @@ entryCursorClockIn now = entryCursorLogbookL $ clockInAt now
 
 entryCursorContentsML :: Lens' EntryCursor (Maybe Contents)
 entryCursorContentsML =
-    lens (fmap (source . build) . entryCursorContents) setter
+    lens (fmap (source . selectValue . build) . entryCursorContents) setter
   where
     setter ec mc = ec'
       where
@@ -400,14 +379,14 @@ instance Eq HeaderCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild HeaderCursor where
-    type ReBuilding HeaderCursor = ForestView EntryView
+    type ReBuilding HeaderCursor = Select (ForestView EntryView)
     rebuild = rebuild . headerCursorParent
     selection HeaderCursor {..} =
         selection headerCursorHeader ++ [1] ++ selection headerCursorParent
 
 instance Build HeaderCursor where
-    type Building HeaderCursor = HeaderView
-    build = HeaderView . Header . rebuild . headerCursorHeader
+    type Building HeaderCursor = Select HeaderView
+    build = select . HeaderView . rebuild . headerCursorHeader
 
 makeHeaderCursor :: EntryCursor -> Header -> HeaderCursor
 makeHeaderCursor par h = headerCursor par $ view h
@@ -416,7 +395,7 @@ headerCursor :: EntryCursor -> HeaderView -> HeaderCursor
 headerCursor par h =
     HeaderCursor
     { headerCursorParent = par
-    , headerCursorHeader = makeTextCursor $ headerText $ headerViewHeader h
+    , headerCursorHeader = makeTextCursor $ headerText $ source h
     }
 
 headerCursorTextCursorL ::
@@ -438,7 +417,8 @@ headerCursorSetHeader h hc =
 
 headerCursorHeaderL ::
        Functor f => (Header -> f Header) -> HeaderCursor -> f HeaderCursor
-headerCursorHeaderL = lens (source . build) $ flip headerCursorSetHeader
+headerCursorHeaderL =
+    lens (source . selectValue . build) $ flip headerCursorSetHeader
 
 headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
 headerCursorInsert c = headerCursorTextCursorL %~ textCursorInsert c
@@ -481,15 +461,15 @@ instance Eq ContentsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild ContentsCursor where
-    type ReBuilding ContentsCursor = ForestView EntryView
+    type ReBuilding ContentsCursor = Select (ForestView EntryView)
     rebuild = rebuild . contentsCursorParent
     selection ContentsCursor {..} =
         selection contentsCursorContents ++
         [5] ++ selection contentsCursorParent
 
 instance Build ContentsCursor where
-    type Building ContentsCursor = ContentsView
-    build = ContentsView . Contents . rebuild . contentsCursorContents
+    type Building ContentsCursor = Select ContentsView
+    build = select . ContentsView . rebuild . contentsCursorContents
 
 emptyContentsCursor :: EntryCursor -> ContentsCursor
 emptyContentsCursor ec = makeContentsCursor ec $ Contents T.empty
@@ -501,8 +481,7 @@ contentsCursor :: EntryCursor -> ContentsView -> ContentsCursor
 contentsCursor ec ContentsView {..} =
     ContentsCursor
     { contentsCursorParent = ec
-    , contentsCursorContents =
-          makeTextFieldCursor $ contentsText contentsViewContents
+    , contentsCursorContents = makeTextFieldCursor $ source contentsViewContents
     }
 
 contentsCursorTextFieldL ::
@@ -523,7 +502,8 @@ contentsCursorSetContents cs =
     contentsCursorTextFieldL .~ makeTextFieldCursor (contentsText cs)
 
 contentsCursorContentsL :: Lens' ContentsCursor Contents
-contentsCursorContentsL = lens (source . build) $ flip contentsCursorSetContents
+contentsCursorContentsL =
+    lens (source . selectValue . build) $ flip contentsCursorSetContents
 
 contentsCursorInsert :: Char -> ContentsCursor -> ContentsCursor
 contentsCursorInsert c = contentsCursorTextFieldL %~ textFieldCursorInsert c
@@ -575,13 +555,13 @@ instance Eq StateCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild StateCursor where
-    type ReBuilding StateCursor = ForestView EntryView
+    type ReBuilding StateCursor = Select (ForestView EntryView)
     rebuild = rebuild . stateCursorParent
     selection StateCursor {..} = 0 : selection stateCursorParent
 
 instance Build StateCursor where
-    type Building StateCursor = TodostateView
-    build = TodostateView . stateCursorStateHistory
+    type Building StateCursor = Select TodostateView
+    build = select . TodostateView . stateCursorStateHistory
 
 makeStateCursor :: EntryCursor -> StateHistory -> StateCursor
 makeStateCursor ec sh = stateCursor ec $ view sh
@@ -634,13 +614,13 @@ instance Eq TagsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TagsCursor where
-    type ReBuilding TagsCursor = ForestView EntryView
+    type ReBuilding TagsCursor = Select (ForestView EntryView)
     rebuild = rebuild . tagsCursorParent
     selection TagsCursor {..} = 2 : selection tagsCursorParent
 
 instance Build TagsCursor where
-    type Building TagsCursor = TagsView
-    build = TagsView . map build . tagsCursorTags
+    type Building TagsCursor = Select TagsView
+    build = select . TagsView . map build . tagsCursorTags
 
 makeTagsCursor :: EntryCursor -> [Tag] -> TagsCursor
 makeTagsCursor ec tags = tagsCursor ec $ view tags
@@ -651,19 +631,8 @@ tagsCursor ec tags = tsc
     tsc =
         TagsCursor
         { tagsCursorParent = ec
-        , tagsCursorTags = tagElems tsc $ tagsViewTags tags
+        , tagsCursorTags = tagElems tsc $ map selectValue $ tagsViewTags tags
         }
-
-foldTagsSel ::
-       (Maybe [Int] -> TagView -> q)
-    -> ([(Int, q)] -> r)
-    -> Maybe [Int]
-    -> TagsView
-    -> r
-foldTagsSel tFunc combFunc msel tgs =
-    combFunc $
-    flip map (zip [0 ..] $ tagsViewTags tgs) $ \(ix_, t) ->
-        (ix_, tFunc (drillSel msel ix_) t)
 
 tagElems :: TagsCursor -> [TagView] -> [TagCursor]
 tagElems tsc sts = tcs
@@ -678,7 +647,7 @@ tagElems tsc sts = tcs
                   reverse $ filter ((< i) . tagCursorIndex) tcs
             , tagCursorNextElemens = filter ((> i) . tagCursorIndex) tcs
             , tagCursorIndex = i
-            , tagCursorTag = makeTextCursor $ tagViewText t
+            , tagCursorTag = makeTextCursor $ source $ tagViewText t
             }
 
 tagsCursorTagCursorsL ::
@@ -692,7 +661,7 @@ tagsCursorTagCursorsL = lens getter setter
         cc' = cc {tagsCursorParent = ec', tagsCursorTags = ts}
 
 tagsCursorTagsL :: Functor f => ([Tag] -> f [Tag]) -> TagsCursor -> f TagsCursor
-tagsCursorTagsL = lens (source . build) setter
+tagsCursorTagsL = lens (source . selectValue . build) setter
   where
     setter tc tgs = tc'
       where
@@ -723,7 +692,11 @@ tagsCursorInsertAt ix_ newTag tsc = tsc'
         tsc & tagsCursorTagCursorsL %~
         (\els ->
              tagElems tsc' $
-             map build (prevs els) ++ [tagView newTag] ++ map build (nexts els))
+             concat
+                 [ map (selectValue . build) (prevs els)
+                 , [tagView newTag]
+                 , map (selectValue . build) (nexts els)
+                 ])
     ffilter rel = filter ((`rel` ix_) . tagCursorIndex)
     prevs = ffilter (<)
     nexts = ffilter (>=)
@@ -754,15 +727,15 @@ instance Eq TagCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TagCursor where
-    type ReBuilding TagCursor = ForestView EntryView
+    type ReBuilding TagCursor = Select (ForestView EntryView)
     rebuild = rebuild . tagCursorParent
     selection TagCursor {..} =
         selection tagCursorTag ++
         [length tagCursorPrevElemens] ++ selection tagCursorParent
 
 instance Build TagCursor where
-    type Building TagCursor = TagView
-    build TagCursor {..} = TagView {tagViewText = rebuild tagCursorTag}
+    type Building TagCursor = Select TagView
+    build TagCursor {..} = select $ TagView {tagViewText = rebuild tagCursorTag}
 
 tagCursorTextCursorL ::
        Functor f => (TextCursor -> f TextCursor) -> TagCursor -> f TagCursor
@@ -780,7 +753,7 @@ tagCursorModify tfunc tc = tc'''
         reverse (tagCursorPrevElemens tc') ++ [tc'] ++ tagCursorNextElemens tc'
     tags = map build tcs
     fc = tagCursorParent tc' & tagsCursorTagCursorsL .~ els
-    els = tagElems fc tags
+    els = tagElems fc $ map selectValue tags
     tc'' = els !! tagCursorIndex tc'
     tc''' = tc'' {tagCursorTag = tagCursorTag tc'' `reselectLike` tct'}
 
@@ -837,13 +810,13 @@ instance Eq TimestampsCursor where
     (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Rebuild TimestampsCursor where
-    type ReBuilding TimestampsCursor = ForestView EntryView
+    type ReBuilding TimestampsCursor = Select (ForestView EntryView)
     rebuild = rebuild . timestampsCursorParent
     selection TimestampsCursor {..} = 3 : selection timestampsCursorParent
 
 instance Build TimestampsCursor where
-    type Building TimestampsCursor = TimestampsView
-    build = TimestampsView . timestampsCursorTimestamps
+    type Building TimestampsCursor = Select TimestampsView
+    build = select . TimestampsView . timestampsCursorTimestamps
 
 makeTimestampsCursor ::
        EntryCursor -> HashMap TimestampName UTCTime -> TimestampsCursor

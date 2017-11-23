@@ -19,6 +19,7 @@ module Smos.Cursor
 import Import
 
 import Cursor.Class
+import Cursor.Select
 import Cursor.Tree
 
 import Smos.Data
@@ -27,13 +28,14 @@ import Smos.Cursor.Entry
 import Smos.View
 
 newtype SmosFileView = SmosFileView
-    { smosFileViewForest :: ForestView EntryView
+    { smosFileViewForest :: Select (ForestView EntryView)
     }
 
 instance View SmosFileView where
     type Source SmosFileView = SmosFile
-    source = SmosFile . source . smosFileViewForest
-    view SmosFile {..} = SmosFileView {smosFileViewForest = view smosFileForest}
+    source = SmosFile . source . selectValue . smosFileViewForest
+    view SmosFile {..} =
+        SmosFileView {smosFileViewForest = select $ view smosFileForest}
 
 data AnyCursor
     = AnyForest (ForestCursor EntryCursor)

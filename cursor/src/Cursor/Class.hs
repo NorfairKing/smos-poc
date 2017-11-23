@@ -9,7 +9,6 @@ module Cursor.Class
     , Build(..)
     , BuiltFrom(..)
     , Reselect(..)
-    , drillSel
     , reselectLike
     ) where
 
@@ -45,16 +44,6 @@ class BuiltFrom a b where
 class Reselect a where
     type Reselection a :: *
     reselect :: [Int] -> a -> Reselection a
-
-drillSel :: Maybe [Int] -> Int -> Maybe [Int]
-drillSel msel ix =
-    case msel of
-        Nothing -> Nothing
-        Just [] -> Nothing
-        Just (x:xs) ->
-            if x == ix
-                then Just xs
-                else Nothing
 
 reselectLike :: (Reselect a, Rebuild b) => a -> b -> Reselection a
 reselectLike a b = reselect (selection b) a

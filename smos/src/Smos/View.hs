@@ -23,20 +23,22 @@ import Import
 import Data.HashMap.Lazy (HashMap)
 import Data.Time
 
--- import Data.Tree
 import Smos.Data
 
 import Cursor.Class
+import Cursor.Select
+import Cursor.Text
+import Cursor.TextField
 import Cursor.Tree
 
 data EntryView = EntryView
-    { entryViewTodostate :: TodostateView
-    , entryViewTags :: TagsView
-    , entryViewHeader :: HeaderView
-    , entryViewContents :: Maybe ContentsView
-    , entryViewTimestamps :: TimestampsView
-    , entryViewProperties :: PropertiesView
-    , entryViewLogbook :: LogbookView
+    { entryViewTodostate :: Select TodostateView
+    , entryViewTags :: Select TagsView
+    , entryViewHeader :: Select HeaderView
+    , entryViewContents :: Maybe (Select ContentsView)
+    , entryViewTimestamps :: Select TimestampsView
+    , entryViewProperties :: Select PropertiesView
+    , entryViewLogbook :: Select LogbookView
     } deriving (Show, Eq, Generic)
 
 instance Validity EntryView
@@ -45,23 +47,35 @@ instance View EntryView where
     type Source EntryView = Entry
     source EntryView {..} =
         Entry
-        { entryStateHistory = source entryViewTodostate
-        , entryHeader = source entryViewHeader
-        , entryTags = source entryViewTags
-        , entryContents = source <$> entryViewContents
-        , entryTimestamps = source entryViewTimestamps
-        , entryProperties = source entryViewProperties
-        , entryLogbook = source entryViewLogbook
+        { entryStateHistory = source $ selectValue entryViewTodostate
+        , entryHeader = source $ selectValue entryViewHeader
+        , entryTags = source $ selectValue entryViewTags
+        , entryContents = (source . selectValue) <$> entryViewContents
+        , entryTimestamps = source $ selectValue entryViewTimestamps
+        , entryProperties = source $ selectValue entryViewProperties
+        , entryLogbook = source $ selectValue entryViewLogbook
         }
     view Entry {..} =
         EntryView
-        { entryViewTodostate = view entryStateHistory
-        , entryViewHeader = view entryHeader
-        , entryViewTags = view entryTags
-        , entryViewContents = view <$> entryContents
-        , entryViewTimestamps = view entryTimestamps
-        , entryViewProperties = view entryProperties
-        , entryViewLogbook = view entryLogbook
+        { entryViewTodostate = select $ view entryStateHistory
+        , entryViewHeader = select $ view entryHeader
+        , entryViewTags = select $ view entryTags
+        , entryViewContents = (select . view) <$> entryContents
+        , entryViewTimestamps = select $ view entryTimestamps
+        , entryViewProperties = select $ view entryProperties
+        , entryViewLogbook = select $ view entryLogbook
+        }
+
+instance Selectable EntryView where
+    applySelection msel EntryView {..} =
+        EntryView
+        { entryViewTodostate = drillStop 0 msel entryViewTodostate
+        , entryViewHeader = drillStop 1 msel entryViewHeader
+        , entryViewTags = drillApply 2 msel entryViewTags
+        , entryViewContents = drillStop 3 msel <$> entryViewContents
+        , entryViewTimestamps = drillStop 4 msel entryViewTimestamps
+        , entryViewProperties = drillStop 5 msel entryViewProperties
+        , entryViewLogbook = drillStop 6 msel entryViewLogbook
         }
 
 newtype TodostateView = TodostateView
@@ -76,51 +90,54 @@ instance View TodostateView where
     view = TodostateView
 
 newtype HeaderView = HeaderView
-    { headerViewHeader :: Header
+    { headerViewHeader :: TextView
     } deriving (Show, Eq, Generic)
 
 instance Validity HeaderView
 
 instance View HeaderView where
     type Source HeaderView = Header
-    source = headerViewHeader
-    view = HeaderView
+    source = Header . source . headerViewHeader
+    view = HeaderView . view . headerText
 
 newtype TagsView = TagsView
-    { tagsViewTags :: [TagView]
+    { tagsViewTags :: [Select TagView]
     } deriving (Show, Eq, Generic)
 
 instance Validity TagsView
 
 instance View TagsView where
     type Source TagsView = [Tag]
-    source = filter isValid . map (Tag . source) . tagsViewTags
-    view = TagsView . map tagView
+    source = filter isValid . map (Tag . source . selectValue) . tagsViewTags
+    view = TagsView . map (select . tagView)
+
+instance Selectable TagsView where
+    applySelection msel = TagsView . drillStopList msel . tagsViewTags
 
 newtype TagView = TagView
-    { tagViewText :: Text
+    { tagViewText :: TextView
     } deriving (Show, Eq, Generic)
 
 instance Validity TagView
 
 instance View TagView where
     type Source TagView = Text
-    source = tagViewText
-    view = TagView
+    source = source . tagViewText
+    view = TagView . view
 
 tagView :: Tag -> TagView
-tagView t = TagView {tagViewText = tagText t}
+tagView t = TagView {tagViewText = view $ tagText t}
 
 newtype ContentsView = ContentsView
-    { contentsViewContents :: Contents
+    { contentsViewContents :: TextFieldView
     } deriving (Show, Eq, Generic)
 
 instance Validity ContentsView
 
 instance View ContentsView where
     type Source ContentsView = Contents
-    source = contentsViewContents
-    view = ContentsView
+    source = Contents . source . contentsViewContents
+    view = ContentsView . view . contentsText
 
 newtype TimestampsView = TimestampsView
     { timestampsViewTimestamps :: HashMap TimestampName UTCTime

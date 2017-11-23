@@ -106,13 +106,13 @@ import Lens.Micro
 
 import Smos.Data
 
+import Cursor.Select
 import Cursor.Tree
 
 import Smos.Actions.Editor
 import Smos.Cursor
 import Smos.Cursor.Entry
 import Smos.Types
-import Smos.View
 
 {-# ANN module ("HLint: ignore Use fromMaybe" :: String) #-}
 
@@ -482,7 +482,7 @@ tagsSelectPrev =
         case tagCursorSelectPrev tc of
             Just tc_ -> Just tc_
             Nothing ->
-                let t = tagViewText $ build tc
+                let t = source $ selectValue $ build tc
                 in if T.null t
                        then Nothing
                        else let tsc = tagCursorParent tc
@@ -499,7 +499,7 @@ tagsSelectNext =
         case tagCursorSelectNext tc of
             Just tc_ -> Just tc_
             Nothing ->
-                let t = tagViewText $ build tc
+                let t = source $ selectValue $ build tc
                 in if T.null t
                        then Nothing
                        else let tsc = tagCursorParent tc
