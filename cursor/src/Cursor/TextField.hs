@@ -34,6 +34,7 @@ import qualified Data.Text as T
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.Select
 import Cursor.Text
 
 data TextFieldCursor = TextFieldCursor
@@ -55,7 +56,7 @@ instance Rebuild TextFieldCursor where
         { textFieldViewAbove =
               case textFieldCursorPrev of
                   [] -> Nothing
-                  ls -> Just $ T.intercalate "\n" ls
+                  ls -> Just $ T.intercalate "\n" $ reverse ls
         , textFieldViewLine = rebuild textFieldSelected
         , textFieldViewBelow =
               case textFieldCursorNext of
@@ -102,6 +103,38 @@ instance View TextFieldView where
                 , textFieldViewBelow = Just $ T.intercalate "\n" rs
                 }
 
+instance Selectable TextFieldView where
+    applySelection =
+        drillWithSel $ \mixr_ tfv ->
+            let t = source tfv
+            in case mixr_ of
+                   Nothing -> view t
+                   Just (ix_, sel) ->
+                       let (l, m, r) = applyTextLinesSelection ix_ t
+                       in TextFieldView
+                          { textFieldViewAbove = l
+                          , textFieldViewLine =
+                                maybe
+                                    (view t)
+                                    (applySelection (Just sel) . view)
+                                    m
+                          , textFieldViewBelow = r
+                          }
+
+applyTextLinesSelection :: Int -> Text -> (Maybe Text, Maybe Text, Maybe Text)
+applyTextLinesSelection x t =
+    let ls = T.splitOn "\n" t
+        (l, m, r) = applyListSelection x ls
+    in (T.intercalate "\n" <$> l, m, T.intercalate "\n" <$> r)
+
+applyListSelection :: Int -> [a] -> (Maybe [a], Maybe a, Maybe [a])
+applyListSelection x ls =
+    let n [] = Nothing
+        n ls_ = Just ls_
+    in case drop x ls of
+           [] -> (n ls, Nothing, Nothing)
+           (m:r) -> (n $ take x ls, Just m, n r)
+
 emptyTextFieldCursor :: TextFieldCursor
 emptyTextFieldCursor =
     TextFieldCursor
@@ -135,9 +168,6 @@ textFieldCursorIndices :: TextFieldCursor -> [Int]
 textFieldCursorIndices TextFieldCursor {..} =
     [length textFieldCursorPrev, textCursorIndex textFieldSelected]
 
--- reselectTextFieldCursor :: [Int] -> TextFieldCursor -> TextFieldCursor
--- reselectTextFieldCursor [x, y] _ = undefined
--- reselectTextFieldCursor _ tc = tc
 textFieldSelectedL ::
        Functor f
     => (TextCursor -> f TextCursor)

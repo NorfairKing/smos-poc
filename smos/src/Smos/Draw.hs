@@ -33,10 +33,11 @@ smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
   where
     renderCursor :: ACursor -> Widget ResourceName
     renderCursor cur =
-        drawSmosFile (applyFileViewSelection rsel $ rebuild cur) <=>
-        str (show rsel) <=>
-        drawHistory smosStateKeyHistory
+        drawSmosFile sfv <=> str (show rsel) <=> drawHistory smosStateKeyHistory <=>
+        strWrap (show sfv) <=>
+        strWrap (show cur)
       where
+        sfv = applyFileViewSelection rsel $ rebuild cur
         rsel = reverse $ selection $ selectAnyCursor cur
 
 applyFileViewSelection :: [Int] -> SmosFileView -> SmosFileView
@@ -113,7 +114,8 @@ drawContents =
     withAttr contentsAttr . drawTextFieldView . fmap contentsViewContents
 
 drawTags :: Select TagsView -> Widget ResourceName
-drawTags = withSel $ B.hBox . addColons . map drawTag . tagsViewTags
+drawTags =
+    withSel $ withAttr tagAttr . B.hBox . addColons . map drawTag . tagsViewTags
   where
     addColons ls =
         case ls of
@@ -194,11 +196,17 @@ drawTextFieldView stv =
     in addSelected . addCursor $ w
 
 drawTextView :: Select TextView -> Widget ResourceName
-drawTextView =
-    withSel $ \TextView {..} ->
-        let ix_ = T.length textViewLeft
-        in B.showCursor textCursorName (B.Location (ix_, 0)) $
-           B.txt textViewLeft <+> B.txt textViewRight
+drawTextView stv =
+    let TextView {..} = selectValue stv
+        ix_ = T.length textViewLeft
+        addCursor =
+            eitherOrSel
+                (B.showCursor textCursorName (B.Location (ix_, 0)))
+                id
+                stv
+        addSelected = eitherOrSel (withAttr selectedAttr) id stv
+        w = B.txt textViewLeft <+> B.txt textViewRight
+    in addSelected . addCursor $ w
 
 withSel :: (a -> Widget b) -> Select a -> Widget b
 withSel func s =

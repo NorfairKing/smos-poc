@@ -43,7 +43,11 @@ instance Build TextCursor where
 
 instance Rebuild TextCursor where
     type ReBuilding TextCursor = TextView
-    rebuild = view . T.pack . rebuild . unTextCursor
+    rebuild TextCursor {..} =
+        TextView
+        { textViewLeft = T.reverse $ T.pack $ listCursorPrev unTextCursor
+        , textViewRight = T.pack $ listCursorNext unTextCursor
+        }
     selection = selection . unTextCursor
 
 instance Reselect TextCursor where
@@ -61,6 +65,15 @@ instance View TextView where
     type Source TextView = Text
     source TextView {..} = textViewLeft <> textViewRight
     view t = TextView {textViewLeft = T.empty, textViewRight = t}
+
+instance Selectable TextView where
+    applySelection =
+        drillWithSel_ $ \mix_ tv ->
+            case mix_ of
+                Nothing -> view $ source tv
+                Just ix_ ->
+                    case T.splitAt ix_ $ source tv of
+                        (l, r) -> TextView {textViewLeft = l, textViewRight = r}
 
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor

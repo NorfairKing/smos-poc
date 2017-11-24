@@ -735,7 +735,7 @@ instance Rebuild TagCursor where
 
 instance Build TagCursor where
     type Building TagCursor = Select TagView
-    build TagCursor {..} = select $ TagView {tagViewText = rebuild tagCursorTag}
+    build TagCursor {..} = select TagView {tagViewText = rebuild tagCursorTag}
 
 tagCursorTextCursorL ::
        Functor f => (TextCursor -> f TextCursor) -> TagCursor -> f TagCursor

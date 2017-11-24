@@ -69,12 +69,12 @@ instance View EntryView where
 instance Selectable EntryView where
     applySelection msel EntryView {..} =
         EntryView
-        { entryViewTodostate = drillStop 0 msel entryViewTodostate
-        , entryViewHeader = drillStop 1 msel entryViewHeader
+        { entryViewTodostate = drillPrefixStop 0 msel entryViewTodostate
+        , entryViewHeader = drillPrefixApply 1 msel entryViewHeader
         , entryViewTags = drillApply 2 msel entryViewTags
-        , entryViewContents = drillStop 3 msel <$> entryViewContents
-        , entryViewTimestamps = drillStop 4 msel entryViewTimestamps
-        , entryViewProperties = drillStop 5 msel entryViewProperties
+        , entryViewTimestamps = drillStop 3 msel entryViewTimestamps
+        , entryViewProperties = drillStop 4 msel entryViewProperties
+        , entryViewContents = drillPrefixApply 5 msel <$> entryViewContents
         , entryViewLogbook = drillStop 6 msel entryViewLogbook
         }
 
@@ -100,6 +100,9 @@ instance View HeaderView where
     source = Header . source . headerViewHeader
     view = HeaderView . view . headerText
 
+instance Selectable HeaderView where
+    applySelection msel = HeaderView . applySelection msel . headerViewHeader
+
 newtype TagsView = TagsView
     { tagsViewTags :: [Select TagView]
     } deriving (Show, Eq, Generic)
@@ -112,7 +115,7 @@ instance View TagsView where
     view = TagsView . map (select . tagView)
 
 instance Selectable TagsView where
-    applySelection msel = TagsView . drillStopList msel . tagsViewTags
+    applySelection msel = TagsView . drillPrefixApplyList msel . tagsViewTags
 
 newtype TagView = TagView
     { tagViewText :: TextView
@@ -128,6 +131,9 @@ instance View TagView where
 tagView :: Tag -> TagView
 tagView t = TagView {tagViewText = view $ tagText t}
 
+instance Selectable TagView where
+    applySelection msel = TagView . applySelection msel . tagViewText
+
 newtype ContentsView = ContentsView
     { contentsViewContents :: TextFieldView
     } deriving (Show, Eq, Generic)
@@ -138,6 +144,10 @@ instance View ContentsView where
     type Source ContentsView = Contents
     source = Contents . source . contentsViewContents
     view = ContentsView . view . contentsText
+
+instance Selectable ContentsView where
+    applySelection msel =
+        ContentsView . applySelection msel . contentsViewContents
 
 newtype TimestampsView = TimestampsView
     { timestampsViewTimestamps :: HashMap TimestampName UTCTime

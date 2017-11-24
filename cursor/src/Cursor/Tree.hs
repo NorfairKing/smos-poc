@@ -65,9 +65,7 @@ instance View a => View (ForestView a) where
 
 instance Selectable a => Selectable (ForestView a) where
     applySelection msel ForestView {..} =
-        ForestView $
-        flip map (zip [0 ..] forestViewTrees) $ \(ix_, st) ->
-            drillApply ix_ msel st
+        ForestView $ applySelection msel forestViewTrees
 
 instance (Validity a, Build a, Validity (Building a)) =>
          Validity (ForestCursor a) where
@@ -301,11 +299,11 @@ instance (Eq a, Build a, Eq (Building a)) => Eq (TreeCursor a) where
 instance Build a => Build (TreeCursor a) where
     type Building (TreeCursor a) = Select (TreeView (Building a))
     build TreeCursor {..} =
-        select $
-        TreeView
-        { treeViewValue = select $ build treeCursorValue
-        , treeViewForest = build treeCursorForest
-        }
+        select
+            TreeView
+            { treeViewValue = select $ build treeCursorValue
+            , treeViewForest = build treeCursorForest
+            }
 
 instance Build a => Rebuild (TreeCursor a) where
     type ReBuilding (TreeCursor a) = Select (ForestView (Building a))
@@ -322,11 +320,9 @@ instance (Show a, Build a, Show (Building a)) => Show (TreeCursor a) where
                  (concat
                       [ map (const "tree") treeCursorPrevElemens
                       , [ "---"
-                        , unwords
-                              [ show treeCursorIndex
-                              , show $ build treeCursorValue
-                              , show $ build treeCursorForest
-                              ]
+                        , show treeCursorIndex
+                        , show $ build treeCursorValue
+                        , show $ build treeCursorForest
                         , "---"
                         ]
                       , map (const "tree") treeCursorNextElemens

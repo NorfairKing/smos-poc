@@ -28,9 +28,9 @@ spec = do
             "abc\ndef\n"
         it "is the inverse of 'rebuildTextFieldCursor'" $
             inverseFunctionsOnValid makeTextFieldCursor rebuildTextFieldCursor
-    describe "view" $ do
+    describe "view" $
         it "is the inverse of 'source" $
-            inverseFunctionsOnValid view (source :: TextFieldView -> Text)
+        inverseFunctionsOnValid view (source :: TextFieldView -> Text)
     describe "textFieldCursorSelectPrev" $ do
         it "builds to the same text" $
             buildsToTheSameIfSuceeds textFieldCursorSelectPrev

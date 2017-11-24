@@ -29,7 +29,7 @@ import Smos.View
 
 newtype SmosFileView = SmosFileView
     { smosFileViewForest :: Select (ForestView EntryView)
-    }
+    } deriving (Show, Eq, Generic)
 
 instance View SmosFileView where
     type Source SmosFileView = SmosFile
