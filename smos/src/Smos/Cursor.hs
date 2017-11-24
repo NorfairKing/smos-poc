@@ -15,6 +15,12 @@ module Smos.Cursor
     , Rebuild(..)
     , Build(..)
     , Select(..)
+    , EntryCursor
+    , StateCursor
+    , HeaderCursor
+    , ContentsCursor
+    , TagsCursor
+    , TagCursor
     ) where
 
 import Import
@@ -26,6 +32,7 @@ import Cursor.Tree
 import Smos.Data
 
 import Smos.Cursor.Entry
+import Smos.Cursor.Types
 import Smos.View
 
 newtype SmosFileView = SmosFileView

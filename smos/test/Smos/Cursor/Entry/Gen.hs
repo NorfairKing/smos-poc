@@ -8,11 +8,13 @@ module Smos.Cursor.Entry.Gen where
 
 import TestImport
 
-import Cursor.Text.Gen ()
 import Cursor.Tree
+
+import Smos.Cursor.Types
+
+import Cursor.Text.Gen ()
 import Cursor.Tree.Gen ()
 
-import Smos.Cursor.Entry
 import Smos.Data.Gen ()
 
 instance GenUnchecked EntryCursor where

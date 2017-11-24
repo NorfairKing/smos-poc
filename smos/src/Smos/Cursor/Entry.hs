@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor.Entry
@@ -21,7 +20,6 @@ module Smos.Cursor.Entry
     , entryCursorPropertiesL
     , entryCursorClockIn
     , entryCursorContentsML
-    , HeaderCursor
     , makeHeaderCursor
     , headerCursor
     , headerCursorParent
@@ -37,7 +35,6 @@ module Smos.Cursor.Entry
     , headerCursorRight
     , headerCursorStart
     , headerCursorEnd
-    , ContentsCursor
     , emptyContentsCursor
     , makeContentsCursor
     , contentsCursor
@@ -57,14 +54,12 @@ module Smos.Cursor.Entry
     , contentsCursorDown
     , contentsCursorStart
     , contentsCursorEnd
-    , StateCursor
     , makeStateCursor
     , stateCursor
     , stateCursorParent
     , stateCursorStateHistory
     , stateCursorClear
     , stateCursorSetState
-    , TagsCursor
     , makeTagsCursor
     , tagsCursor
     , tagsCursorParent
@@ -76,7 +71,6 @@ module Smos.Cursor.Entry
     , tagsCursorInsertAt
     , tagsCursorInsertAtStart
     , tagsCursorAppendAtEnd
-    , TagCursor
     , tagCursorParent
     , tagCursorIndex
     , tagCursorPrevElemens
@@ -94,7 +88,6 @@ module Smos.Cursor.Entry
     , tagCursorEnd
     , tagCursorSelectPrev
     , tagCursorSelectNext
-    , TimestampsCursor
     , makeTimestampsCursor
     , timestampsCursor
     , timestampsCursorParent
@@ -117,83 +110,12 @@ import Cursor.Text
 import Cursor.TextField
 import Cursor.Tree
 
+import Smos.Cursor.Types
 import Smos.Data
 import Smos.View
 
-data EntryCursor = EntryCursor
-    { entryCursorParent :: TreeCursor EntryCursor
-    , entryCursorHeader :: HeaderCursor
-    , entryCursorContents :: Maybe ContentsCursor
-    , entryCursorTimestamps :: TimestampsCursor
-    , entryCursorProperties :: HashMap PropertyName PropertyValue
-    , entryCursorState :: StateCursor
-    , entryCursorTags :: TagsCursor
-    , entryCursorLogbook :: Logbook
-    }
-
-instance Validity EntryCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show EntryCursor where
-    show EntryCursor {..} =
-        unlines
-            ("[Tree]" :
-             map
-                 (" |- " ++)
-                 [ "[Header]: " ++ show (build entryCursorHeader)
-                 , "[Contents]: " ++ show (build <$> entryCursorContents)
-                 , "[Timestamps]: " ++ show (build entryCursorTimestamps)
-                 , show entryCursorProperties
-                 , "[State]: " ++ show (build entryCursorState)
-                 , "[Tags]: " ++ show (build entryCursorTags)
-                 , show entryCursorLogbook
-                 ])
-
-instance Eq EntryCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild EntryCursor where
-    type ReBuilding EntryCursor = Select (ForestView EntryView)
-    rebuild = rebuild . entryCursorParent
-    selection EntryCursor {..} = 0 : selection entryCursorParent
-
-instance Build EntryCursor where
-    type Building EntryCursor = EntryView
-    build EntryCursor {..} =
-        EntryView
-        { entryViewHeader = build entryCursorHeader
-        , entryViewContents = build <$> entryCursorContents
-        , entryViewTimestamps = build entryCursorTimestamps
-        , entryViewProperties = select $ view entryCursorProperties
-        , entryViewTodostate = build entryCursorState
-        , entryViewTags = build entryCursorTags
-        , entryViewLogbook = select $ view entryCursorLogbook
-        }
-
-instance BuiltFrom EntryCursor EntryView where
-    type Parent EntryCursor = TreeCursor EntryCursor
-    makeWith = entryCursor
-
 makeEntryCursor :: TreeCursor EntryCursor -> Entry -> EntryCursor
 makeEntryCursor par e = entryCursor par $ view e
-
-entryCursor :: TreeCursor EntryCursor -> EntryView -> EntryCursor
-entryCursor par EntryView {..} = ec
-  where
-    ec =
-        EntryCursor
-        { entryCursorParent = par
-        , entryCursorHeader = headerCursor ec $ selectValue entryViewHeader
-        , entryCursorContents =
-              (contentsCursor ec . selectValue) <$> entryViewContents
-        , entryCursorTimestamps =
-              timestampsCursor ec $ selectValue entryViewTimestamps
-        , entryCursorProperties = source $ selectValue entryViewProperties
-        , entryCursorState = stateCursor ec $ selectValue entryViewTodostate
-        , entryCursorTags = tagsCursor ec $ selectValue entryViewTags
-        , entryCursorLogbook = source $ selectValue entryViewLogbook
-        }
 
 entryCursorHeaderL ::
        Functor f
@@ -362,41 +284,8 @@ entryCursorContentsML =
       where
         ec' = ec & entryCursorContentsL .~ ((contentsCursor ec' . view) <$> mc)
 
-data HeaderCursor = HeaderCursor
-    { headerCursorParent :: EntryCursor
-    , headerCursorHeader :: TextCursor
-    }
-
-instance Validity HeaderCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show HeaderCursor where
-    show HeaderCursor {..} =
-        unlines ["[Entry]", " |-" ++ show (rebuild headerCursorHeader)]
-
-instance Eq HeaderCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild HeaderCursor where
-    type ReBuilding HeaderCursor = Select (ForestView EntryView)
-    rebuild = rebuild . headerCursorParent
-    selection HeaderCursor {..} =
-        selection headerCursorHeader ++ [1] ++ selection headerCursorParent
-
-instance Build HeaderCursor where
-    type Building HeaderCursor = Select HeaderView
-    build = select . HeaderView . rebuild . headerCursorHeader
-
 makeHeaderCursor :: EntryCursor -> Header -> HeaderCursor
 makeHeaderCursor par h = headerCursor par $ view h
-
-headerCursor :: EntryCursor -> HeaderView -> HeaderCursor
-headerCursor par h =
-    HeaderCursor
-    { headerCursorParent = par
-    , headerCursorHeader = makeTextCursor $ headerText $ source h
-    }
 
 headerCursorTextCursorL ::
        Functor f
@@ -444,45 +333,11 @@ headerCursorStart = headerCursorTextCursorL %~ textCursorSelectStart
 headerCursorEnd :: HeaderCursor -> HeaderCursor
 headerCursorEnd = headerCursorTextCursorL %~ textCursorSelectEnd
 
-data ContentsCursor = ContentsCursor
-    { contentsCursorParent :: EntryCursor
-    , contentsCursorContents :: TextFieldCursor
-    }
-
-instance Validity ContentsCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show ContentsCursor where
-    show ContentsCursor {..} =
-        unlines ["[Entry]", " |-" ++ show contentsCursorContents]
-
-instance Eq ContentsCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild ContentsCursor where
-    type ReBuilding ContentsCursor = Select (ForestView EntryView)
-    rebuild = rebuild . contentsCursorParent
-    selection ContentsCursor {..} =
-        selection contentsCursorContents ++
-        [5] ++ selection contentsCursorParent
-
-instance Build ContentsCursor where
-    type Building ContentsCursor = Select ContentsView
-    build = select . ContentsView . rebuild . contentsCursorContents
-
 emptyContentsCursor :: EntryCursor -> ContentsCursor
 emptyContentsCursor ec = makeContentsCursor ec $ Contents T.empty
 
 makeContentsCursor :: EntryCursor -> Contents -> ContentsCursor
 makeContentsCursor ec cts = contentsCursor ec $ view cts
-
-contentsCursor :: EntryCursor -> ContentsView -> ContentsCursor
-contentsCursor ec ContentsView {..} =
-    ContentsCursor
-    { contentsCursorParent = ec
-    , contentsCursorContents = makeTextFieldCursor $ source contentsViewContents
-    }
 
 contentsCursorTextFieldL ::
        Functor f
@@ -538,37 +393,8 @@ contentsCursorStart = contentsCursorTextFieldL %~ textFieldCursorSelectStart
 contentsCursorEnd :: ContentsCursor -> ContentsCursor
 contentsCursorEnd = contentsCursorTextFieldL %~ textFieldCursorSelectEnd
 
-data StateCursor = StateCursor
-    { stateCursorParent :: EntryCursor
-    , stateCursorStateHistory :: StateHistory
-    }
-
-instance Validity StateCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show StateCursor where
-    show StateCursor {..} =
-        unlines ["[Entry]", " |-" ++ show stateCursorStateHistory]
-
-instance Eq StateCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild StateCursor where
-    type ReBuilding StateCursor = Select (ForestView EntryView)
-    rebuild = rebuild . stateCursorParent
-    selection StateCursor {..} = 0 : selection stateCursorParent
-
-instance Build StateCursor where
-    type Building StateCursor = Select TodostateView
-    build = select . TodostateView . stateCursorStateHistory
-
 makeStateCursor :: EntryCursor -> StateHistory -> StateCursor
 makeStateCursor ec sh = stateCursor ec $ view sh
-
-stateCursor :: EntryCursor -> TodostateView -> StateCursor
-stateCursor ec tsv =
-    StateCursor {stateCursorParent = ec, stateCursorStateHistory = source tsv}
 
 stateCursorStateL ::
        Functor f
@@ -595,60 +421,8 @@ stateCursorClear now sc = sc & stateCursorStateL now .~ Nothing
 stateCursorSetState :: UTCTime -> TodoState -> StateCursor -> StateCursor
 stateCursorSetState now ts sc = sc & stateCursorStateL now .~ Just ts
 
-(&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
-(&&&) op1 op2 a b = op1 a b && op2 a b
-
-data TagsCursor = TagsCursor
-    { tagsCursorParent :: EntryCursor
-    , tagsCursorTags :: [TagCursor]
-    }
-
-instance Validity TagsCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show TagsCursor where
-    show TagsCursor {..} = unlines ["[Entry]", " |-" ++ show tagsCursorTags]
-
-instance Eq TagsCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild TagsCursor where
-    type ReBuilding TagsCursor = Select (ForestView EntryView)
-    rebuild = rebuild . tagsCursorParent
-    selection TagsCursor {..} = 2 : selection tagsCursorParent
-
-instance Build TagsCursor where
-    type Building TagsCursor = Select TagsView
-    build = select . TagsView . map build . tagsCursorTags
-
 makeTagsCursor :: EntryCursor -> [Tag] -> TagsCursor
 makeTagsCursor ec tags = tagsCursor ec $ view tags
-
-tagsCursor :: EntryCursor -> TagsView -> TagsCursor
-tagsCursor ec tags = tsc
-  where
-    tsc =
-        TagsCursor
-        { tagsCursorParent = ec
-        , tagsCursorTags = tagElems tsc $ map selectValue $ tagsViewTags tags
-        }
-
-tagElems :: TagsCursor -> [TagView] -> [TagCursor]
-tagElems tsc sts = tcs
-  where
-    tcs = zipWith tc [0 ..] sts
-    tc i t = cur
-      where
-        cur =
-            TagCursor
-            { tagCursorParent = tsc
-            , tagCursorPrevElemens =
-                  reverse $ filter ((< i) . tagCursorIndex) tcs
-            , tagCursorNextElemens = filter ((> i) . tagCursorIndex) tcs
-            , tagCursorIndex = i
-            , tagCursorTag = makeTextCursor $ source $ tagViewText t
-            }
 
 tagsCursorTagCursorsL ::
        Functor f => ([TagCursor] -> f [TagCursor]) -> TagsCursor -> f TagsCursor
@@ -708,35 +482,6 @@ tagsCursorAppendAtEnd :: Tag -> TagsCursor -> TagsCursor
 tagsCursorAppendAtEnd t fc =
     tagsCursorInsertAt (length $ tagsCursorTags fc) t fc
 
-data TagCursor = TagCursor
-    { tagCursorParent :: TagsCursor
-    , tagCursorPrevElemens :: [TagCursor]
-    , tagCursorNextElemens :: [TagCursor]
-    , tagCursorIndex :: Int
-    , tagCursorTag :: TextCursor
-    }
-
-instance Validity TagCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show TagCursor where
-    show TagCursor {..} = unlines ["[Tags]", " |-" ++ show tagCursorTag]
-
-instance Eq TagCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild TagCursor where
-    type ReBuilding TagCursor = Select (ForestView EntryView)
-    rebuild = rebuild . tagCursorParent
-    selection TagCursor {..} =
-        selection tagCursorTag ++
-        [length tagCursorPrevElemens] ++ selection tagCursorParent
-
-instance Build TagCursor where
-    type Building TagCursor = Select TagView
-    build TagCursor {..} = select TagView {tagViewText = rebuild tagCursorTag}
-
 tagCursorTextCursorL ::
        Functor f => (TextCursor -> f TextCursor) -> TagCursor -> f TagCursor
 tagCursorTextCursorL = lens getter setter
@@ -793,39 +538,9 @@ tagCursorSelectNext tc =
         [] -> Nothing
         (tc':_) -> Just tc'
 
-data TimestampsCursor = TimestampsCursor
-    { timestampsCursorParent :: EntryCursor
-    , timestampsCursorTimestamps :: HashMap TimestampName UTCTime
-    }
-
-instance Validity TimestampsCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
-
-instance Show TimestampsCursor where
-    show TimestampsCursor {..} =
-        unlines ["[Timestamps]", " |-" ++ show timestampsCursorTimestamps]
-
-instance Eq TimestampsCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
-
-instance Rebuild TimestampsCursor where
-    type ReBuilding TimestampsCursor = Select (ForestView EntryView)
-    rebuild = rebuild . timestampsCursorParent
-    selection TimestampsCursor {..} = 3 : selection timestampsCursorParent
-
-instance Build TimestampsCursor where
-    type Building TimestampsCursor = Select TimestampsView
-    build = select . TimestampsView . timestampsCursorTimestamps
-
 makeTimestampsCursor ::
        EntryCursor -> HashMap TimestampName UTCTime -> TimestampsCursor
 makeTimestampsCursor ec hm = timestampsCursor ec $ view hm
-
-timestampsCursor :: EntryCursor -> TimestampsView -> TimestampsCursor
-timestampsCursor ec tsv =
-    TimestampsCursor
-    {timestampsCursorParent = ec, timestampsCursorTimestamps = source tsv}
 
 timestampsCursorSetTimestamps ::
        HashMap TimestampName UTCTime -> TimestampsCursor -> TimestampsCursor

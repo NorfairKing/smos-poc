@@ -45,6 +45,7 @@ library:
   - Smos.Cursor
   - Smos.Cursor.Entry
   - Smos.Cursor.FuzzyTime
+  - Smos.Cursor.Types
   - Smos.Default
   - Smos.Style
   - Smos.Types

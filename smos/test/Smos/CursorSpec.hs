@@ -11,7 +11,6 @@ import TestImport
 import Cursor.Tree
 
 import Smos.Cursor
-import Smos.Cursor.Entry
 import Smos.Cursor.Gen ()
 import Smos.Data.Gen ()
 
