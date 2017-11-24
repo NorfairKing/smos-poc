@@ -44,7 +44,9 @@ library:
   - Smos.Actions
   - Smos.Cursor
   - Smos.Cursor.Entry
+  - Smos.Cursor.Entry.Header
   - Smos.Cursor.FuzzyTime
+  - Smos.Cursor.Header
   - Smos.Cursor.Types
   - Smos.Default
   - Smos.Style

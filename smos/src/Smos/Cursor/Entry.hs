@@ -110,35 +110,14 @@ import Cursor.Text
 import Cursor.TextField
 import Cursor.Tree
 
+import Smos.Cursor.Entry.Header
+import Smos.Cursor.Header
 import Smos.Cursor.Types
 import Smos.Data
 import Smos.View
 
 makeEntryCursor :: TreeCursor EntryCursor -> Entry -> EntryCursor
 makeEntryCursor par e = entryCursor par $ view e
-
-entryCursorHeaderL ::
-       Functor f
-    => (HeaderCursor -> f HeaderCursor)
-    -> EntryCursor
-    -> f EntryCursor
-entryCursorHeaderL = lens getter setter
-  where
-    getter = entryCursorHeader
-    setter ec hc = ec'
-      where
-        ec' =
-            ec
-            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
-            , entryCursorHeader = hc
-            , entryCursorContents =
-                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
-                  entryCursorContents ec
-            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
-            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
-            , entryCursorTimestamps =
-                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
-            }
 
 entryCursorContentsL :: Lens' EntryCursor (Maybe ContentsCursor)
 entryCursorContentsL = lens getter setter
@@ -283,55 +262,6 @@ entryCursorContentsML =
     setter ec mc = ec'
       where
         ec' = ec & entryCursorContentsL .~ ((contentsCursor ec' . view) <$> mc)
-
-makeHeaderCursor :: EntryCursor -> Header -> HeaderCursor
-makeHeaderCursor par h = headerCursor par $ view h
-
-headerCursorTextCursorL ::
-       Functor f
-    => (TextCursor -> f TextCursor)
-    -> HeaderCursor
-    -> f HeaderCursor
-headerCursorTextCursorL = lens getter setter
-  where
-    getter = headerCursorHeader
-    setter hc tc = hc'
-      where
-        ec' = headerCursorParent hc & entryCursorHeaderL .~ hc'
-        hc' = HeaderCursor {headerCursorParent = ec', headerCursorHeader = tc}
-
-headerCursorSetHeader :: Header -> HeaderCursor -> HeaderCursor
-headerCursorSetHeader h hc =
-    hc & headerCursorTextCursorL .~ makeTextCursor (headerText h)
-
-headerCursorHeaderL ::
-       Functor f => (Header -> f Header) -> HeaderCursor -> f HeaderCursor
-headerCursorHeaderL =
-    lens (source . selectValue . build) $ flip headerCursorSetHeader
-
-headerCursorInsert :: Char -> HeaderCursor -> HeaderCursor
-headerCursorInsert c = headerCursorTextCursorL %~ textCursorInsert c
-
-headerCursorAppend :: Char -> HeaderCursor -> HeaderCursor
-headerCursorAppend c = headerCursorTextCursorL %~ textCursorAppend c
-
-headerCursorRemove :: HeaderCursor -> Maybe HeaderCursor
-headerCursorRemove = headerCursorTextCursorL textCursorRemove
-
-headerCursorDelete :: HeaderCursor -> Maybe HeaderCursor
-headerCursorDelete = headerCursorTextCursorL textCursorDelete
-
-headerCursorLeft :: HeaderCursor -> Maybe HeaderCursor
-headerCursorLeft = headerCursorTextCursorL textCursorSelectPrev
-
-headerCursorRight :: HeaderCursor -> Maybe HeaderCursor
-headerCursorRight = headerCursorTextCursorL textCursorSelectNext
-
-headerCursorStart :: HeaderCursor -> HeaderCursor
-headerCursorStart = headerCursorTextCursorL %~ textCursorSelectStart
-
-headerCursorEnd :: HeaderCursor -> HeaderCursor
-headerCursorEnd = headerCursorTextCursorL %~ textCursorSelectEnd
 
 emptyContentsCursor :: EntryCursor -> ContentsCursor
 emptyContentsCursor ec = makeContentsCursor ec $ Contents T.empty
