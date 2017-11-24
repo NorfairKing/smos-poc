@@ -14,6 +14,7 @@ module Smos.Cursor
     , View(..)
     , Rebuild(..)
     , Build(..)
+    , Select(..)
     ) where
 
 import Import

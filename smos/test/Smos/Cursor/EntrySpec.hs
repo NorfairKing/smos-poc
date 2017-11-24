@@ -17,6 +17,7 @@ import Smos.Cursor
 import Smos.Cursor.Entry
 import Smos.Cursor.Gen ()
 import Smos.Cursor.TestUtils
+
 import Smos.Data
 import Smos.Data.Gen ()
 import Smos.View
@@ -383,8 +384,12 @@ spec = do
             it "inserts a character at the front" $
             forAll genUnchecked $ \c ->
                 forAll genValid $ \hc ->
-                    headerViewHeader (build (headerCursorInsert c hc)) `shouldBe`
-                    Header (T.cons c (headerText (headerViewHeader (build hc))))
+                    source
+                        (headerViewHeader
+                             (selectValue (build (headerCursorInsert c hc)))) `shouldBe`
+                    T.cons
+                        c
+                        (source (headerViewHeader (selectValue (build hc))))
         describe "headerCursorRemove" $
             it "removes a character at the front" $
             forAll genValid $ \hc ->
@@ -392,12 +397,13 @@ spec = do
                     Nothing -> pure ()
                     Just hc' ->
                         case T.uncons $
-                             headerText $ headerViewHeader $ build hc' of
+                             source $ headerViewHeader $ selectValue $ build hc' of
                             Nothing ->
                                 expectationFailure "Something went wrong."
                             Just (_, t) ->
                                 t `shouldBe`
-                                headerText (headerViewHeader (build hc))
+                                source
+                                    (headerViewHeader (selectValue (build hc)))
         describe "headerCursorDelete" $
             it "removes a character at the end" $
             forAll genValid $ \hc ->
@@ -406,12 +412,13 @@ spec = do
                     Just hc' ->
                         case T.uncons $
                              T.reverse $
-                             headerText $ headerViewHeader $ build hc' of
+                             source $ headerViewHeader $ selectValue $ build hc' of
                             Nothing ->
                                 expectationFailure "Something went wrong."
                             Just (_, t) ->
                                 T.reverse t `shouldBe`
-                                headerText (headerViewHeader (build hc))
+                                source
+                                    (headerViewHeader (selectValue (build hc)))
         describe "headerCursorLeft" $
             it "rebuilds to the same" $
             rebuildsToTheSameIfSuceeds headerCursorLeft
@@ -429,9 +436,11 @@ spec = do
             it "builds to the given contents" $
             forAll genValid $ \cs ->
                 forAll genValid $ \cc ->
-                    contentsViewContents
-                        (build (contentsCursorSetContents cs cc)) `shouldBe`
-                    cs
+                    source
+                        (contentsViewContents
+                             (selectValue
+                                  (build (contentsCursorSetContents cs cc)))) `shouldBe`
+                    contentsText cs
     describe "StateCursor" $ do
         describe "stateCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame stateCursorParent
@@ -441,7 +450,7 @@ spec = do
                 forAll genValid $ \now ->
                     stateHistoryState
                         (todostateViewTodostate
-                             (build (stateCursorClear now sc))) `shouldBe`
+                             (selectValue (build (stateCursorClear now sc)))) `shouldBe`
                     Nothing
         describe "stateCursorSetState" $
             it "builds to a state view with the given contents" $
@@ -450,7 +459,8 @@ spec = do
                     forAll genValid $ \now ->
                         stateHistoryState
                             (todostateViewTodostate
-                                 (build (stateCursorSetState now ts sc))) `shouldBe`
+                                 (selectValue
+                                      (build (stateCursorSetState now ts sc)))) `shouldBe`
                         Just ts
     describe "TagsCursor" $
         describe "tagsCursorParent" $
@@ -484,28 +494,43 @@ spec = do
             it "makes the resulting tag one longer" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        T.length (tagViewText (build (tagCursorInsert c tc))) `shouldBe`
-                        T.length (tagViewText (build tc)) +
+                        T.length
+                            (source
+                                 (tagViewText
+                                      (selectValue
+                                           (build (tagCursorInsert c tc))))) `shouldBe`
+                        T.length (source (tagViewText (selectValue (build tc)))) +
                         1
             it "adds an element to the front if we're at the front" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        tagViewText
-                            (build (tagCursorInsert c (tagCursorStart tc))) `shouldBe`
-                        T.cons c (tagViewText (build tc))
+                        source
+                            (tagViewText
+                                 (selectValue
+                                      (build
+                                           (tagCursorInsert
+                                                c
+                                                (tagCursorStart tc))))) `shouldBe`
+                        T.cons c (source (tagViewText (selectValue (build tc))))
         describe "tagCursorAppend" $ do
             it "makes the resulting tag one longer" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        T.length (tagViewText (build (tagCursorAppend c tc))) `shouldBe`
-                        T.length (tagViewText (build tc)) +
+                        T.length
+                            (source $
+                             tagViewText
+                                 (selectValue (build (tagCursorAppend c tc)))) `shouldBe`
+                        T.length (source (tagViewText (selectValue (build tc)))) +
                         1
             it "adds an element to the end if we're at the end" $
                 forAll genValid $ \c ->
                     forAll genValid $ \tc ->
-                        tagViewText
-                            (build (tagCursorAppend c (tagCursorEnd tc))) `shouldBe`
-                        T.snoc (tagViewText (build tc)) c
+                        source
+                            (tagViewText
+                                 (selectValue
+                                      (build
+                                           (tagCursorAppend c (tagCursorEnd tc))))) `shouldBe`
+                        T.snoc (source (tagViewText (selectValue (build tc)))) c
         -- describe "tagCursorRemove" $
         -- describe "tagCursorDelete"
         describe "tagCursorLeft" $
