@@ -10,7 +10,6 @@ import Data.Text (Text)
 import qualified Data.Text as T
 
 import Cursor.Class
-import Cursor.TestUtils
 import Cursor.TextField
 import Cursor.TextField.Gen ()
 
@@ -33,9 +32,9 @@ spec = do
         inverseFunctionsOnValid view (source :: TextFieldView -> Text)
     describe "textFieldCursorSelectPrev" $ do
         it "builds to the same text" $
-            buildsToTheSameIfSuceeds textFieldCursorSelectPrev
+            buildsToTheSameTextIfSucceeds textFieldCursorSelectPrev
         it "builds to the same text when applied twice" $
-            buildsToTheSameIfSuceeds
+            buildsToTheSameTextIfSucceeds
                 (textFieldCursorSelectPrev >=> textFieldCursorSelectPrev)
         it "rebuilds to the same text" $
             rebuildsToTheSameTextIfSucceeds textFieldCursorSelectPrev
@@ -44,9 +43,9 @@ spec = do
                 (textFieldCursorSelectPrev >=> textFieldCursorSelectPrev)
     describe "textFieldCursorSelectNext" $ do
         it "builds to the same text" $
-            buildsToTheSameIfSuceeds textFieldCursorSelectNext
+            buildsToTheSameTextIfSucceeds textFieldCursorSelectNext
         it "builds to the same text when applied twice" $
-            buildsToTheSameIfSuceeds
+            buildsToTheSameTextIfSucceeds
                 (textFieldCursorSelectNext >=> textFieldCursorSelectNext)
         it "rebuilds to the same text" $
             rebuildsToTheSameTextIfSucceeds textFieldCursorSelectNext
@@ -90,9 +89,9 @@ spec = do
                        ]
     describe "textFieldCursorSelectStart" $ do
         it "builds to the same text" $
-            buildsToTheSame textFieldCursorSelectStart
+            buildsToTheSameText textFieldCursorSelectStart
         it "builds to the same text when applied twice" $
-            buildsToTheSame
+            buildsToTheSameText
                 (textFieldCursorSelectStart . textFieldCursorSelectStart)
         it "rebuilds to the same text" $
             rebuildsToTheSameText textFieldCursorSelectStart
@@ -100,15 +99,50 @@ spec = do
             rebuildsToTheSameText
                 (textFieldCursorSelectStart . textFieldCursorSelectStart)
     describe "textFieldCursorSelectEnd" $ do
-        it "builds to the same text" $ buildsToTheSame textFieldCursorSelectEnd
+        it "builds to the same text" $
+            buildsToTheSameText textFieldCursorSelectEnd
         it "builds to the same text when applied twice" $
-            buildsToTheSame
+            buildsToTheSameText
                 (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
         it "rebuilds to the same text" $
             rebuildsToTheSameText textFieldCursorSelectEnd
         it "rebuilds to the same text when applied twice" $
             rebuildsToTheSameText
                 (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
+
+buildsToTheSameText :: (TextFieldCursor -> TextFieldCursor) -> Property
+buildsToTheSameText func =
+    forAll genValid $ \tc ->
+        let t = source $ build tc
+            tc' = func tc
+            t' = source $ build tc'
+        in unless (t' == t) $
+           expectationFailure $
+           unlines
+               [ "Initial Text: " ++ show t
+               , "Built cursor: " ++ show tc
+               , "Changed cursor: " ++ show tc'
+               , "Final Text: " ++ show t'
+               ]
+
+buildsToTheSameTextIfSucceeds ::
+       (TextFieldCursor -> Maybe TextFieldCursor) -> Property
+buildsToTheSameTextIfSucceeds func =
+    forAll genValid $ \tc ->
+        let t = source $ build tc
+            mtc' = func tc
+        in case mtc' of
+               Nothing -> pure ()
+               Just tc' ->
+                   let t' = source $ build tc'
+                   in unless (t' == t) $
+                      expectationFailure $
+                      unlines
+                          [ "Initial Text: " ++ show t
+                          , "Built cursor: " ++ show tc
+                          , "Changed cursor: " ++ show tc'
+                          , "Final Text: " ++ show t'
+                          ]
 
 rebuildsToTheSameText :: (TextFieldCursor -> TextFieldCursor) -> Property
 rebuildsToTheSameText func =

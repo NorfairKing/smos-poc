@@ -26,20 +26,22 @@ spec = do
         reselectsToTheSameSelection @TextCursor
     describe "textCursorSelectPrev" $ do
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textCursorSelectPrev
+            rebuildsToTheSameTextIfSucceeds textCursorSelectPrev
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textCursorSelectPrev >=> textCursorSelectPrev)
     describe "textCursorSelectNext" $ do
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textCursorSelectNext
+            rebuildsToTheSameTextIfSucceeds textCursorSelectNext
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textCursorSelectNext >=> textCursorSelectNext)
     describe "textCursorSelectStart" $
-        it "rebuilds to the same text" $ rebuildsToTheSame textCursorSelectStart
+        it "rebuilds to the same text" $
+        rebuildsToTheSameText textCursorSelectStart
     describe "textCursorSelectEnd" $
-        it "rebuilds to the same text" $ rebuildsToTheSame textCursorSelectEnd
+        it "rebuilds to the same text" $
+        rebuildsToTheSameText textCursorSelectEnd
     describe "textCursorInsert" $ do
         it "rebuilds to the right character when inserting into an empty cursor" $
             forAll genValid $ \c ->
@@ -73,3 +75,36 @@ spec = do
             forAll genValid $ \(t, c) ->
                 let tc = makeTextCursor t
                 in build (textCursorInsert c tc) `shouldBe` Just c
+
+rebuildsToTheSameText :: (TextCursor -> TextCursor) -> Property
+rebuildsToTheSameText func =
+    forAll genValid $ \tc ->
+        let t = rebuildTextCursor tc
+            tc' = func tc
+            t' = rebuildTextCursor tc'
+        in unless (t' == t) $
+           expectationFailure $
+           unlines
+               [ "Initial Text: " ++ show t
+               , "Built cursor: " ++ show tc
+               , "Changed cursor: " ++ show tc'
+               , "Final Text: " ++ show t'
+               ]
+
+rebuildsToTheSameTextIfSucceeds :: (TextCursor -> Maybe TextCursor) -> Property
+rebuildsToTheSameTextIfSucceeds func =
+    forAll genValid $ \tc ->
+        let t = rebuildTextCursor tc
+            mtc' = func tc
+        in case mtc' of
+               Nothing -> pure ()
+               Just tc' ->
+                   let t' = rebuildTextCursor tc'
+                   in unless (t' == t) $
+                      expectationFailure $
+                      unlines
+                          [ "Initial Text: " ++ show t
+                          , "Built cursor: " ++ show tc
+                          , "Changed cursor: " ++ show tc'
+                          , "Final Text: " ++ show t'
+                          ]
