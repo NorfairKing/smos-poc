@@ -30,6 +30,7 @@ library:
   exposed-modules:
   - Cursor.Class
   - Cursor.List
+  - Cursor.Select
   - Cursor.Text
   - Cursor.TextField
   - Cursor.Tree

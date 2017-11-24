@@ -5,13 +5,14 @@
 
 module Cursor.TextField
     ( TextFieldCursor
+    , TextFieldView(..)
     , textFieldCursorPrev
     , textFieldSelected
     , textFieldCursorNext
     , emptyTextFieldCursor
     , makeTextFieldCursor
-    , foldTextFieldSel
     , rebuildTextFieldCursor
+    , foldTextFieldSel
     , textFieldCursorIndices
     , textFieldSelectedL
     , textFieldCursorSelectPrev
@@ -33,6 +34,7 @@ import qualified Data.Text as T
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.Select
 import Cursor.Text
 
 data TextFieldCursor = TextFieldCursor
@@ -44,14 +46,94 @@ data TextFieldCursor = TextFieldCursor
 instance Validity TextFieldCursor
 
 instance Build TextFieldCursor where
-    type Building TextFieldCursor = Text
+    type Building TextFieldCursor = TextView
     build = rebuild . textFieldSelected
 
 instance Rebuild TextFieldCursor where
-    type ReBuilding TextFieldCursor = Text
-    rebuild = rebuildTextFieldCursor
+    type ReBuilding TextFieldCursor = TextFieldView
+    rebuild TextFieldCursor {..} =
+        TextFieldView
+        { textFieldViewAbove =
+              case textFieldCursorPrev of
+                  [] -> Nothing
+                  ls -> Just $ T.intercalate "\n" $ reverse ls
+        , textFieldViewLine = rebuild textFieldSelected
+        , textFieldViewBelow =
+              case textFieldCursorNext of
+                  [] -> Nothing
+                  ls -> Just $ T.intercalate "\n" ls
+        }
     selection TextFieldCursor {..} =
         selection textFieldSelected ++ [length textFieldCursorPrev]
+
+data TextFieldView = TextFieldView
+    { textFieldViewAbove :: Maybe Text
+    , textFieldViewLine :: TextView
+    , textFieldViewBelow :: Maybe Text
+    } deriving (Show, Eq, Generic)
+
+instance Validity TextFieldView
+
+instance View TextFieldView where
+    type Source TextFieldView = Text
+    source TextFieldView {..} =
+        mconcat
+            [ maybe "" (<> "\n") textFieldViewAbove
+            , source textFieldViewLine
+            , maybe "" ("\n" <>) textFieldViewBelow
+            ]
+    view t =
+        case T.splitOn "\n" t of
+            [] ->
+                TextFieldView
+                { textFieldViewAbove = Nothing
+                , textFieldViewLine = view ""
+                , textFieldViewBelow = Nothing
+                }
+            [r] ->
+                TextFieldView
+                { textFieldViewAbove = Nothing
+                , textFieldViewLine = view r
+                , textFieldViewBelow = Nothing
+                }
+            (r:rs) ->
+                TextFieldView
+                { textFieldViewAbove = Nothing
+                , textFieldViewLine = view r
+                , textFieldViewBelow = Just $ T.intercalate "\n" rs
+                }
+
+instance Selectable TextFieldView where
+    applySelection =
+        drillWithSel $ \mixr_ tfv ->
+            let t = source tfv
+            in case mixr_ of
+                   Nothing -> view t
+                   Just (ix_, sel) ->
+                       let (l, m, r) = applyTextLinesSelection ix_ t
+                       in TextFieldView
+                          { textFieldViewAbove = l
+                          , textFieldViewLine =
+                                maybe
+                                    (view t)
+                                    (applySelection (Just sel) . view)
+                                    m
+                          , textFieldViewBelow = r
+                          }
+
+applyTextLinesSelection :: Int -> Text -> (Maybe Text, Maybe Text, Maybe Text)
+applyTextLinesSelection x t =
+    let ls = T.splitOn "\n" t
+        (l, m, r) = applyListSelection x ls
+    in (T.intercalate "\n" <$> l, m, T.intercalate "\n" <$> r)
+
+applyListSelection :: Int -> [a] -> (Maybe [a], Maybe a, Maybe [a])
+applyListSelection x ls =
+    let n [] = Nothing
+        n ls_ = Just ls_
+    in case drop x ls of
+           [] -> (n ls, Nothing, Nothing)
+           (m:r) -> (n $ take x ls, Just m, n r)
 
 emptyTextFieldCursor :: TextFieldCursor
 emptyTextFieldCursor =
@@ -73,26 +155,19 @@ makeTextFieldCursor t =
                , textFieldCursorNext = rest
                }
 
+rebuildTextFieldCursor :: TextFieldCursor -> Text
+rebuildTextFieldCursor = source . rebuild
+
 foldTextFieldSel :: (Maybe (Int, Int) -> Text -> r) -> Maybe [Int] -> Text -> r
 foldTextFieldSel func msel =
     case msel of
         Just [xix_, yix_] -> func (Just (xix_, yix_))
         _ -> func Nothing
 
-rebuildTextFieldCursor :: TextFieldCursor -> Text
-rebuildTextFieldCursor TextFieldCursor {..} =
-    let ls =
-            reverse textFieldCursorPrev ++
-            [rebuild textFieldSelected] ++ textFieldCursorNext
-    in T.intercalate "\n" ls
-
 textFieldCursorIndices :: TextFieldCursor -> [Int]
 textFieldCursorIndices TextFieldCursor {..} =
     [length textFieldCursorPrev, textCursorIndex textFieldSelected]
 
--- reselectTextFieldCursor :: [Int] -> TextFieldCursor -> TextFieldCursor
--- reselectTextFieldCursor [x, y] _ = undefined
--- reselectTextFieldCursor _ tc = tc
 textFieldSelectedL ::
        Functor f
     => (TextCursor -> f TextCursor)
@@ -117,7 +192,8 @@ textFieldCursorSelectPrevLine tfc =
             { textFieldCursorPrev = rest
             , textFieldSelected = makeTextCursor p
             , textFieldCursorNext =
-                  rebuild (textFieldSelected tfc) : textFieldCursorNext tfc
+                  source (rebuild (textFieldSelected tfc)) :
+                  textFieldCursorNext tfc
             }
 
 textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
@@ -131,7 +207,8 @@ textFieldCursorSelectNextLine tfc =
             Just $
             tfc
             { textFieldCursorPrev =
-                  rebuild (textFieldSelected tfc) : textFieldCursorPrev tfc
+                  source (rebuild (textFieldSelected tfc)) :
+                  textFieldCursorPrev tfc
             , textFieldSelected = makeTextCursor p
             , textFieldCursorNext = rest
             }
@@ -149,7 +226,7 @@ textFieldCursorNewline :: TextFieldCursor -> TextFieldCursor
 textFieldCursorNewline tfc =
     tfc
     { textFieldCursorPrev =
-          rebuild (textFieldSelected tfc) : textFieldCursorPrev tfc
+          source (rebuild (textFieldSelected tfc)) : textFieldCursorPrev tfc
     , textFieldSelected = emptyTextCursor
     }
 

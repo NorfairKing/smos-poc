@@ -4,24 +4,39 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor
-    ( AnyCursor(..)
+    ( SmosFileView(..)
+    , AnyCursor(..)
     , makeAnyCursor
     , reselectCursor
     , ACursor(..)
     , selectACursor
     , selectAnyCursor
+    , View(..)
     , Rebuild(..)
     , Build(..)
+    , Select(..)
     ) where
 
 import Import
 
 import Cursor.Class
+import Cursor.Select
 import Cursor.Tree
 
 import Smos.Data
 
 import Smos.Cursor.Entry
+import Smos.View
+
+newtype SmosFileView = SmosFileView
+    { smosFileViewForest :: Select (ForestView EntryView)
+    } deriving (Show, Eq, Generic)
+
+instance View SmosFileView where
+    type Source SmosFileView = SmosFile
+    source = SmosFile . source . selectValue . smosFileViewForest
+    view SmosFile {..} =
+        SmosFileView {smosFileViewForest = select $ view smosFileForest}
 
 data AnyCursor
     = AnyForest (ForestCursor EntryCursor)
@@ -37,9 +52,9 @@ data AnyCursor
 instance Validity AnyCursor
 
 instance Rebuild AnyCursor where
-    type ReBuilding AnyCursor = SmosFile
+    type ReBuilding AnyCursor = SmosFileView
     rebuild ac =
-        SmosFile $
+        SmosFileView $
         case ac of
             (AnyForest fc) -> rebuild fc
             (AnyTree tc) -> rebuild tc
@@ -68,9 +83,9 @@ data ACursor
 instance Validity ACursor
 
 instance Rebuild ACursor where
-    type ReBuilding ACursor = SmosFile
+    type ReBuilding ACursor = SmosFileView
     rebuild ac =
-        SmosFile $
+        SmosFileView $
         case ac of
             AnEntry ec -> rebuild ec
             AHeader hc -> rebuild hc
@@ -82,7 +97,7 @@ instance Rebuild ACursor where
     selection (ATag tc) = selection tc
 
 makeAnyCursor :: SmosFile -> AnyCursor
-makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor smosFileForest
+makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor' smosFileForest
 
 reselectCursor :: [Int] -> SmosFile -> AnyCursor
 reselectCursor s = go (reverse s) . makeAnyCursor

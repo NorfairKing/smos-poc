@@ -106,6 +106,7 @@ import Lens.Micro
 
 import Smos.Data
 
+import Cursor.Select
 import Cursor.Tree
 
 import Smos.Actions.Editor
@@ -120,7 +121,7 @@ emptyTree = Node {rootLabel = newEntry "", subForest = []}
 
 initEntryCursor :: Maybe ACursor
 initEntryCursor =
-    let fc = makeForestCursor []
+    let fc = makeForestCursor' []
         fc' = forestCursorInsertAtStart emptyTree fc
         mtc' = forestCursorSelectFirst fc'
     in (AnEntry . treeCursorValue) <$> mtc'
@@ -132,7 +133,7 @@ save = do
     let sf =
             case mcur of
                 Nothing -> SmosFile []
-                Just cur -> rebuild cur
+                Just cur -> source $ rebuild cur
     writeSmosFile file sf
 
 insertTreeAbove :: SmosM ()
@@ -481,7 +482,7 @@ tagsSelectPrev =
         case tagCursorSelectPrev tc of
             Just tc_ -> Just tc_
             Nothing ->
-                let t = tagText $ build tc
+                let t = source $ selectValue $ build tc
                 in if T.null t
                        then Nothing
                        else let tsc = tagCursorParent tc
@@ -498,7 +499,7 @@ tagsSelectNext =
         case tagCursorSelectNext tc of
             Just tc_ -> Just tc_
             Nothing ->
-                let t = tagText $ build tc
+                let t = source $ selectValue $ build tc
                 in if T.null t
                        then Nothing
                        else let tsc = tagCursorParent tc
@@ -662,7 +663,7 @@ withFullMod func =
             Just cur ->
                 let sf = rebuild cur
                     sel = selection $ selectAnyCursor cur
-                    sf' = func sf
+                    sf' = func $ source sf
                     cur' = selectACursor $ reselectCursor sel sf'
                 in ss {smosStateCursor = cur'}
 

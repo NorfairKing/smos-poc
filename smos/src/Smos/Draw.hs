@@ -7,17 +7,16 @@ module Smos.Draw
 
 import Import
 
-import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import qualified Data.Text as T
 import Data.Time
-import Data.Tree hiding (drawForest, drawTree)
 
 import Brick.Types as B
 import Brick.Widgets.Center as B
 import Brick.Widgets.Core as B
 import Graphics.Vty.Input.Events (Key(..), Modifier(..))
 
+import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
 import Cursor.Tree
@@ -25,21 +24,25 @@ import Cursor.Tree
 import Smos.Data
 
 import Smos.Cursor
-import Smos.Cursor.Entry
 import Smos.Style
 import Smos.Types
+import Smos.View
 
 smosDraw :: SmosState -> [Widget ResourceName]
 smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
   where
     renderCursor :: ACursor -> Widget ResourceName
     renderCursor cur =
-        drawForest msel for <=> str (show rsel) <=>
-        drawHistory smosStateKeyHistory
+        drawSmosFile sfv <=> str (show rsel) <=> drawHistory smosStateKeyHistory <=>
+        strWrap (show sfv) <=>
+        strWrap (show cur)
       where
-        msel = Just rsel
+        sfv = applyFileViewSelection rsel $ rebuild cur
         rsel = reverse $ selection $ selectAnyCursor cur
-        for = smosFileForest $ rebuild cur
+
+applyFileViewSelection :: [Int] -> SmosFileView -> SmosFileView
+applyFileViewSelection sel (SmosFileView f) =
+    SmosFileView $ select $ applySelection (Just sel) $ selectValue f
 
 drawNoContent :: Widget n
 drawNoContent =
@@ -53,76 +56,66 @@ drawNoContent =
         , str "Smos is open source and freely distributable"
         ]
 
-drawForest :: Maybe [Int] -> Forest Entry -> Widget ResourceName
-drawForest = foldForestSel drawTree $ padLeft (Pad 2) . B.vBox . map snd
+drawSmosFile :: SmosFileView -> Widget ResourceName
+drawSmosFile = drawForest . smosFileViewForest
 
-drawTree :: Maybe [Int] -> Tree Entry -> Widget ResourceName
-drawTree = foldTreeSel drawEntry drawForest (<=>)
+drawForest :: Select (ForestView EntryView) -> Widget ResourceName
+drawForest = withSel $ padLeft (Pad 2) . B.vBox . map drawTree . forestViewTrees
 
-drawEntry :: Maybe [Int] -> Entry -> Widget ResourceName
-drawEntry msel =
-    foldEntrySel
-        drawTodoStateInfo
-        drawHeader
-        drawTags
-        drawTimestamps
-        drawProperties
-        drawContents
-        drawLogbook
-        (\(mts, tsh) h tgs tss pss mc lb ->
-             withSel msel $
-             B.vBox
-                 [ B.hBox $
-                   intersperse (B.txt " ") $
-                   [B.txt ">"] ++ maybeToList mts ++ [h, tgs]
-                 , tss
-                 , pss
-                 , fromMaybe emptyWidget mc
-                 , lb
-                 , tsh
-                 ])
-        msel
+drawTree :: Select (TreeView EntryView) -> Widget ResourceName
+drawTree =
+    withSel $ \TreeView {..} ->
+        drawEntry treeViewValue <=> drawForest treeViewForest
 
-drawTodoStateInfo ::
-       Maybe [Int]
-    -> StateHistory
-    -> (Maybe (Widget ResourceName), Widget ResourceName)
-drawTodoStateInfo msel sh =
-    (drawTodoState msel sh, drawTodoStateHistory msel sh)
+drawEntry :: Select EntryView -> Widget ResourceName
+drawEntry =
+    withSel $ \EntryView {..} ->
+        B.vBox
+            [ B.hBox $
+              intersperse (B.txt " ") $
+              [B.txt ">"] ++
+              maybeToList (drawTodoState entryViewTodostate) ++
+              [drawHeader entryViewHeader, drawTags entryViewTags]
+            , drawTimestamps entryViewTimestamps
+            , drawProperties entryViewProperties
+            , fromMaybe emptyWidget $ drawContents <$> entryViewContents
+            , drawLogbook entryViewLogbook
+            , drawTodoStateHistory entryViewTodostate
+            ]
 
-drawTodoState :: Maybe [Int] -> StateHistory -> Maybe (Widget n)
-drawTodoState msel sh = do
-    ts <- stateHistoryState sh
+drawTodoState :: Select TodostateView -> Maybe (Widget n)
+drawTodoState sh = do
+    ts <- stateHistoryState . source $ selectValue sh
     pure $
-        withSel msel $
-        withAttr todoStateAttr $
-        withAttr (todoStateSpecificAttr ts) $ B.txt $ todoStateText ts
+        flip withSel (ts <$ sh) $ \s@TodoState {..} ->
+            withAttr todoStateAttr $
+            withAttr (todoStateSpecificAttr s) $ B.txt todoStateText
 
-drawTodoStateHistory :: Maybe [Int] -> StateHistory -> Widget n
-drawTodoStateHistory msel sh =
-    let es = unStateHistory sh
-    in withSel msel $
-       withAttr todoStateHistoryAttr $
-       B.vBox $
-       flip map es $ \StateHistoryEntry {..} ->
-           hBox
-               [ drawBoxedTimestamp stateHistoryEntryTimestamp
-               , B.txt " "
-               , case stateHistoryEntryNewState of
-                     Just ts -> B.txt $ todoStateText ts
-                     Nothing -> B.txt ""
-               ]
+drawTodoStateHistory :: Select TodostateView -> Widget n
+drawTodoStateHistory =
+    withSel $ \TodostateView {..} ->
+        let es = unStateHistory todostateViewTodostate
+        in withAttr todoStateHistoryAttr $
+           B.vBox $
+           flip map es $ \StateHistoryEntry {..} ->
+               hBox
+                   [ drawBoxedTimestamp stateHistoryEntryTimestamp
+                   , B.txt " "
+                   , case stateHistoryEntryNewState of
+                         Just ts -> B.txt $ todoStateText ts
+                         Nothing -> B.txt ""
+                   ]
 
-drawHeader :: Maybe [Int] -> Header -> Widget ResourceName
-drawHeader msel Header {..} = withAttr headerAttr $ withTextSel msel headerText
+drawHeader :: Select HeaderView -> Widget ResourceName
+drawHeader = withAttr headerAttr . drawTextView . fmap headerViewHeader
 
-drawContents :: Maybe [Int] -> Contents -> Widget ResourceName
-drawContents msel Contents {..} =
-    withAttr contentsAttr $ withTextFieldSel msel contentsText
+drawContents :: Select ContentsView -> Widget ResourceName
+drawContents =
+    withAttr contentsAttr . drawTextFieldView . fmap contentsViewContents
 
-drawTags :: Maybe [Int] -> [Tag] -> Widget ResourceName
-drawTags msel =
-    withSel msel . foldTagsSel drawTag (B.hBox . addColons . map snd) msel
+drawTags :: Select TagsView -> Widget ResourceName
+drawTags =
+    withSel $ withAttr tagAttr . B.hBox . addColons . map drawTag . tagsViewTags
   where
     addColons ls =
         case ls of
@@ -131,31 +124,29 @@ drawTags msel =
       where
         colon = B.txt ":"
 
-drawTag :: Maybe [Int] -> Tag -> Widget ResourceName
-drawTag msel Tag {..} = withAttr tagAttr $ withTextSel msel tagText
+drawTag :: Select TagView -> Widget ResourceName
+drawTag = withAttr tagAttr . drawTextView . fmap tagViewText
 
-drawTimestamps ::
-       Maybe [Int] -> HashMap TimestampName UTCTime -> Widget ResourceName
-drawTimestamps msel tss =
-    withSel msel $
-    B.vBox $
-    flip map (HM.toList tss) $ \(k, ts) ->
-        B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
+drawTimestamps :: Select TimestampsView -> Widget ResourceName
+drawTimestamps =
+    withSel $ \TimestampsView {..} ->
+        B.vBox $
+        flip map (HM.toList timestampsViewTimestamps) $ \(k, ts) ->
+            B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
 
-drawProperties ::
-       Maybe [Int] -> HashMap PropertyName PropertyValue -> Widget ResourceName
-drawProperties msel pss =
-    withSel msel $
-    B.vBox $
-    flip map (HM.toList pss) $ \(k, p) ->
-        B.hBox
-            [ B.txt $ propertyNameText k
-            , B.txt ": "
-            , B.txt $ propertyValueText p
-            ]
+drawProperties :: Select PropertiesView -> Widget ResourceName
+drawProperties =
+    withSel $ \PropertiesView {..} ->
+        B.vBox $
+        flip map (HM.toList propertiesViewProperties) $ \(k, p) ->
+            B.hBox
+                [ B.txt $ propertyNameText k
+                , B.txt ": "
+                , B.txt $ propertyValueText p
+                ]
 
-drawLogbook :: Maybe [Int] -> Logbook -> Widget n
-drawLogbook msel = withSel msel . go
+drawLogbook :: Select LogbookView -> Widget n
+drawLogbook = withSel (go . logbookViewLogbook)
   where
     go lb =
         case lb of
@@ -178,36 +169,54 @@ drawBoxedTimestamp ts = B.hBox [str "[", drawTimestamp ts, str "]"]
 drawTimestamp :: UTCTime -> Widget n
 drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
-withSel :: Maybe [Int] -> Widget n -> Widget n
-withSel msel =
-    case msel of
-        Nothing -> id
-        Just [] -> withAttr selectedAttr
-        Just _ -> id
+-- withSel :: Maybe [Int] -> Widget n -> Widget n
+-- withSel msel =
+--     case msel of
+--         Nothing -> id
+--         Just [] -> withAttr selectedAttr
+--         Just _ -> id
+drawTextFieldView :: Select TextFieldView -> Widget ResourceName
+drawTextFieldView stv =
+    let TextFieldView {..} = selectValue stv
+        yix_ = maybe 0 (length . T.splitOn "\n") textFieldViewAbove :: Int
+        xix_ = T.length . textViewLeft $ textFieldViewLine :: Int
+        addCursor =
+            eitherOrSel
+                (B.showCursor textCursorName (B.Location (xix_, yix_)))
+                id
+                stv
+        addSelected = eitherOrSel (withAttr selectedAttr) id stv
+        mtw = maybe emptyWidget B.txt
+        w =
+            B.vBox
+                [ mtw textFieldViewAbove
+                , drawTextView (select textFieldViewLine)
+                , mtw textFieldViewBelow
+                ]
+    in addSelected . addCursor $ w
 
-withTextSel :: Maybe [Int] -> Text -> Widget ResourceName
-withTextSel =
-    foldTextSel $ \mix t ->
-        case mix of
-            Nothing -> B.txt t
-            Just ix_ ->
-                withAttr selectedAttr $
-                B.showCursor textCursorName (B.Location (ix_, 0)) $ B.txt t
+drawTextView :: Select TextView -> Widget ResourceName
+drawTextView stv =
+    let TextView {..} = selectValue stv
+        ix_ = T.length textViewLeft
+        addCursor =
+            eitherOrSel
+                (B.showCursor textCursorName (B.Location (ix_, 0)))
+                id
+                stv
+        addSelected = eitherOrSel (withAttr selectedAttr) id stv
+        w = B.txt textViewLeft <+> B.txt textViewRight
+    in addSelected . addCursor $ w
 
-withTextFieldSel :: Maybe [Int] -> Text -> Widget ResourceName
-withTextFieldSel =
-    foldTextFieldSel $ \mixs t ->
-        let ls = T.splitOn "\n" t
-            textOrSpace t_ =
-                if T.null t
-                    then B.txt " "
-                    else B.txt t_
-            tw = B.vBox $ map textOrSpace ls
-        in case mixs of
-               Nothing -> tw
-               Just (yix_, xix_) ->
-                   withAttr selectedAttr $
-                   B.showCursor textCursorName (B.Location (xix_, yix_)) tw
+withSel :: (a -> Widget b) -> Select a -> Widget b
+withSel func s =
+    eitherOrSel (withAttr selectedAttr) id s . func . selectValue $ s
+
+eitherOrSel :: b -> b -> Select a -> b
+eitherOrSel b1 b2 s =
+    if selected s
+        then b1
+        else b2
 
 drawHistory :: [KeyPress] -> Widget n
 drawHistory = strWrap . unwords . map showKeypress . reverse

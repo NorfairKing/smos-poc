@@ -43,4 +43,4 @@ initState p sf =
 
 rebuildSmosFile :: SmosState -> SmosFile
 rebuildSmosFile SmosState {..} =
-    fromMaybe (SmosFile []) $ rebuild <$> smosStateCursor
+    fromMaybe (SmosFile []) $ (source . rebuild) <$> smosStateCursor

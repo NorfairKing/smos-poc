@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
 module Cursor.Text
     ( TextCursor
+    , TextView(..)
     , emptyTextCursor
     , makeTextCursor
+    , rebuildTextCursor
     , foldTextSel
     , textCursorIndex
     , textCursorSelectPrev
@@ -26,6 +29,7 @@ import Lens.Micro
 
 import Cursor.Class
 import Cursor.List
+import Cursor.Select
 
 newtype TextCursor = TextCursor
     { unTextCursor :: ListCursor Char
@@ -38,19 +42,47 @@ instance Build TextCursor where
     build = build . unTextCursor
 
 instance Rebuild TextCursor where
-    type ReBuilding TextCursor = Text
-    rebuild = T.pack . rebuild . unTextCursor
+    type ReBuilding TextCursor = TextView
+    rebuild TextCursor {..} =
+        TextView
+        { textViewLeft = T.reverse $ T.pack $ listCursorPrev unTextCursor
+        , textViewRight = T.pack $ listCursorNext unTextCursor
+        }
     selection = selection . unTextCursor
 
 instance Reselect TextCursor where
     type Reselection TextCursor = TextCursor
     reselect sel = textCursorListCursorL %~ reselect sel
 
+data TextView = TextView
+    { textViewLeft :: Text
+    , textViewRight :: Text
+    } deriving (Show, Eq, Generic)
+
+instance Validity TextView
+
+instance View TextView where
+    type Source TextView = Text
+    source TextView {..} = textViewLeft <> textViewRight
+    view t = TextView {textViewLeft = T.empty, textViewRight = t}
+
+instance Selectable TextView where
+    applySelection =
+        drillWithSel_ $ \mix_ tv ->
+            case mix_ of
+                Nothing -> view $ source tv
+                Just ix_ ->
+                    case T.splitAt ix_ $ source tv of
+                        (l, r) -> TextView {textViewLeft = l, textViewRight = r}
+
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor
 
 makeTextCursor :: Text -> TextCursor
 makeTextCursor = TextCursor . makeListCursor . T.unpack
+
+rebuildTextCursor :: TextCursor -> Text
+rebuildTextCursor = source . rebuild
 
 foldTextSel :: (Maybe Int -> Text -> r) -> Maybe [Int] -> Text -> r
 foldTextSel func msel =

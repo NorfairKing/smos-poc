@@ -13,7 +13,6 @@ import Cursor.Tree
 import Smos.Cursor
 import Smos.Cursor.Entry
 import Smos.Cursor.Gen ()
-import Smos.Data
 import Smos.Data.Gen ()
 
 {-# ANN module ("HLint: ignore Functor law" :: String) #-}
@@ -26,13 +25,14 @@ spec =
         describe "selection" $ do
             it "returns the empty selection in a forest without a parent" $
                 forAll genValid $ \sf ->
-                    let fc = makeForestCursor sf :: ForestCursor EntryCursor
+                    let fc = makeForestCursor' sf :: ForestCursor EntryCursor
                         cur = AnyForest fc
                     in selection cur `shouldBe` []
             it "returns the index of the tree we zoom in on" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
+                        let fc =
+                                makeForestCursor' sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
                             [] -> scale (+ 1) gen
                             els -> elements els
@@ -42,7 +42,8 @@ spec =
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
+                        let fc =
+                                makeForestCursor' sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
                             [] -> scale (+ 1) gen
                             els -> do
@@ -58,27 +59,31 @@ spec =
             it "selects the tree with the right index for a singleton selection" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
+                        let fc =
+                                makeForestCursor' sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
                             [] -> scale (+ 1) gen
                             els -> elements els
                 forAll gen $ \tc ->
-                    reselectCursor [treeCursorIndex tc] (SmosFile $ rebuild tc) `shouldBe`
+                    reselectCursor
+                        [treeCursorIndex tc]
+                        (source $ SmosFileView $ rebuild tc) `shouldBe`
                     AnyTree tc
             it "returns the index of the tree we zoom in on, then a 1" $ do
                 let gen = do
                         sf <- genValid
-                        let fc = makeForestCursor sf :: ForestCursor EntryCursor
+                        let fc =
+                                makeForestCursor' sf :: ForestCursor EntryCursor
                         case forestCursorElems fc of
                             [] -> scale (+ 1) gen
                             els -> do
                                 tc <- elements els
                                 pure (treeCursorForest tc, treeCursorIndex tc)
                 forAll gen $ \(fc, ix_) ->
-                    reselectCursor [1, ix_] (SmosFile $ rebuild fc) `shouldBe`
+                    reselectCursor [1, ix_] (source $ SmosFileView $ rebuild fc) `shouldBe`
                     AnyForest fc
             it "selects the cursor that was handed to selection" $
                 forAll genValid $ \ac ->
                     let sel = selection ac
-                        sf = rebuild ac
+                        sf = source $ rebuild ac
                     in reselectCursor sel sf `shouldBe` ac

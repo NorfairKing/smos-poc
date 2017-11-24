@@ -4,6 +4,8 @@
 
 module Cursor.List
     ( ListCursor
+    , listCursorPrev
+    , listCursorNext
     , emptyListCursor
     , makeListCursor
     , rebuildListCursor

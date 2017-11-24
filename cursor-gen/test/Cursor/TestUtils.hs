@@ -134,7 +134,7 @@ rebuildsToTheSame func =
                [ "Initial data: " ++ show t
                , "Built cursor: " ++ show tc
                , "Changed cursor: " ++ show tc'
-               , "Final forest: " ++ show t'
+               , "Final data: " ++ show t'
                ]
 
 rebuildsToTheSameIfSuceeds ::

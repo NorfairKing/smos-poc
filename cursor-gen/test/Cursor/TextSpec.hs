@@ -18,32 +18,34 @@ spec :: Spec
 spec = do
     describe "makeTextCursor" $ do
         it "is the inverse of 'rebuildTextCursor' for this simple example" $
-            rebuild (makeTextCursor "abc") `shouldBe` "abc"
+            rebuildTextCursor (makeTextCursor "abc") `shouldBe` "abc"
         it "is the inverse of 'rebuildTextCursor'" $
-            inverseFunctionsOnValid makeTextCursor rebuild
+            inverseFunctionsOnValid makeTextCursor rebuildTextCursor
     describe "reselect" $
         it "reselects to the same selection" $
         reselectsToTheSameSelection @TextCursor
     describe "textCursorSelectPrev" $ do
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textCursorSelectPrev
+            rebuildsToTheSameTextIfSucceeds textCursorSelectPrev
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textCursorSelectPrev >=> textCursorSelectPrev)
     describe "textCursorSelectNext" $ do
         it "rebuilds to the same text" $
-            rebuildsToTheSameIfSuceeds textCursorSelectNext
+            rebuildsToTheSameTextIfSucceeds textCursorSelectNext
         it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameIfSuceeds
+            rebuildsToTheSameTextIfSucceeds
                 (textCursorSelectNext >=> textCursorSelectNext)
     describe "textCursorSelectStart" $
-        it "rebuilds to the same text" $ rebuildsToTheSame textCursorSelectStart
+        it "rebuilds to the same text" $
+        rebuildsToTheSameText textCursorSelectStart
     describe "textCursorSelectEnd" $
-        it "rebuilds to the same text" $ rebuildsToTheSame textCursorSelectEnd
+        it "rebuilds to the same text" $
+        rebuildsToTheSameText textCursorSelectEnd
     describe "textCursorInsert" $ do
         it "rebuilds to the right character when inserting into an empty cursor" $
             forAll genValid $ \c ->
-                rebuild (textCursorInsert c emptyTextCursor) `shouldBe`
+                rebuildTextCursor (textCursorInsert c emptyTextCursor) `shouldBe`
                 T.pack [c]
         it
             "rebuilds to the right two character when inserting into an empty cursor twice" $
@@ -51,7 +53,7 @@ spec = do
                 let tc = emptyTextCursor
                     tc' = textCursorInsert c1 tc
                     tc'' = textCursorInsert c2 tc'
-                    t' = rebuild tc''
+                    t' = rebuildTextCursor tc''
                 in unless (t' == T.pack [c1, c2]) $
                    expectationFailure $
                    unlines
@@ -67,9 +69,42 @@ spec = do
             forAll genValid $ \(t, c) ->
                 let tc = makeTextCursor t
                     tc' = textCursorInsert c tc
-                    t' = rebuild tc'
+                    t' = rebuildTextCursor tc'
                 in T.length t' `shouldBe` T.length t + 1
         it "builds to the inserted character" $
             forAll genValid $ \(t, c) ->
                 let tc = makeTextCursor t
                 in build (textCursorInsert c tc) `shouldBe` Just c
+
+rebuildsToTheSameText :: (TextCursor -> TextCursor) -> Property
+rebuildsToTheSameText func =
+    forAll genValid $ \tc ->
+        let t = rebuildTextCursor tc
+            tc' = func tc
+            t' = rebuildTextCursor tc'
+        in unless (t' == t) $
+           expectationFailure $
+           unlines
+               [ "Initial Text: " ++ show t
+               , "Built cursor: " ++ show tc
+               , "Changed cursor: " ++ show tc'
+               , "Final Text: " ++ show t'
+               ]
+
+rebuildsToTheSameTextIfSucceeds :: (TextCursor -> Maybe TextCursor) -> Property
+rebuildsToTheSameTextIfSucceeds func =
+    forAll genValid $ \tc ->
+        let t = rebuildTextCursor tc
+            mtc' = func tc
+        in case mtc' of
+               Nothing -> pure ()
+               Just tc' ->
+                   let t' = rebuildTextCursor tc'
+                   in unless (t' == t) $
+                      expectationFailure $
+                      unlines
+                          [ "Initial Text: " ++ show t
+                          , "Built cursor: " ++ show tc
+                          , "Changed cursor: " ++ show tc'
+                          , "Final Text: " ++ show t'
+                          ]
