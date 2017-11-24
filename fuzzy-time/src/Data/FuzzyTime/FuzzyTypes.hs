@@ -1,13 +1,18 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Data.FuzzyTime.FuzzyTypes
-    ( FuzzyDay(..)
+    ( FuzzyZonedTime(..)
+    , FuzzyDay(..)
     , FuzzyDayOfTheWeek(..)
     ) where
 
 import Import
 
 import Data.Time
+
+data FuzzyZonedTime =
+    ZonedNow
+    deriving (Show, Eq, Generic)
 
 data FuzzyDay
     = Yesterday

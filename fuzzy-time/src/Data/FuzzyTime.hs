@@ -1,7 +1,10 @@
 module Data.FuzzyTime
-    ( FuzzyDay(..)
+    ( FuzzyZonedTime
+    , FuzzyDay(..)
     , FuzzyDayOfTheWeek(..)
+    , resolveZonedTime
     , resolveDay
+    , fuzzyZonedTimeP
     , fuzzyDayP
     , fuzzyDayOfTheWeekP
     , Parser

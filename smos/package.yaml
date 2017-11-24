@@ -15,6 +15,8 @@ dependencies:
 - bytestring >=0.10 && <0.11
 - containers >=0.5 && <0.6
 - cursor >=0.0 && <0.1
+- fuzzy-time >=0.0 && <0.1
+- megaparsec >=5.3 && <5.4
 - microlens >=0.4 && <0.5
 - mtl >=2.2 && <2.3
 - optparse-applicative >=0.13 && <0.14
@@ -42,6 +44,7 @@ library:
   - Smos.Actions
   - Smos.Cursor
   - Smos.Cursor.Entry
+  - Smos.Cursor.FuzzyTime
   - Smos.Default
   - Smos.Style
   - Smos.Types
