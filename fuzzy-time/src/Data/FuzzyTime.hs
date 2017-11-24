@@ -13,6 +13,7 @@ module Data.FuzzyTime
 
 import Import
 
+import Data.Time
 import Data.Tree
 
 import Text.Megaparsec
@@ -24,6 +25,7 @@ data FuzzyDay
     | Now
     | Today
     | Tomorrow
+    | ExactDay Day
     deriving (Show, Eq, Generic)
 
 -- | Can handle:
@@ -32,6 +34,7 @@ data FuzzyDay
 -- - now
 -- - today
 -- - tomorrow
+-- - "%Y-%m-%d"
 --
 -- and all non-ambiguous prefixes
 fuzzyDayP :: Parser FuzzyDay
@@ -41,7 +44,11 @@ fuzzyDayP =
         , ("now", Now)
         , ("today", Today)
         , ("tomorrow", Tomorrow)
-        ]
+        ] <|>
+    fmap
+        ExactDay
+        (some (digitChar <|> char '-') >>=
+         parseTimeM True defaultTimeLocale "%Y-%m-%d")
 
 data FuzzyDayOfTheWeek
     = Monday
@@ -102,8 +109,6 @@ lookupInParseForest = gof
                         _ -> gof cs subForest
                else Nothing
 
--- traceForest :: Show a => Forest a -> Forest a
--- traceForest f = trace (drawForest $ map (fmap show) f) f
 makeParseForest :: Eq c => [([c], a)] -> Forest (c, Maybe a)
 makeParseForest = foldl insertf []
   where

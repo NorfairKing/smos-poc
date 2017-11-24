@@ -8,6 +8,8 @@ module Data.FuzzyTimeSpec
 
 import TestImport
 
+import Data.Time
+
 import Text.Megaparsec
 
 import Data.FuzzyTime
@@ -20,6 +22,10 @@ spec = do
         fd 3 "today" Today
         fd 3 "tomorrow" Tomorrow
         fd 1 "now" Now
+        it "parses exact days with %Y-%m-%d" $
+            forAll genValid $ \day ->
+                let s = formatTime defaultTimeLocale "%Y-%m-%d" day
+                in parseJust fuzzyDayP s $ ExactDay day
     describe "fuzzyDayOfTheWeekP" $ do
         let fd = parseJustSpecR fuzzyDayOfTheWeekP
         fd 1 "monday" Monday
