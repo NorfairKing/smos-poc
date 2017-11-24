@@ -45,10 +45,12 @@ library:
   - Smos.Cursor
   - Smos.Cursor.Contents
   - Smos.Cursor.Entry
-  - Smos.Cursor.Entry.Header
   - Smos.Cursor.Entry.Contents
+  - Smos.Cursor.Entry.Header
+  - Smos.Cursor.Entry.State
   - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
+  - Smos.Cursor.State
   - Smos.Cursor.Types
   - Smos.Default
   - Smos.Style

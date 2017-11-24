@@ -111,37 +111,15 @@ import Cursor.Tree
 import Smos.Cursor.Contents
 import Smos.Cursor.Entry.Contents
 import Smos.Cursor.Entry.Header
+import Smos.Cursor.Entry.State
 import Smos.Cursor.Header
+import Smos.Cursor.State
 import Smos.Cursor.Types
 import Smos.Data
 import Smos.View
 
 makeEntryCursor :: TreeCursor EntryCursor -> Entry -> EntryCursor
 makeEntryCursor par e = entryCursor par $ view e
-
-entryCursorStateL ::
-       Functor f
-    => (StateCursor -> f StateCursor)
-    -> EntryCursor
-    -> f EntryCursor
-entryCursorStateL = lens getter setter
-  where
-    getter = entryCursorState
-    setter ec hc = ec'
-      where
-        ec' =
-            ec
-            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
-            , entryCursorState = hc
-            , entryCursorHeader =
-                  (entryCursorHeader ec) {headerCursorParent = ec'}
-            , entryCursorContents =
-                  (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
-                  entryCursorContents ec
-            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
-            , entryCursorTimestamps =
-                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
-            }
 
 entryCursorTagsL ::
        Functor f => (TagsCursor -> f TagsCursor) -> EntryCursor -> f EntryCursor
@@ -236,34 +214,6 @@ entryCursorPropertiesL = lens getter setter
 
 entryCursorClockIn :: UTCTime -> EntryCursor -> Maybe EntryCursor
 entryCursorClockIn now = entryCursorLogbookL $ clockInAt now
-
-makeStateCursor :: EntryCursor -> StateHistory -> StateCursor
-makeStateCursor ec sh = stateCursor ec $ view sh
-
-stateCursorStateL ::
-       Functor f
-    => UTCTime
-    -> (Maybe TodoState -> f (Maybe TodoState))
-    -> StateCursor
-    -> f StateCursor
-stateCursorStateL now = lens getter setter
-  where
-    getter = stateHistoryState . stateCursorStateHistory
-    setter sc mts = sc'
-      where
-        sc' =
-            StateCursor
-            { stateCursorParent =
-                  stateCursorParent sc & entryCursorStateL .~ sc'
-            , stateCursorStateHistory =
-                  stateHistorySetState now mts $ stateCursorStateHistory sc
-            }
-
-stateCursorClear :: UTCTime -> StateCursor -> StateCursor
-stateCursorClear now sc = sc & stateCursorStateL now .~ Nothing
-
-stateCursorSetState :: UTCTime -> TodoState -> StateCursor -> StateCursor
-stateCursorSetState now ts sc = sc & stateCursorStateL now .~ Just ts
 
 makeTagsCursor :: EntryCursor -> [Tag] -> TagsCursor
 makeTagsCursor ec tags = tagsCursor ec $ view tags
