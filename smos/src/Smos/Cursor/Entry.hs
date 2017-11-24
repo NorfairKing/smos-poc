@@ -99,7 +99,6 @@ module Smos.Cursor.Entry
 import Import
 
 import Data.HashMap.Lazy (HashMap)
-import qualified Data.Text as T
 import Data.Time
 
 import Lens.Micro
@@ -107,9 +106,10 @@ import Lens.Micro
 import Cursor.Class
 import Cursor.Select
 import Cursor.Text
-import Cursor.TextField
 import Cursor.Tree
 
+import Smos.Cursor.Contents
+import Smos.Cursor.Entry.Contents
 import Smos.Cursor.Entry.Header
 import Smos.Cursor.Header
 import Smos.Cursor.Types
@@ -118,24 +118,6 @@ import Smos.View
 
 makeEntryCursor :: TreeCursor EntryCursor -> Entry -> EntryCursor
 makeEntryCursor par e = entryCursor par $ view e
-
-entryCursorContentsL :: Lens' EntryCursor (Maybe ContentsCursor)
-entryCursorContentsL = lens getter setter
-  where
-    getter = entryCursorContents
-    setter ec mcc = ec'
-      where
-        ec' =
-            ec
-            { entryCursorParent = entryCursorParent ec & treeCursorValueL .~ ec'
-            , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
-            , entryCursorHeader =
-                  (entryCursorHeader ec) {headerCursorParent = ec'}
-            , entryCursorContents = mcc
-            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
-            , entryCursorTimestamps =
-                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
-            }
 
 entryCursorStateL ::
        Functor f
@@ -254,74 +236,6 @@ entryCursorPropertiesL = lens getter setter
 
 entryCursorClockIn :: UTCTime -> EntryCursor -> Maybe EntryCursor
 entryCursorClockIn now = entryCursorLogbookL $ clockInAt now
-
-entryCursorContentsML :: Lens' EntryCursor (Maybe Contents)
-entryCursorContentsML =
-    lens (fmap (source . selectValue . build) . entryCursorContents) setter
-  where
-    setter ec mc = ec'
-      where
-        ec' = ec & entryCursorContentsL .~ ((contentsCursor ec' . view) <$> mc)
-
-emptyContentsCursor :: EntryCursor -> ContentsCursor
-emptyContentsCursor ec = makeContentsCursor ec $ Contents T.empty
-
-makeContentsCursor :: EntryCursor -> Contents -> ContentsCursor
-makeContentsCursor ec cts = contentsCursor ec $ view cts
-
-contentsCursorTextFieldL ::
-       Functor f
-    => (TextFieldCursor -> f TextFieldCursor)
-    -> ContentsCursor
-    -> f ContentsCursor
-contentsCursorTextFieldL = lens getter setter
-  where
-    getter = contentsCursorContents
-    setter cc tfc = cc'
-      where
-        ec' = contentsCursorParent cc & entryCursorContentsL .~ Just cc'
-        cc' = cc {contentsCursorParent = ec', contentsCursorContents = tfc}
-
-contentsCursorSetContents :: Contents -> ContentsCursor -> ContentsCursor
-contentsCursorSetContents cs =
-    contentsCursorTextFieldL .~ makeTextFieldCursor (contentsText cs)
-
-contentsCursorContentsL :: Lens' ContentsCursor Contents
-contentsCursorContentsL =
-    lens (source . selectValue . build) $ flip contentsCursorSetContents
-
-contentsCursorInsert :: Char -> ContentsCursor -> ContentsCursor
-contentsCursorInsert c = contentsCursorTextFieldL %~ textFieldCursorInsert c
-
-contentsCursorAppend :: Char -> ContentsCursor -> ContentsCursor
-contentsCursorAppend c = contentsCursorTextFieldL %~ textFieldCursorAppend c
-
-contentsCursorNewline :: ContentsCursor -> ContentsCursor
-contentsCursorNewline = contentsCursorTextFieldL %~ textFieldCursorNewline
-
-contentsCursorRemove :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorRemove = contentsCursorTextFieldL textFieldCursorRemove
-
-contentsCursorDelete :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorDelete = contentsCursorTextFieldL textFieldCursorDelete
-
-contentsCursorLeft :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorLeft = contentsCursorTextFieldL textFieldCursorSelectPrev
-
-contentsCursorRight :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorRight = contentsCursorTextFieldL textFieldCursorSelectNext
-
-contentsCursorUp :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorUp = contentsCursorTextFieldL textFieldCursorSelectUp
-
-contentsCursorDown :: ContentsCursor -> Maybe ContentsCursor
-contentsCursorDown = contentsCursorTextFieldL textFieldCursorSelectDown
-
-contentsCursorStart :: ContentsCursor -> ContentsCursor
-contentsCursorStart = contentsCursorTextFieldL %~ textFieldCursorSelectStart
-
-contentsCursorEnd :: ContentsCursor -> ContentsCursor
-contentsCursorEnd = contentsCursorTextFieldL %~ textFieldCursorSelectEnd
 
 makeStateCursor :: EntryCursor -> StateHistory -> StateCursor
 makeStateCursor ec sh = stateCursor ec $ view sh

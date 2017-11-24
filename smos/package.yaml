@@ -43,8 +43,10 @@ library:
   - Smos
   - Smos.Actions
   - Smos.Cursor
+  - Smos.Cursor.Contents
   - Smos.Cursor.Entry
   - Smos.Cursor.Entry.Header
+  - Smos.Cursor.Entry.Contents
   - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
   - Smos.Cursor.Types
