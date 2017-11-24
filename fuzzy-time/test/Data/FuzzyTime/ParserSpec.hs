@@ -1,8 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeFamilies #-}
 
-module Data.FuzzyTimeSpec
+module Data.FuzzyTime.ParserSpec
     ( spec
     ) where
 

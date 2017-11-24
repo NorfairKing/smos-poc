@@ -22,6 +22,9 @@ library:
   ghc-options: -Wall
   exposed-modules:
   - Data.FuzzyTime
+  - Data.FuzzyTime.FuzzyTypes
+  - Data.FuzzyTime.Parser
+  - Data.FuzzyTime.Resolve
 
 tests:
   fuzzy-time-test:
