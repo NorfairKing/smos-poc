@@ -20,11 +20,14 @@ module Cursor.List
     , listCursorAppend
     , listCursorRemove
     , listCursorDelete
+    , listCursorSplit
+    , listCursorCombine
     ) where
 
 import Import
 
 import Cursor.Class
+import Cursor.Select
 
 data ListCursor a = ListCursor
     { listCursorPrev :: [a]
@@ -63,6 +66,17 @@ instance Reselect (ListCursor a) where
                    { listCursorPrev = reverse $ take ix_ els
                    , listCursorNext = drop ix_ els
                    }
+
+instance Selectable (ListCursor a) where
+    applySelection =
+        drillWithSel_ $ \mix lc ->
+            case mix of
+                Nothing -> makeListCursor $ rebuild lc
+                Just ix_ ->
+                    case splitAt ix_ $ rebuild lc of
+                        (l, r) ->
+                            ListCursor
+                            {listCursorPrev = reverse l, listCursorNext = r}
 
 emptyListCursor :: ListCursor a
 emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}
@@ -141,3 +155,13 @@ listCursorDelete tc =
     case listCursorNext tc of
         [] -> Nothing
         (_:next) -> Just $ tc {listCursorNext = next}
+
+listCursorSplit :: ListCursor a -> (ListCursor a, ListCursor a)
+listCursorSplit ListCursor {..} =
+    ( ListCursor {listCursorPrev = listCursorPrev, listCursorNext = []}
+    , ListCursor {listCursorPrev = [], listCursorNext = listCursorNext})
+
+listCursorCombine :: ListCursor a -> ListCursor a -> ListCursor a
+listCursorCombine lc1 lc2 =
+    ListCursor
+    {listCursorPrev = reverse $ rebuild lc1, listCursorNext = rebuild lc2}

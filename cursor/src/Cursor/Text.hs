@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Cursor.Text
-    ( TextCursor
+    ( TextCursor(..)
     , TextView(..)
     , emptyTextCursor
     , makeTextCursor
@@ -20,6 +20,8 @@ module Cursor.Text
     , textCursorAppend
     , textCursorRemove
     , textCursorDelete
+    , textCursorSplit
+    , textCursorCombine
     ) where
 
 import Import
@@ -54,6 +56,9 @@ instance Reselect TextCursor where
     type Reselection TextCursor = TextCursor
     reselect sel = textCursorListCursorL %~ reselect sel
 
+instance Selectable TextCursor where
+    applySelection msel = textCursorListCursorL %~ applySelection msel
+
 data TextView = TextView
     { textViewLeft :: Text
     , textViewRight :: Text
@@ -67,13 +72,8 @@ instance View TextView where
     view t = TextView {textViewLeft = T.empty, textViewRight = t}
 
 instance Selectable TextView where
-    applySelection =
-        drillWithSel_ $ \mix_ tv ->
-            case mix_ of
-                Nothing -> view $ source tv
-                Just ix_ ->
-                    case T.splitAt ix_ $ source tv of
-                        (l, r) -> TextView {textViewLeft = l, textViewRight = r}
+    applySelection msel =
+        rebuild . applySelection msel . makeTextCursor . source
 
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor
@@ -130,3 +130,12 @@ textCursorRemove = textCursorListCursorL listCursorRemove
 
 textCursorDelete :: TextCursor -> Maybe TextCursor
 textCursorDelete = textCursorListCursorL listCursorDelete
+
+textCursorSplit :: TextCursor -> (TextCursor, TextCursor)
+textCursorSplit tc =
+    let (lc1, lc2) = listCursorSplit $ unTextCursor tc
+    in (TextCursor lc1, TextCursor lc2)
+
+textCursorCombine :: TextCursor -> TextCursor -> TextCursor
+textCursorCombine (TextCursor lc1) (TextCursor lc2) =
+    TextCursor {unTextCursor = listCursorCombine lc1 lc2}
