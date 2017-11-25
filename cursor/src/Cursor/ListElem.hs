@@ -4,6 +4,7 @@
 
 module Cursor.ListElem
     ( ListElemCursor(..)
+    , ListElemView(..)
     , makeListElemCursor
     , makeNonEmptyListElemCursor
     , makeListElemCursorWithSelection
@@ -12,25 +13,35 @@ module Cursor.ListElem
     , listElemCursorElemL
     , listElemCursorSelectPrev
     , listElemCursorSelectNext
+    , listElemCursorSelectFirst
+    , listElemCursorSelectLast
     , listElemCursorRemoveElemAndSelectPrev
     , listElemCursorDeleteElemAndSelectNext
     , listElemCursorRemoveElem
     , listElemCursorDeleteElem
+    , nonemptyPrepend
+    , nonemptyAppend
     ) where
 
 import Import
 
 import Lens.Micro
 
-import Data.List.NonEmpty (NonEmpty(..))
+import Data.List.NonEmpty (NonEmpty(..), (<|))
 import qualified Data.List.NonEmpty as NE
 
 import Cursor.Class
 import Cursor.Select
 
+nonemptyPrepend :: [a] -> NonEmpty a -> NonEmpty a
+nonemptyPrepend ls ne = foldr (<|) ne ls
+
+nonemptyAppend :: NonEmpty a -> [a] -> NonEmpty a
+nonemptyAppend (x :| xs) ls = x :| (xs ++ ls)
+
 -- | A 'nonempty list' cursor
 data ListElemCursor a = ListElemCursor
-    { listElemCursorPrev :: [a]
+    { listElemCursorPrev :: [a] -- In reverse order
     , listElemCursorCurrent :: a
     , listElemCursorNext :: [a]
     } deriving (Eq, Generic)
@@ -40,8 +51,8 @@ instance Validity a => Validity (ListElemCursor a)
 instance Show a => Show (ListElemCursor a) where
     show ListElemCursor {..} =
         concat
-            [ unlines $ map (("    " ++) . show) listElemCursorPrev
-            , "--> " ++ show listElemCursorCurrent
+            [ unlines $ map (("    " ++) . show) $ reverse listElemCursorPrev
+            , "--> " ++ show listElemCursorCurrent ++ "\n"
             , unlines $ map (("    " ++) . show) listElemCursorNext
             ]
 
@@ -50,8 +61,13 @@ instance Build (ListElemCursor a) where
     build = listElemCursorCurrent
 
 instance Rebuild (ListElemCursor a) where
-    type ReBuilding (ListElemCursor a) = NonEmpty a
-    rebuild = rebuildListElemCursor
+    type ReBuilding (ListElemCursor a) = ListElemView a
+    rebuild ListElemCursor {..} =
+        ListElemView
+        { listElemViewPrev = reverse listElemCursorPrev
+        , listElemViewCurrent = listElemCursorCurrent
+        , listElemViewNext = listElemCursorNext
+        }
     selection = (: []) . length . listElemCursorPrev
 
 instance Selectable a => Selectable (ListElemCursor a) where
@@ -60,7 +76,46 @@ instance Selectable a => Selectable (ListElemCursor a) where
             case mixr_ of
                 Nothing -> lec
                 Just (ix_, sel) ->
-                    makeListElemCursorWithSelection ix_ (rebuild lec) &
+                    makeListElemCursorWithSelection
+                        ix_
+                        (rebuildListElemCursor lec) &
+                    listElemCursorElemL %~
+                    applySelection (Just sel)
+
+data ListElemView a = ListElemView
+    { listElemViewPrev :: [a]
+    , listElemViewCurrent :: a
+    , listElemViewNext :: [a]
+    } deriving (Eq, Generic)
+
+instance Validity a => Validity (ListElemView a)
+
+instance Show a => Show (ListElemView a) where
+    show ListElemView {..} =
+        concat
+            [ unlines $ map (("    " ++) . show) listElemViewPrev
+            , "--> " ++ show listElemViewCurrent ++ "\n"
+            , unlines $ map (("    " ++) . show) listElemViewNext
+            ]
+
+instance View (ListElemView a) where
+    type Source (ListElemView a) = NonEmpty a
+    source ListElemView {..} =
+        nonemptyPrepend
+            listElemViewPrev
+            (listElemViewCurrent :| listElemViewNext)
+    view = rebuild . makeListElemCursor
+
+instance Selectable a => Selectable (ListElemView a) where
+    applySelection =
+        drillWithSel $ \mixr_ lec ->
+            case mixr_ of
+                Nothing -> view $ source lec
+                Just (ix_, sel) ->
+                    rebuild $
+                    makeListElemCursorWithSelection
+                        ix_
+                        (source lec) &
                     listElemCursorElemL %~
                     applySelection (Just sel)
 
@@ -71,7 +126,7 @@ makeListElemCursorWithSelection :: Int -> NonEmpty a -> ListElemCursor a
 makeListElemCursorWithSelection i ne =
     let (l, m, r) = applyListSelection ne i
     in ListElemCursor
-       { listElemCursorPrev = l
+       { listElemCursorPrev = reverse l
        , listElemCursorCurrent = m
        , listElemCursorNext = r
        }
@@ -93,8 +148,7 @@ singletonListElemCursor :: a -> ListElemCursor a
 singletonListElemCursor a = makeListElemCursor $ a :| []
 
 rebuildListElemCursor :: ListElemCursor a -> NonEmpty a
-rebuildListElemCursor ListElemCursor {..} =
-    listElemCursorCurrent :| listElemCursorNext
+rebuildListElemCursor = source . rebuild
 
 listElemCursorElemL :: Lens' (ListElemCursor a) a
 listElemCursorElemL =
@@ -125,6 +179,22 @@ listElemCursorSelectNext lec =
             , listElemCursorCurrent = e
             , listElemCursorNext = rest
             }
+
+listElemCursorSelectFirst :: ListElemCursor a -> ListElemCursor a
+listElemCursorSelectFirst = go
+  where
+    go lec =
+        case listElemCursorSelectPrev lec of
+            Nothing -> lec
+            Just lec' -> go lec'
+
+listElemCursorSelectLast :: ListElemCursor a -> ListElemCursor a
+listElemCursorSelectLast = go
+  where
+    go lec =
+        case listElemCursorSelectNext lec of
+            Nothing -> lec
+            Just lec' -> go lec'
 
 listElemCursorRemoveElemAndSelectPrev ::
        ListElemCursor a -> Maybe (ListElemCursor a)
