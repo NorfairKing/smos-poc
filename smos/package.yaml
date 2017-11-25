@@ -48,9 +48,11 @@ library:
   - Smos.Cursor.Entry.Contents
   - Smos.Cursor.Entry.Header
   - Smos.Cursor.Entry.State
+  - Smos.Cursor.Entry.Tags
   - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
   - Smos.Cursor.State
+  - Smos.Cursor.Tags
   - Smos.Cursor.Types
   - Smos.Default
   - Smos.Style
