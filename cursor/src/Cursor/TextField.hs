@@ -16,6 +16,7 @@ module Cursor.TextField
     , textFieldCursorSelectDown
     , textFieldCursorSelectPrev
     , textFieldCursorSelectNext
+    , textFieldCursorSelectIndex
     , textFieldCursorInsert
     , textFieldCursorAppend
     , textFieldCursorNewline
@@ -137,16 +138,23 @@ textFieldCursorSelectNextLine =
     textFieldListElemCursorL listElemCursorSelectNext
 
 textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectUp = textFieldCursorSelectPrevLine
+textFieldCursorSelectUp tfc =
+    textFieldCursorSelectIndex (textCursorIndex $ tfc ^. textFieldSelectedL) <$>
+    textFieldCursorSelectPrevLine tfc
 
 textFieldCursorSelectDown :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectDown = textFieldCursorSelectNextLine
+textFieldCursorSelectDown tfc =
+    textFieldCursorSelectIndex (textCursorIndex $ tfc ^. textFieldSelectedL) <$>
+    textFieldCursorSelectNextLine tfc
 
 textFieldCursorSelectPrev :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorSelectPrev = textFieldSelectedL textCursorSelectPrev
 
 textFieldCursorSelectNext :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorSelectNext = textFieldSelectedL textCursorSelectNext
+
+textFieldCursorSelectIndex :: Int -> TextFieldCursor -> TextFieldCursor
+textFieldCursorSelectIndex ix_ = textFieldSelectedL %~ textCursorSelectIndex ix_
 
 textFieldCursorInsert :: Char -> TextFieldCursor -> TextFieldCursor
 textFieldCursorInsert c = textFieldSelectedL %~ textCursorInsert c

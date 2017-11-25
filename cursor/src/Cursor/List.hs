@@ -12,6 +12,7 @@ module Cursor.List
     , listCursorIndex
     , listCursorSelectPrev
     , listCursorSelectNext
+    , listCursorSelectIndex
     , listCursorSelectPrevChar
     , listCursorSelectNextChar
     , listCursorSelectStart
@@ -116,6 +117,12 @@ listCursorSelectNext tc =
             Just
                 ListCursor
                 {listCursorPrev = c : listCursorPrev tc, listCursorNext = cs}
+
+listCursorSelectIndex :: Int -> ListCursor a -> ListCursor a
+listCursorSelectIndex ix_ lc =
+    let ls = rebuildListCursor lc
+    in case splitAt ix_ ls of
+           (l, r) -> ListCursor {listCursorPrev = reverse l, listCursorNext = r}
 
 listCursorSelectPrevChar :: ListCursor a -> Maybe a
 listCursorSelectPrevChar tc =

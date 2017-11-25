@@ -12,6 +12,7 @@ module Cursor.Text
     , textCursorIndex
     , textCursorSelectPrev
     , textCursorSelectNext
+    , textCursorSelectIndex
     , textCursorSelectPrevChar
     , textCursorSelectNextChar
     , textCursorSelectStart
@@ -116,6 +117,9 @@ textCursorSelectPrev = textCursorListCursorL listCursorSelectPrev
 
 textCursorSelectNext :: TextCursor -> Maybe TextCursor
 textCursorSelectNext = textCursorListCursorL listCursorSelectNext
+
+textCursorSelectIndex :: Int -> TextCursor -> TextCursor
+textCursorSelectIndex ix_ = textCursorListCursorL %~ listCursorSelectIndex ix_
 
 textCursorSelectPrevChar :: TextCursor -> Maybe Char
 textCursorSelectPrevChar = listCursorSelectPrevChar . unTextCursor

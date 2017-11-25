@@ -29,6 +29,9 @@ spec = do
         it "is a movement" $ isMovementM listCursorSelectPrev
     describe "listCursorSelectNext" $
         it "is a movement" $ isMovementM listCursorSelectNext
+    describe "listCursorSelectIndex" $
+        it "is a movement" $
+        forAllUnchecked $ \ix -> isMovement (listCursorSelectIndex ix)
     describe "listCursorSelectPrevChar" $
         it "produces valids" $
         producesValidsOnValids
