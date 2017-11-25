@@ -15,6 +15,10 @@ module Cursor.ListElem
     , listElemCursorSelectNext
     , listElemCursorSelectFirst
     , listElemCursorSelectLast
+    , listElemCursorInsert
+    , listElemCursorAppend
+    , listElemCursorInsertAndSelect
+    , listElemCursorAppendAndSelect
     , listElemCursorRemoveElemAndSelectPrev
     , listElemCursorDeleteElemAndSelectNext
     , listElemCursorRemoveElem
@@ -181,6 +185,28 @@ listElemCursorSelectLast = go
         case listElemCursorSelectNext lec of
             Nothing -> lec
             Just lec' -> go lec'
+
+listElemCursorInsert :: a -> ListElemCursor a -> ListElemCursor a
+listElemCursorInsert c lec =
+    lec {listElemCursorPrev = c : listElemCursorPrev lec}
+
+listElemCursorAppend :: a -> ListElemCursor a -> ListElemCursor a
+listElemCursorAppend c lec =
+    lec {listElemCursorNext = c : listElemCursorNext lec}
+
+listElemCursorInsertAndSelect :: a -> ListElemCursor a -> ListElemCursor a
+listElemCursorInsertAndSelect c lec =
+    lec
+    { listElemCursorCurrent = c
+    , listElemCursorNext = listElemCursorCurrent lec : listElemCursorNext lec
+    }
+
+listElemCursorAppendAndSelect :: a -> ListElemCursor a -> ListElemCursor a
+listElemCursorAppendAndSelect c lec =
+    lec
+    { listElemCursorCurrent = c
+    , listElemCursorPrev = listElemCursorCurrent lec : listElemCursorPrev lec
+    }
 
 listElemCursorRemoveElemAndSelectPrev ::
        ListElemCursor a -> Maybe (ListElemCursor a)
