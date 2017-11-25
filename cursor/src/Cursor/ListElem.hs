@@ -70,18 +70,6 @@ instance Rebuild (ListElemCursor a) where
         }
     selection = (: []) . length . listElemCursorPrev
 
-instance Selectable a => Selectable (ListElemCursor a) where
-    applySelection =
-        drillWithSel $ \mixr_ lec ->
-            case mixr_ of
-                Nothing -> lec
-                Just (ix_, sel) ->
-                    makeListElemCursorWithSelection
-                        ix_
-                        (rebuildListElemCursor lec) &
-                    listElemCursorElemL %~
-                    applySelection (Just sel)
-
 data ListElemView a = ListElemView
     { listElemViewPrev :: [a]
     , listElemViewCurrent :: a

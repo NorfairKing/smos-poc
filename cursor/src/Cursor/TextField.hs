@@ -62,9 +62,6 @@ instance Rebuild TextFieldCursor where
         let ListElemCursor {..} = unTextFieldCursor tfc
         in selection listElemCursorCurrent ++ [length listElemCursorPrev]
 
-instance Selectable TextFieldCursor where
-    applySelection msel = textFieldListElemCursorL %~ applySelection msel
-
 data TextFieldView = TextFieldView
     { textFieldViewAbove :: [Text]
     , textFieldViewLine :: TextView
@@ -89,9 +86,23 @@ instance View TextFieldView where
         in rebuild TextFieldCursor {unTextFieldCursor = lec}
 
 instance Selectable TextFieldView where
-    applySelection msel tfv =
-        let tfc = makeTextFieldCursor $ source tfv
-        in rebuild $ applySelection msel tfc
+    applySelection msel = textFieldViewListElemViewL %~ applySelection msel
+
+textFieldViewListElemViewL :: Lens' TextFieldView (ListElemView TextView)
+textFieldViewListElemViewL = lens getter setter
+  where
+    getter TextFieldView {..} =
+        ListElemView
+        { listElemViewPrev = map view textFieldViewAbove
+        , listElemViewCurrent = textFieldViewLine
+        , listElemViewNext = map view textFieldViewBelow
+        }
+    setter _ ListElemView {..} =
+        TextFieldView
+        { textFieldViewAbove = map source listElemViewPrev
+        , textFieldViewLine = listElemViewCurrent
+        , textFieldViewBelow = map source listElemViewNext
+        }
 
 emptyTextFieldCursor :: TextFieldCursor
 emptyTextFieldCursor =

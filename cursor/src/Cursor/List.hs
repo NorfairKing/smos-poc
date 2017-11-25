@@ -63,17 +63,6 @@ instance Reselect (ListCursor a) where
                    , listCursorNext = drop ix_ els
                    }
 
-instance Selectable (ListCursor a) where
-    applySelection =
-        drillWithSel_ $ \mix lc ->
-            case mix of
-                Nothing -> makeListCursor $ rebuild lc
-                Just ix_ ->
-                    case splitAt ix_ $ rebuild lc of
-                        (l, r) ->
-                            ListCursor
-                            {listCursorPrev = reverse l, listCursorNext = r}
-
 data ListView a = ListView
     { listViewPrev :: [a]
     , listViewNext :: [a]

@@ -56,9 +56,6 @@ instance Reselect TextCursor where
     type Reselection TextCursor = TextCursor
     reselect sel = textCursorListCursorL %~ reselect sel
 
-instance Selectable TextCursor where
-    applySelection msel = textCursorListCursorL %~ applySelection msel
-
 data TextView = TextView
     { textViewLeft :: Text
     , textViewRight :: Text
@@ -72,8 +69,21 @@ instance View TextView where
     view t = TextView {textViewLeft = T.empty, textViewRight = t}
 
 instance Selectable TextView where
-    applySelection msel =
-        rebuild . applySelection msel . makeTextCursor . source
+    applySelection msel = textViewListViewL %~ applySelection msel
+
+textViewListViewL :: Lens' TextView (ListView Char)
+textViewListViewL = lens getter setter
+  where
+    getter TextView {..} =
+        ListView
+        { listViewPrev = T.unpack textViewLeft
+        , listViewNext = T.unpack textViewRight
+        }
+    setter _ ListView {..} =
+        TextView
+        { textViewLeft = T.pack listViewPrev
+        , textViewRight = T.pack listViewNext
+        }
 
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor
