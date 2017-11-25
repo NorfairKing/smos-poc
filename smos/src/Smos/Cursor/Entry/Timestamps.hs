@@ -1,6 +1,6 @@
-module Smos.Cursor.Entry.Tags
-    ( entryCursorTagsL
-    , entryCursorTagsIndex
+module Smos.Cursor.Entry.Timestamps
+    ( entryCursorTimestampsL
+    , entryCursorTimestampsIndex
     ) where
 
 import Import
@@ -11,11 +11,14 @@ import Cursor.Tree
 
 import Smos.Cursor.Types
 
-entryCursorTagsL ::
-       Functor f => (TagsCursor -> f TagsCursor) -> EntryCursor -> f EntryCursor
-entryCursorTagsL = lens getter setter
+entryCursorTimestampsL ::
+       Functor f
+    => (TimestampsCursor -> f TimestampsCursor)
+    -> EntryCursor
+    -> f EntryCursor
+entryCursorTimestampsL = lens getter setter
   where
-    getter = entryCursorTags
+    getter = entryCursorTimestamps
     setter ec ts = ec'
       where
         ec' =
@@ -27,10 +30,9 @@ entryCursorTagsL = lens getter setter
             , entryCursorContents =
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
-            , entryCursorTags = ts
-            , entryCursorTimestamps =
-                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
+            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTimestamps = ts
             }
 
-entryCursorTagsIndex :: Int
-entryCursorTagsIndex = 3
+entryCursorTimestampsIndex :: Int
+entryCursorTimestampsIndex = 4
