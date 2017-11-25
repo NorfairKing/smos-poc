@@ -169,30 +169,21 @@ drawBoxedTimestamp ts = B.hBox [str "[", drawTimestamp ts, str "]"]
 drawTimestamp :: UTCTime -> Widget n
 drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
 
--- withSel :: Maybe [Int] -> Widget n -> Widget n
--- withSel msel =
---     case msel of
---         Nothing -> id
---         Just [] -> withAttr selectedAttr
---         Just _ -> id
 drawTextFieldView :: Select TextFieldView -> Widget ResourceName
 drawTextFieldView stv =
     let TextFieldView {..} = selectValue stv
-        yix_ = maybe 0 (length . T.splitOn "\n") textFieldViewAbove :: Int
-        xix_ = T.length . textViewLeft $ textFieldViewLine :: Int
+        yix_ = length textFieldViewAbove
+        xix_ = T.length . textViewLeft $ textFieldViewLine
         addCursor =
             eitherOrSel
                 (B.showCursor textCursorName (B.Location (xix_, yix_)))
                 id
                 stv
         addSelected = eitherOrSel (withAttr selectedAttr) id stv
-        mtw = maybe emptyWidget B.txt
         w =
-            B.vBox
-                [ mtw textFieldViewAbove
-                , drawTextView (select textFieldViewLine)
-                , mtw textFieldViewBelow
-                ]
+            B.vBox (map B.txt textFieldViewAbove) <=>
+            drawTextView (select textFieldViewLine) <=>
+            B.vBox (map B.txt textFieldViewBelow)
     in addSelected . addCursor $ w
 
 drawTextView :: Select TextView -> Widget ResourceName

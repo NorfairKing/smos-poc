@@ -31,38 +31,38 @@ spec = do
         it "is the inverse of 'source" $
         inverseFunctionsOnValid view (source :: TextFieldView -> Text)
     describe "textFieldCursorSelectPrev" $ do
-        it "builds to the same text" $
-            buildsToTheSameTextIfSucceeds textFieldCursorSelectPrev
-        it "builds to the same text when applied twice" $
-            buildsToTheSameTextIfSucceeds
+        it "is a line movement" $ isLineMovementM textFieldCursorSelectPrev
+        it "is a line movement when applied twice" $
+            isLineMovementM
                 (textFieldCursorSelectPrev >=> textFieldCursorSelectPrev)
-        it "rebuilds to the same text" $
-            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectPrev
-        it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameTextIfSucceeds
+        it "is a movement" $ isMovementM textFieldCursorSelectPrev
+        it "is a movement when applied twice" $
+            isMovementM
                 (textFieldCursorSelectPrev >=> textFieldCursorSelectPrev)
     describe "textFieldCursorSelectNext" $ do
-        it "builds to the same text" $
-            buildsToTheSameTextIfSucceeds textFieldCursorSelectNext
-        it "builds to the same text when applied twice" $
-            buildsToTheSameTextIfSucceeds
+        it "is a line movement" $ isLineMovementM textFieldCursorSelectNext
+        it "is a line movement when applied twice" $
+            isLineMovementM
                 (textFieldCursorSelectNext >=> textFieldCursorSelectNext)
-        it "rebuilds to the same text" $
-            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectNext
-        it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameTextIfSucceeds
+        it "is a movement" $ isMovementM textFieldCursorSelectNext
+        it "is a movement when applied twice" $
+            isMovementM
                 (textFieldCursorSelectNext >=> textFieldCursorSelectNext)
+    describe "textFieldCursorSelectIndex" $ do
+        it "is a line movement" $
+            forAllUnchecked $ \ix_ ->
+                isLineMovement (textFieldCursorSelectIndex ix_)
+        it "is a movement" $
+            forAllUnchecked $ \ix_ ->
+                isMovement (textFieldCursorSelectIndex ix_)
     describe "textFieldCursorSelectUp" $ do
-        it "rebuilds to the same text" $
-            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectUp
-        it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameTextIfSucceeds
-                (textFieldCursorSelectUp >=> textFieldCursorSelectUp)
+        it "is a movement" $ isMovementM textFieldCursorSelectUp
+        it "is a movement when applied twice" $
+            isMovementM (textFieldCursorSelectUp >=> textFieldCursorSelectUp)
     describe "textFieldCursorSelectDown" $ do
-        it "rebuilds to the same text" $
-            rebuildsToTheSameTextIfSucceeds textFieldCursorSelectDown
-        it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameTextIfSucceeds
+        it "is a movement" $ isMovementM textFieldCursorSelectDown
+        it "is a movement when applied twice" $
+            isMovementM
                 (textFieldCursorSelectDown >=> textFieldCursorSelectDown)
     describe "textCursorInsert" $ do
         it "builds to the right character when inserting into an empty cursor" $
@@ -88,30 +88,40 @@ spec = do
                        , "Final text: " ++ show t'
                        ]
     describe "textFieldCursorSelectStart" $ do
-        it "builds to the same text" $
-            buildsToTheSameText textFieldCursorSelectStart
-        it "builds to the same text when applied twice" $
-            buildsToTheSameText
+        it "is a line movement" $ isLineMovement textFieldCursorSelectStart
+        it "is a line movement when applied twice" $
+            isLineMovement
                 (textFieldCursorSelectStart . textFieldCursorSelectStart)
-        it "rebuilds to the same text" $
-            rebuildsToTheSameText textFieldCursorSelectStart
-        it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameText
-                (textFieldCursorSelectStart . textFieldCursorSelectStart)
+        it "is a movement" $ isMovement textFieldCursorSelectStart
+        it "is a movement when applied twice" $
+            isMovement (textFieldCursorSelectStart . textFieldCursorSelectStart)
     describe "textFieldCursorSelectEnd" $ do
-        it "builds to the same text" $
-            buildsToTheSameText textFieldCursorSelectEnd
-        it "builds to the same text when applied twice" $
-            buildsToTheSameText
-                (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
-        it "rebuilds to the same text" $
-            rebuildsToTheSameText textFieldCursorSelectEnd
-        it "rebuilds to the same text when applied twice" $
-            rebuildsToTheSameText
-                (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
+        it "is a line movement" $ isLineMovement textFieldCursorSelectEnd
+        it "is a line movement when applied twice" $
+            isLineMovement (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
+        it "is a movement" $ isMovement textFieldCursorSelectEnd
+        it "is a movement when applied twice" $
+            isMovement (textFieldCursorSelectEnd . textFieldCursorSelectEnd)
 
-buildsToTheSameText :: (TextFieldCursor -> TextFieldCursor) -> Property
-buildsToTheSameText func =
+isLineMovementM :: (TextFieldCursor -> Maybe TextFieldCursor) -> Property
+isLineMovementM func =
+    forAll genValid $ \tc ->
+        case func tc of
+            Nothing -> pure ()
+            Just tc' ->
+                let t = source $ build tc
+                    t' = source $ build tc'
+                in unless (t' == t) $
+                   expectationFailure $
+                   unlines
+                       [ "Initial Text: " ++ show t
+                       , "Built cursor: " ++ show tc
+                       , "Changed cursor: " ++ show tc'
+                       , "Final Text: " ++ show t'
+                       ]
+
+isLineMovement :: (TextFieldCursor -> TextFieldCursor) -> Property
+isLineMovement func =
     forAll genValid $ \tc ->
         let t = source $ build tc
             tc' = func tc
@@ -125,27 +135,25 @@ buildsToTheSameText func =
                , "Final Text: " ++ show t'
                ]
 
-buildsToTheSameTextIfSucceeds ::
-       (TextFieldCursor -> Maybe TextFieldCursor) -> Property
-buildsToTheSameTextIfSucceeds func =
+isMovementM :: (TextFieldCursor -> Maybe TextFieldCursor) -> Property
+isMovementM func =
     forAll genValid $ \tc ->
-        let t = source $ build tc
-            mtc' = func tc
-        in case mtc' of
-               Nothing -> pure ()
-               Just tc' ->
-                   let t' = source $ build tc'
-                   in unless (t' == t) $
-                      expectationFailure $
-                      unlines
-                          [ "Initial Text: " ++ show t
-                          , "Built cursor: " ++ show tc
-                          , "Changed cursor: " ++ show tc'
-                          , "Final Text: " ++ show t'
-                          ]
+        case func tc of
+            Nothing -> pure ()
+            Just tc' ->
+                let t = rebuildTextFieldCursor tc
+                    t' = rebuildTextFieldCursor tc'
+                in unless (t' == t) $
+                   expectationFailure $
+                   unlines
+                       [ "Initial Text: " ++ show t
+                       , "Built cursor: " ++ show tc
+                       , "Changed cursor: " ++ show tc'
+                       , "Final Text: " ++ show t'
+                       ]
 
-rebuildsToTheSameText :: (TextFieldCursor -> TextFieldCursor) -> Property
-rebuildsToTheSameText func =
+isMovement :: (TextFieldCursor -> TextFieldCursor) -> Property
+isMovement func =
     forAll genValid $ \tc ->
         let t = rebuildTextFieldCursor tc
             tc' = func tc
@@ -158,22 +166,3 @@ rebuildsToTheSameText func =
                , "Changed cursor: " ++ show tc'
                , "Final Text: " ++ show t'
                ]
-
-rebuildsToTheSameTextIfSucceeds ::
-       (TextFieldCursor -> Maybe TextFieldCursor) -> Property
-rebuildsToTheSameTextIfSucceeds func =
-    forAll genValid $ \tc ->
-        let t = rebuildTextFieldCursor tc
-            mtc' = func tc
-        in case mtc' of
-               Nothing -> pure ()
-               Just tc' ->
-                   let t' = rebuildTextFieldCursor tc'
-                   in unless (t' == t) $
-                      expectationFailure $
-                      unlines
-                          [ "Initial Text: " ++ show t
-                          , "Built cursor: " ++ show tc
-                          , "Changed cursor: " ++ show tc'
-                          , "Final Text: " ++ show t'
-                          ]

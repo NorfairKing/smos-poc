@@ -4,21 +4,19 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Cursor.TextField
-    ( TextFieldCursor
+    ( TextFieldCursor(..)
     , TextFieldView(..)
-    , textFieldCursorPrev
-    , textFieldSelected
-    , textFieldCursorNext
     , emptyTextFieldCursor
     , makeTextFieldCursor
     , rebuildTextFieldCursor
-    , foldTextFieldSel
-    , textFieldCursorIndices
     , textFieldSelectedL
-    , textFieldCursorSelectPrev
-    , textFieldCursorSelectNext
+    , textFieldCursorSelectPrevLine
+    , textFieldCursorSelectNextLine
     , textFieldCursorSelectUp
     , textFieldCursorSelectDown
+    , textFieldCursorSelectPrev
+    , textFieldCursorSelectNext
+    , textFieldCursorSelectIndex
     , textFieldCursorInsert
     , textFieldCursorAppend
     , textFieldCursorNewline
@@ -34,42 +32,41 @@ import qualified Data.Text as T
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.ListElem
 import Cursor.Select
 import Cursor.Text
 
-data TextFieldCursor = TextFieldCursor
-    { textFieldCursorPrev :: [Text]
-    , textFieldSelected :: TextCursor
-    , textFieldCursorNext :: [Text]
-    } deriving (Show, Eq, Generic)
+newtype TextFieldCursor = TextFieldCursor
+    { unTextFieldCursor :: ListElemCursor TextCursor
+    } deriving (Eq, Generic)
 
 instance Validity TextFieldCursor
 
+instance Show TextFieldCursor where
+    show TextFieldCursor {..} = "TextField:\n" ++ show unTextFieldCursor
+
 instance Build TextFieldCursor where
     type Building TextFieldCursor = TextView
-    build = rebuild . textFieldSelected
+    build = rebuild . listElemCursorCurrent . unTextFieldCursor
 
 instance Rebuild TextFieldCursor where
     type ReBuilding TextFieldCursor = TextFieldView
-    rebuild TextFieldCursor {..} =
-        TextFieldView
-        { textFieldViewAbove =
-              case textFieldCursorPrev of
-                  [] -> Nothing
-                  ls -> Just $ T.intercalate "\n" $ reverse ls
-        , textFieldViewLine = rebuild textFieldSelected
-        , textFieldViewBelow =
-              case textFieldCursorNext of
-                  [] -> Nothing
-                  ls -> Just $ T.intercalate "\n" ls
-        }
-    selection TextFieldCursor {..} =
-        selection textFieldSelected ++ [length textFieldCursorPrev]
+    rebuild tfc =
+        let ListElemCursor {..} = unTextFieldCursor tfc
+        in TextFieldView
+           { textFieldViewAbove =
+                 map (source . rebuild) $ reverse listElemCursorPrev
+           , textFieldViewLine = rebuild listElemCursorCurrent
+           , textFieldViewBelow = map (source . rebuild) listElemCursorNext
+           }
+    selection tfc =
+        let ListElemCursor {..} = unTextFieldCursor tfc
+        in selection listElemCursorCurrent ++ [length listElemCursorPrev]
 
 data TextFieldView = TextFieldView
-    { textFieldViewAbove :: Maybe Text
+    { textFieldViewAbove :: [Text]
     , textFieldViewLine :: TextView
-    , textFieldViewBelow :: Maybe Text
+    , textFieldViewBelow :: [Text]
     } deriving (Show, Eq, Generic)
 
 instance Validity TextFieldView
@@ -77,104 +74,78 @@ instance Validity TextFieldView
 instance View TextFieldView where
     type Source TextFieldView = Text
     source TextFieldView {..} =
-        mconcat
-            [ maybe "" (<> "\n") textFieldViewAbove
-            , source textFieldViewLine
-            , maybe "" ("\n" <>) textFieldViewBelow
-            ]
+        T.intercalate "\n" $
+        concat
+            [textFieldViewAbove, [source textFieldViewLine], textFieldViewBelow]
     view t =
-        case T.splitOn "\n" t of
-            [] ->
-                TextFieldView
-                { textFieldViewAbove = Nothing
-                , textFieldViewLine = view ""
-                , textFieldViewBelow = Nothing
-                }
-            [r] ->
-                TextFieldView
-                { textFieldViewAbove = Nothing
-                , textFieldViewLine = view r
-                , textFieldViewBelow = Nothing
-                }
-            (r:rs) ->
-                TextFieldView
-                { textFieldViewAbove = Nothing
-                , textFieldViewLine = view r
-                , textFieldViewBelow = Just $ T.intercalate "\n" rs
-                }
+        let lec
+                -- This is safe because splitOn produces nonempty lists
+             =
+                fromJust $
+                makeNonEmptyListElemCursor $
+                map makeTextCursor $ T.splitOn "\n" t
+        in rebuild TextFieldCursor {unTextFieldCursor = lec}
 
 instance Selectable TextFieldView where
-    applySelection =
-        drillWithSel $ \mixr_ tfv ->
-            let t = source tfv
-            in case mixr_ of
-                   Nothing -> view t
-                   Just (ix_, sel) ->
-                       let (l, m, r) = applyTextLinesSelection ix_ t
-                       in TextFieldView
-                          { textFieldViewAbove = l
-                          , textFieldViewLine =
-                                maybe
-                                    (view t)
-                                    (applySelection (Just sel) . view)
-                                    m
-                          , textFieldViewBelow = r
-                          }
+    applySelection msel = textFieldViewListElemViewL %~ applySelection msel
 
-applyTextLinesSelection :: Int -> Text -> (Maybe Text, Maybe Text, Maybe Text)
-applyTextLinesSelection x t =
-    let ls = T.splitOn "\n" t
-        (l, m, r) = applyListSelection x ls
-    in (T.intercalate "\n" <$> l, m, T.intercalate "\n" <$> r)
-
-applyListSelection :: Int -> [a] -> (Maybe [a], Maybe a, Maybe [a])
-applyListSelection x ls =
-    let n [] = Nothing
-        n ls_ = Just ls_
-    in case drop x ls of
-           [] -> (n ls, Nothing, Nothing)
-           (m:r) -> (n $ take x ls, Just m, n r)
+textFieldViewListElemViewL :: Lens' TextFieldView (ListElemView TextView)
+textFieldViewListElemViewL = lens getter setter
+  where
+    getter TextFieldView {..} =
+        ListElemView
+        { listElemViewPrev = map view textFieldViewAbove
+        , listElemViewCurrent = textFieldViewLine
+        , listElemViewNext = map view textFieldViewBelow
+        }
+    setter _ ListElemView {..} =
+        TextFieldView
+        { textFieldViewAbove = map source listElemViewPrev
+        , textFieldViewLine = listElemViewCurrent
+        , textFieldViewBelow = map source listElemViewNext
+        }
 
 emptyTextFieldCursor :: TextFieldCursor
 emptyTextFieldCursor =
     TextFieldCursor
-    { textFieldCursorPrev = []
-    , textFieldSelected = emptyTextCursor
-    , textFieldCursorNext = []
-    }
+    {unTextFieldCursor = singletonListElemCursor emptyTextCursor}
 
 makeTextFieldCursor :: Text -> TextFieldCursor
 makeTextFieldCursor t =
     let ls = T.splitOn "\n" t
-    in case ls of
-           [] -> emptyTextFieldCursor
-           (first:rest) ->
-               TextFieldCursor
-               { textFieldCursorPrev = []
-               , textFieldSelected = makeTextCursor first
-               , textFieldCursorNext = rest
-               }
+        -- This is safe because 'splitOn' always returns a nonempty list.
+    in TextFieldCursor
+       { unTextFieldCursor =
+             fromJust $ makeNonEmptyListElemCursor $ map makeTextCursor ls
+       }
 
 rebuildTextFieldCursor :: TextFieldCursor -> Text
 rebuildTextFieldCursor = source . rebuild
 
-foldTextFieldSel :: (Maybe (Int, Int) -> Text -> r) -> Maybe [Int] -> Text -> r
-foldTextFieldSel func msel =
-    case msel of
-        Just [xix_, yix_] -> func (Just (xix_, yix_))
-        _ -> func Nothing
+textFieldListElemCursorL :: Lens' TextFieldCursor (ListElemCursor TextCursor)
+textFieldListElemCursorL =
+    lens unTextFieldCursor $ \tfc lec -> tfc {unTextFieldCursor = lec}
 
-textFieldCursorIndices :: TextFieldCursor -> [Int]
-textFieldCursorIndices TextFieldCursor {..} =
-    [length textFieldCursorPrev, textCursorIndex textFieldSelected]
+textFieldSelectedL :: Lens' TextFieldCursor TextCursor
+textFieldSelectedL = textFieldListElemCursorL . listElemCursorElemL
 
-textFieldSelectedL ::
-       Functor f
-    => (TextCursor -> f TextCursor)
-    -> TextFieldCursor
-    -> f TextFieldCursor
-textFieldSelectedL =
-    lens textFieldSelected $ \tfc tc -> tfc {textFieldSelected = tc}
+textFieldCursorSelectPrevLine :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectPrevLine =
+    textFieldListElemCursorL listElemCursorSelectPrev
+
+textFieldCursorSelectNextLine :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectNextLine =
+    textFieldListElemCursorL listElemCursorSelectNext
+
+textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectUp tfc =
+    textFieldCursorSelectIndex (textCursorIndex $ tfc ^. textFieldSelectedL) <$>
+    textFieldCursorSelectPrevLine tfc
+
+textFieldCursorSelectDown :: TextFieldCursor -> Maybe TextFieldCursor
+textFieldCursorSelectDown tfc =
+    textFieldCursorSelectIndex (textCursorIndex $ tfc ^. textFieldSelectedL) <$>
+    textFieldCursorSelectNextLine tfc
 
 textFieldCursorSelectPrev :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorSelectPrev = textFieldSelectedL textCursorSelectPrev
@@ -182,39 +153,8 @@ textFieldCursorSelectPrev = textFieldSelectedL textCursorSelectPrev
 textFieldCursorSelectNext :: TextFieldCursor -> Maybe TextFieldCursor
 textFieldCursorSelectNext = textFieldSelectedL textCursorSelectNext
 
-textFieldCursorSelectPrevLine :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectPrevLine tfc =
-    case textFieldCursorPrev tfc of
-        [] -> Nothing
-        (p:rest) ->
-            Just $
-            tfc
-            { textFieldCursorPrev = rest
-            , textFieldSelected = makeTextCursor p
-            , textFieldCursorNext =
-                  source (rebuild (textFieldSelected tfc)) :
-                  textFieldCursorNext tfc
-            }
-
-textFieldCursorSelectUp :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectUp = textFieldCursorSelectPrevLine
-
-textFieldCursorSelectNextLine :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectNextLine tfc =
-    case textFieldCursorNext tfc of
-        [] -> Nothing
-        (p:rest) ->
-            Just $
-            tfc
-            { textFieldCursorPrev =
-                  source (rebuild (textFieldSelected tfc)) :
-                  textFieldCursorPrev tfc
-            , textFieldSelected = makeTextCursor p
-            , textFieldCursorNext = rest
-            }
-
-textFieldCursorSelectDown :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorSelectDown = textFieldCursorSelectNextLine
+textFieldCursorSelectIndex :: Int -> TextFieldCursor -> TextFieldCursor
+textFieldCursorSelectIndex ix_ = textFieldSelectedL %~ textCursorSelectIndex ix_
 
 textFieldCursorInsert :: Char -> TextFieldCursor -> TextFieldCursor
 textFieldCursorInsert c = textFieldSelectedL %~ textCursorInsert c
@@ -223,41 +163,48 @@ textFieldCursorAppend :: Char -> TextFieldCursor -> TextFieldCursor
 textFieldCursorAppend c = textFieldSelectedL %~ textCursorAppend c
 
 textFieldCursorNewline :: TextFieldCursor -> TextFieldCursor
-textFieldCursorNewline tfc =
-    tfc
-    { textFieldCursorPrev =
-          source (rebuild (textFieldSelected tfc)) : textFieldCursorPrev tfc
-    , textFieldSelected = emptyTextCursor
-    }
+textFieldCursorNewline =
+    textFieldListElemCursorL %~
+    (\lec@ListElemCursor {..} ->
+         let (tc1, tc2) = textCursorSplit listElemCursorCurrent
+         in lec
+            { listElemCursorPrev = tc1 : listElemCursorPrev
+            , listElemCursorCurrent = tc2
+            })
 
 textFieldCursorRemove :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorRemove tfc =
-    case textCursorRemove $ textFieldSelected tfc of
-        Nothing ->
-            case textFieldCursorPrev tfc of
-                [] -> Nothing
-                (p:rest) ->
-                    Just $
-                    tfc
-                    { textFieldCursorPrev = rest
-                    , textFieldSelected = textCursorSelectEnd $ makeTextCursor p
-                    }
-        Just tc' -> Just $ tfc & textFieldSelectedL .~ tc'
+textFieldCursorRemove =
+    textFieldListElemCursorL
+        (\lec@ListElemCursor {..} ->
+             case textCursorRemove listElemCursorCurrent of
+                 Nothing ->
+                     case listElemCursorPrev of
+                         [] -> Nothing
+                         (pl:pls) ->
+                             Just $
+                             lec
+                             { listElemCursorPrev = pls
+                             , listElemCursorCurrent =
+                                   textCursorCombine pl listElemCursorCurrent
+                             }
+                 Just ctc -> Just $ lec & listElemCursorElemL .~ ctc)
 
 textFieldCursorDelete :: TextFieldCursor -> Maybe TextFieldCursor
-textFieldCursorDelete tfc =
-    case textCursorDelete $ textFieldSelected tfc of
-        Nothing ->
-            case textFieldCursorNext tfc of
-                [] -> Nothing
-                (p:rest) ->
-                    Just $
-                    tfc
-                    { textFieldSelected =
-                          textCursorSelectStart $ makeTextCursor p
-                    , textFieldCursorNext = rest
-                    }
-        Just tc' -> Just $ tfc & textFieldSelectedL .~ tc'
+textFieldCursorDelete =
+    textFieldListElemCursorL
+        (\lec@ListElemCursor {..} ->
+             case textCursorDelete listElemCursorCurrent of
+                 Nothing ->
+                     case listElemCursorNext of
+                         [] -> Nothing
+                         (pl:pls) ->
+                             Just $
+                             lec
+                             { listElemCursorCurrent =
+                                   textCursorCombine listElemCursorCurrent pl
+                             , listElemCursorNext = pls
+                             }
+                 Just ctc -> Just $ lec & listElemCursorElemL .~ ctc)
 
 textFieldCursorSelectStart :: TextFieldCursor -> TextFieldCursor
 textFieldCursorSelectStart = textFieldSelectedL %~ textCursorSelectStart

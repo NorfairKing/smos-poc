@@ -20,6 +20,7 @@ import Data.Validity.HashMap as X ()
 import Data.Validity.Text as X ()
 import Data.Validity.Time as X ()
 
+import Control.Applicative as X
 import Control.Monad as X
 import Control.Monad.IO.Class as X
 

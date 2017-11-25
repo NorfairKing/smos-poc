@@ -36,6 +36,7 @@ library:
   exposed-modules:
   - Cursor.TestUtils
   - Cursor.List.Gen
+  - Cursor.ListElem.Gen
   - Cursor.Text.Gen
   - Cursor.TextField.Gen
   - Cursor.Tree.Gen

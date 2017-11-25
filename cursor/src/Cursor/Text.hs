@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Cursor.Text
-    ( TextCursor
+    ( TextCursor(..)
     , TextView(..)
     , emptyTextCursor
     , makeTextCursor
@@ -12,6 +12,7 @@ module Cursor.Text
     , textCursorIndex
     , textCursorSelectPrev
     , textCursorSelectNext
+    , textCursorSelectIndex
     , textCursorSelectPrevChar
     , textCursorSelectNextChar
     , textCursorSelectStart
@@ -20,6 +21,8 @@ module Cursor.Text
     , textCursorAppend
     , textCursorRemove
     , textCursorDelete
+    , textCursorSplit
+    , textCursorCombine
     ) where
 
 import Import
@@ -67,13 +70,21 @@ instance View TextView where
     view t = TextView {textViewLeft = T.empty, textViewRight = t}
 
 instance Selectable TextView where
-    applySelection =
-        drillWithSel_ $ \mix_ tv ->
-            case mix_ of
-                Nothing -> view $ source tv
-                Just ix_ ->
-                    case T.splitAt ix_ $ source tv of
-                        (l, r) -> TextView {textViewLeft = l, textViewRight = r}
+    applySelection msel = textViewListViewL %~ applySelection msel
+
+textViewListViewL :: Lens' TextView (ListView Char)
+textViewListViewL = lens getter setter
+  where
+    getter TextView {..} =
+        ListView
+        { listViewPrev = T.unpack textViewLeft
+        , listViewNext = T.unpack textViewRight
+        }
+    setter _ ListView {..} =
+        TextView
+        { textViewLeft = T.pack listViewPrev
+        , textViewRight = T.pack listViewNext
+        }
 
 emptyTextCursor :: TextCursor
 emptyTextCursor = TextCursor emptyListCursor
@@ -107,6 +118,9 @@ textCursorSelectPrev = textCursorListCursorL listCursorSelectPrev
 textCursorSelectNext :: TextCursor -> Maybe TextCursor
 textCursorSelectNext = textCursorListCursorL listCursorSelectNext
 
+textCursorSelectIndex :: Int -> TextCursor -> TextCursor
+textCursorSelectIndex ix_ = textCursorListCursorL %~ listCursorSelectIndex ix_
+
 textCursorSelectPrevChar :: TextCursor -> Maybe Char
 textCursorSelectPrevChar = listCursorSelectPrevChar . unTextCursor
 
@@ -130,3 +144,12 @@ textCursorRemove = textCursorListCursorL listCursorRemove
 
 textCursorDelete :: TextCursor -> Maybe TextCursor
 textCursorDelete = textCursorListCursorL listCursorDelete
+
+textCursorSplit :: TextCursor -> (TextCursor, TextCursor)
+textCursorSplit tc =
+    let (lc1, lc2) = listCursorSplit $ unTextCursor tc
+    in (TextCursor lc1, TextCursor lc2)
+
+textCursorCombine :: TextCursor -> TextCursor -> TextCursor
+textCursorCombine (TextCursor lc1) (TextCursor lc2) =
+    TextCursor {unTextCursor = listCursorCombine lc1 lc2}
