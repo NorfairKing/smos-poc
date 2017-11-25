@@ -7,6 +7,7 @@ module Cursor.ListSpec
 
 import TestImport
 
+import Cursor.Class
 import Cursor.List
 import Cursor.List.Gen ()
 
@@ -14,11 +15,16 @@ spec :: Spec
 spec = do
     describe "emptyListCursor" $
         it "is valid" $ shouldBeValid (emptyListCursor :: ListCursor Int)
-    describe "rebuildListCursor" $
+    describe "rebuildListCursor" $ do
         it "is the inverse of makeListCursor" $
-        inverseFunctions
-            (makeListCursor :: [Int] -> ListCursor Int)
-            rebuildListCursor
+            inverseFunctions
+                (makeListCursor :: [Int] -> ListCursor Int)
+                rebuildListCursor
+        it "is the inverse of makeListCursorWithSelection for any index" $
+            forAllUnchecked $ \i ->
+                inverseFunctions
+                    (makeListCursorWithSelection i :: [Int] -> ListCursor Int)
+                    rebuildListCursor
     describe "listCursorSelectPrev" $
         it "is a movement" $ isMovementM listCursorSelectPrev
     describe "listCursorSelectNext" $
@@ -35,16 +41,30 @@ spec = do
         it "is a movement" $ isMovement listCursorSelectStart
     describe "listCursorSelectEnd" $
         it "is a movement" $ isMovement listCursorSelectEnd
-    describe "listCursorInsert" $
+    describe "listCursorInsert" $ do
         it "produces valids" $
-        forAllValid $ \d ->
-            producesValidsOnValids
-                (listCursorInsert d :: ListCursor Double -> ListCursor Double)
-    describe "listCursorAppend" $
+            forAllValid $ \d ->
+                producesValidsOnValids
+                    (listCursorInsert d :: ListCursor Double -> ListCursor Double)
+        it "inserts a character before the cursor" $
+            forAllValid $ \c ->
+                forAllValid $ \lc ->
+                    let lc' = listCursorInsert c lc
+                        lv = rebuild lc
+                        lv' = rebuild lc'
+                    in listViewPrev lv ++ [c :: Int] `shouldBe` listViewPrev lv'
+    describe "listCursorAppend" $ do
         it "produces valids" $
-        forAllValid $ \d ->
-            producesValidsOnValids
-                (listCursorAppend d :: ListCursor Double -> ListCursor Double)
+            forAllValid $ \d ->
+                producesValidsOnValids
+                    (listCursorAppend d :: ListCursor Double -> ListCursor Double)
+        it "inserts a character after the cursor" $
+            forAllValid $ \c ->
+                forAllValid $ \lc ->
+                    let lc' = listCursorAppend c lc
+                        lv = rebuild lc
+                        lv' = rebuild lc'
+                    in (c :: Int) : listViewNext lv `shouldBe` listViewNext lv'
     describe "listCursorRemove" $
         it "produces valids" $
         validIfSucceedsOnValid
@@ -53,7 +73,7 @@ spec = do
         it "produces valids" $
         validIfSucceedsOnValid
             (listCursorDelete :: ListCursor Double -> Maybe (ListCursor Double))
-    describe "listCursorDelete" $
+    describe "listCursorSplit" $
         it "produces valids" $
         producesValidsOnValids
             (listCursorSplit :: ListCursor Double -> ( ListCursor Double

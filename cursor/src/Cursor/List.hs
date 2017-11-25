@@ -7,6 +7,7 @@ module Cursor.List
     , ListView(..)
     , emptyListCursor
     , makeListCursor
+    , makeListCursorWithSelection
     , rebuildListCursor
     , listCursorIndex
     , listCursorSelectPrev
@@ -47,8 +48,10 @@ instance Build (ListCursor a) where
             (c:_) -> Just c
 
 instance Rebuild (ListCursor a) where
-    type ReBuilding (ListCursor a) = [a]
-    rebuild = rebuildListCursor
+    type ReBuilding (ListCursor a) = ListView a
+    rebuild ListCursor {..} =
+        ListView
+        {listViewPrev = reverse listCursorPrev, listViewNext = listCursorNext}
     selection = (: []) . listCursorIndex
 
 instance Reselect (ListCursor a) where
@@ -56,12 +59,7 @@ instance Reselect (ListCursor a) where
     reselect sel cur =
         case sel of
             [] -> cur
-            (ix_:_) ->
-                let els = rebuild cur
-                in ListCursor
-                   { listCursorPrev = reverse $ take ix_ els
-                   , listCursorNext = drop ix_ els
-                   }
+            (ix_:_) -> makeListCursorWithSelection ix_ $ rebuildListCursor cur
 
 data ListView a = ListView
     { listViewPrev :: [a]
@@ -88,7 +86,12 @@ emptyListCursor :: ListCursor a
 emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}
 
 makeListCursor :: [a] -> ListCursor a
-makeListCursor ls = ListCursor {listCursorPrev = [], listCursorNext = ls}
+makeListCursor = makeListCursorWithSelection 0
+
+makeListCursorWithSelection :: Int -> [a] -> ListCursor a
+makeListCursorWithSelection i ls =
+    ListCursor
+    {listCursorPrev = reverse $ take i ls, listCursorNext = drop i ls}
 
 rebuildListCursor :: ListCursor a -> [a]
 rebuildListCursor ListCursor {..} = reverse listCursorPrev ++ listCursorNext
@@ -164,4 +167,6 @@ listCursorSplit ListCursor {..} =
 listCursorCombine :: ListCursor a -> ListCursor a -> ListCursor a
 listCursorCombine lc1 lc2 =
     ListCursor
-    {listCursorPrev = reverse $ rebuild lc1, listCursorNext = rebuild lc2}
+    { listCursorPrev = reverse $ rebuildListCursor lc1
+    , listCursorNext = rebuildListCursor lc2
+    }
