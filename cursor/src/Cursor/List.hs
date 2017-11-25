@@ -3,9 +3,8 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Cursor.List
-    ( ListCursor
-    , listCursorPrev
-    , listCursorNext
+    ( ListCursor(..)
+    , ListView(..)
     , emptyListCursor
     , makeListCursor
     , rebuildListCursor
@@ -74,6 +73,27 @@ instance Selectable (ListCursor a) where
                         (l, r) ->
                             ListCursor
                             {listCursorPrev = reverse l, listCursorNext = r}
+
+data ListView a = ListView
+    { listViewPrev :: [a]
+    , listViewNext :: [a]
+    } deriving (Show, Eq, Generic)
+
+instance Validity a => Validity (ListView a)
+
+instance View (ListView a) where
+    type Source (ListView a) = [a]
+    source ListView {..} = listViewPrev ++ listViewNext
+    view ls = ListView {listViewPrev = [], listViewNext = ls}
+
+instance Selectable (ListView a) where
+    applySelection =
+        drillWithSel_ $ \mix lv ->
+            case mix of
+                Nothing -> view $ source lv
+                Just ix_ ->
+                    case splitAt ix_ $ source lv of
+                        (l, r) -> ListView {listViewPrev = l, listViewNext = r}
 
 emptyListCursor :: ListCursor a
 emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}
