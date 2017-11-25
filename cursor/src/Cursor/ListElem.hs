@@ -6,6 +6,7 @@ module Cursor.ListElem
     ( ListElemCursor(..)
     , makeListElemCursor
     , makeNonEmptyListElemCursor
+    , makeListElemCursorWithSelection
     , singletonListElemCursor
     , rebuildListElemCursor
     , listElemCursorElemL

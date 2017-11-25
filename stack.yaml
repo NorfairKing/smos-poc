@@ -8,7 +8,7 @@ packages:
 - smos-report
 extra-deps:
 - brick-0.28
-- genvalidity-0.4.0.0
+- genvalidity-0.4.0.1
 - genvalidity-bytestring-0.1.0.0
 - genvalidity-containers-0.3.0.0
 - genvalidity-hspec-0.5.0.0
@@ -20,7 +20,7 @@ extra-deps:
 - genvalidity-unordered-containers-0.1.0.0
 - genvalidity-uuid-0.0.0.0
 - hlint-1.9.41
-- validity-0.4.0.0
+- validity-0.4.0.1
 - validity-bytestring-0.2.0.0
 - validity-containers-0.2.0.0
 - validity-path-0.2.0.0
