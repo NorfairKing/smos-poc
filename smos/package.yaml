@@ -50,6 +50,7 @@ library:
   - Smos.Cursor.Entry.State
   - Smos.Cursor.Entry.Tags
   - Smos.Cursor.Entry.Timestamps
+  - Smos.Cursor.Entry.Logbook
   - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
   - Smos.Cursor.State
