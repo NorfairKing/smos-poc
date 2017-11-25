@@ -1,5 +1,6 @@
 module Smos.Cursor.Tags
-    ( makeTagsCursor
+    ( TagsCursor(..)
+    , makeTagsCursor
     , tagsCursorTagCursorsL
     , tagsCursorTagsL
     , tagsCursorSelectFirst
@@ -8,6 +9,7 @@ module Smos.Cursor.Tags
     , tagsCursorInsertAt
     , tagsCursorInsertAtStart
     , tagsCursorAppendAtEnd
+    , TagCursor(..)
     , tagCursorTextCursorL
     , tagCursorModify
     , tagCursorInsert

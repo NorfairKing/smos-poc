@@ -1,5 +1,6 @@
 module Smos.Cursor.Contents
-    ( entryCursorContentsML
+    ( ContentsCursor(..)
+    , entryCursorContentsML
     , emptyContentsCursor
     , makeContentsCursor
     , contentsCursorTextFieldL

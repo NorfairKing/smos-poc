@@ -111,7 +111,6 @@ import Cursor.Tree
 
 import Smos.Actions.Editor
 import Smos.Cursor
-import Smos.Cursor.Entry
 import Smos.Types
 
 {-# ANN module ("HLint: ignore Use fromMaybe" :: String) #-}

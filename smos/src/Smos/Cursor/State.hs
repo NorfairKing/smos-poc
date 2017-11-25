@@ -1,5 +1,6 @@
 module Smos.Cursor.State
-    ( makeStateCursor
+    ( StateCursor(..)
+    , makeStateCursor
     , stateCursorStateL
     , stateCursorClear
     , stateCursorSetState

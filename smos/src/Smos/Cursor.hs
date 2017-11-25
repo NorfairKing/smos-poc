@@ -15,12 +15,12 @@ module Smos.Cursor
     , Rebuild(..)
     , Build(..)
     , Select(..)
-    , EntryCursor
-    , StateCursor
-    , HeaderCursor
-    , ContentsCursor
-    , TagsCursor
-    , TagCursor
+    , module Smos.Cursor.Contents
+    , module Smos.Cursor.Entry
+    , module Smos.Cursor.Header
+    , module Smos.Cursor.State
+    , module Smos.Cursor.Tags
+    , module Smos.Cursor.Timestamps
     ) where
 
 import Import
@@ -31,8 +31,12 @@ import Cursor.Tree
 
 import Smos.Data
 
+import Smos.Cursor.Contents
 import Smos.Cursor.Entry
-import Smos.Cursor.Types
+import Smos.Cursor.Header
+import Smos.Cursor.State
+import Smos.Cursor.Tags
+import Smos.Cursor.Timestamps
 import Smos.View
 
 newtype SmosFileView = SmosFileView

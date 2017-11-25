@@ -47,10 +47,11 @@ library:
   - Smos.Cursor.Entry
   - Smos.Cursor.Entry.Contents
   - Smos.Cursor.Entry.Header
+  - Smos.Cursor.Entry.Logbook
+  - Smos.Cursor.Entry.Properties
   - Smos.Cursor.Entry.State
   - Smos.Cursor.Entry.Tags
   - Smos.Cursor.Entry.Timestamps
-  - Smos.Cursor.Entry.Logbook
   - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
   - Smos.Cursor.State

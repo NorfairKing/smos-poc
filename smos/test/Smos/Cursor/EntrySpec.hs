@@ -14,7 +14,6 @@ import qualified Data.Text as T
 import Lens.Micro
 
 import Smos.Cursor
-import Smos.Cursor.Entry
 import Smos.Cursor.Gen ()
 import Smos.Cursor.TestUtils
 
