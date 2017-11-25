@@ -1,4 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -17,6 +18,8 @@ module Smos.Cursor.Types
     , TagCursor(..)
     , TimestampsCursor(..)
     , timestampsCursor
+    , KeyCursor(..)
+    , ValueCursor(..)
     ) where
 
 import Import
@@ -30,6 +33,8 @@ import Cursor.Text
 import Cursor.TextField
 import Cursor.Tree
 
+import Smos.Cursor.FuzzyTime
+
 import Smos.Data
 import Smos.View
 
@@ -42,7 +47,7 @@ data EntryCursor = EntryCursor
     , entryCursorState :: StateCursor
     , entryCursorTags :: TagsCursor
     , entryCursorLogbook :: Logbook
-    }
+    } deriving (Generic)
 
 instance Validity EntryCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -108,7 +113,7 @@ entryCursor par EntryView {..} = ec
 data HeaderCursor = HeaderCursor
     { headerCursorParent :: EntryCursor
     , headerCursorHeader :: TextCursor
-    }
+    } deriving (Generic)
 
 instance Validity HeaderCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -141,7 +146,7 @@ headerCursor par h =
 data ContentsCursor = ContentsCursor
     { contentsCursorParent :: EntryCursor
     , contentsCursorContents :: TextFieldCursor
-    }
+    } deriving (Generic)
 
 instance Validity ContentsCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -175,7 +180,7 @@ contentsCursor ec ContentsView {..} =
 data StateCursor = StateCursor
     { stateCursorParent :: EntryCursor
     , stateCursorStateHistory :: StateHistory
-    }
+    } deriving (Generic)
 
 instance Validity StateCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -204,7 +209,7 @@ stateCursor ec tsv =
 data TagsCursor = TagsCursor
     { tagsCursorParent :: EntryCursor
     , tagsCursorTags :: [TagCursor]
-    }
+    } deriving (Generic)
 
 instance Validity TagsCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -256,7 +261,7 @@ data TagCursor = TagCursor
     , tagCursorNextElemens :: [TagCursor]
     , tagCursorIndex :: Int
     , tagCursorTag :: TextCursor
-    }
+    } deriving (Generic)
 
 instance Validity TagCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -282,7 +287,7 @@ instance Build TagCursor where
 data TimestampsCursor = TimestampsCursor
     { timestampsCursorParent :: EntryCursor
     , timestampsCursorTimestamps :: HashMap TimestampName UTCTime
-    }
+    } deriving (Generic)
 
 instance Validity TimestampsCursor where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -308,6 +313,16 @@ timestampsCursor :: EntryCursor -> TimestampsView -> TimestampsCursor
 timestampsCursor ec tsv =
     TimestampsCursor
     {timestampsCursorParent = ec, timestampsCursorTimestamps = source tsv}
+
+data KeyCursor = KeyCursor
+    { keyCursorKey :: TextCursor
+    , keyCursorValue :: ValueCursor
+    } deriving (Show, Eq, Generic)
+
+data ValueCursor = ValueCursor
+    { valueCursorKey :: KeyCursor
+    , valueCursorValue :: FuzzyTimeCursor
+    } deriving (Show, Eq, Generic)
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b
