@@ -51,7 +51,7 @@ instance Validity a => Validity (ListElemCursor a)
 instance Show a => Show (ListElemCursor a) where
     show ListElemCursor {..} =
         concat
-            [ unlines $ map (("    " ++) . show) $ reverse listElemCursorPrev
+            [ unlines $ map (("    " ++) . show) listElemCursorPrev
             , "--> " ++ show listElemCursorCurrent ++ "\n"
             , unlines $ map (("    " ++) . show) listElemCursorNext
             ]
@@ -113,9 +113,7 @@ instance Selectable a => Selectable (ListElemView a) where
                 Nothing -> view $ source lec
                 Just (ix_, sel) ->
                     rebuild $
-                    makeListElemCursorWithSelection
-                        ix_
-                        (source lec) &
+                    makeListElemCursorWithSelection ix_ (source lec) &
                     listElemCursorElemL %~
                     applySelection (Just sel)
 

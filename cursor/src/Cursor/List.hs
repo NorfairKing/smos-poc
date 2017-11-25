@@ -30,7 +30,7 @@ import Cursor.Class
 import Cursor.Select
 
 data ListCursor a = ListCursor
-    { listCursorPrev :: [a]
+    { listCursorPrev :: [a] -- ^ In reverse order
     , listCursorNext :: [a]
     } deriving (Eq, Generic)
 
@@ -38,22 +38,19 @@ instance Validity a => Validity (ListCursor a)
 
 instance Show a => Show (ListCursor a) where
     show ListCursor {..} =
-        concat
-            [ "|-"
-            , show (reverse listCursorPrev)
-            , "-|-"
-            , show listCursorNext
-            , "-|"
-            ]
+        unwords [show listCursorPrev, "|", show listCursorNext]
 
 instance Build (ListCursor a) where
     type Building (ListCursor a) = Maybe a
-    build = buildListCursor
+    build ListCursor {..} =
+        case listCursorPrev of
+            [] -> Nothing
+            (c:_) -> Just c
 
 instance Rebuild (ListCursor a) where
     type ReBuilding (ListCursor a) = [a]
     rebuild = rebuildListCursor
-    selection = (: []) . length . listCursorPrev
+    selection = (: []) . listCursorIndex
 
 instance Reselect (ListCursor a) where
     type Reselection (ListCursor a) = ListCursor a
@@ -83,12 +80,6 @@ emptyListCursor = ListCursor {listCursorPrev = [], listCursorNext = []}
 
 makeListCursor :: [a] -> ListCursor a
 makeListCursor ls = ListCursor {listCursorPrev = [], listCursorNext = ls}
-
-buildListCursor :: ListCursor a -> Maybe a
-buildListCursor ListCursor {..} =
-    case listCursorPrev of
-        [] -> Nothing
-        (c:_) -> Just c
 
 rebuildListCursor :: ListCursor a -> [a]
 rebuildListCursor ListCursor {..} = reverse listCursorPrev ++ listCursorNext
