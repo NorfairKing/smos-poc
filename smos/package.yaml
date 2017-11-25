@@ -55,7 +55,9 @@ library:
   - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
   - Smos.Cursor.State
+  - Smos.Cursor.Tag
   - Smos.Cursor.Tags
+  - Smos.Cursor.Tags.Tag
   - Smos.Cursor.Timestamps
   - Smos.Cursor.Types
   - Smos.Default
