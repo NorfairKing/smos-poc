@@ -35,19 +35,20 @@ import Smos.View
 --             Nothing -> a
 --             Just b -> a & l .~ b
 --
--- sameCAfterSettingAAndThenBLMM ::
---        (Show c, Eq c)
---     => EntryCursor
---     -> Lens' EntryCursor (Maybe a)
---     -> (a -> a)
---     -> Lens' EntryCursor (Maybe b)
---     -> (b -> b)
---     -> (EntryCursor -> c)
---     -> Expectation
--- sameCAfterSettingAAndThenBLMM ec la am lb bm cf =
---     let ec' = ec & la %~ fmap am
---         ec'' = ec' & lb %~ fmap bm
---     in cf ec' `shouldBe` cf ec''
+sameCAfterSettingAAndThenBLMM ::
+       (Show c, Eq c)
+    => EntryCursor
+    -> Lens' EntryCursor (Maybe a)
+    -> (a -> a)
+    -> Lens' EntryCursor (Maybe b)
+    -> (b -> b)
+    -> (EntryCursor -> c)
+    -> Expectation
+sameCAfterSettingAAndThenBLMM ec la am lb bm cf =
+    let ec' = ec & la %~ fmap am
+        ec'' = ec' & lb %~ fmap bm
+    in cf ec' `shouldBe` cf ec''
+
 sameCAfterSettingAAndThenBLM ::
        (Show c, Eq c)
     => EntryCursor
@@ -125,7 +126,7 @@ spec = do
                         forAll genValid $ \now ->
                             forAll genValid $ \tgs ->
                                 forAll genValid $ \ec ->
-                                    sameCAfterSettingAAndThenBL
+                                    sameCAfterSettingAAndThenBLM
                                         ec
                                         entryCursorStateL
                                         (stateCursorSetState ts now)
@@ -181,7 +182,7 @@ spec = do
                     forAll genValid $ \h ->
                         forAll genValid $ \tgs ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBLM
                                     ec
                                     entryCursorHeaderL
                                     (headerCursorSetHeader h)
@@ -222,52 +223,52 @@ spec = do
                         forAll genValid $ \ts ->
                             forAll genValid $ \now ->
                                 forAll genValid $ \ec ->
-                                    sameCAfterSettingAAndThenBL
+                                    sameCAfterSettingAAndThenBML
                                         ec
                                         entryCursorTagsL
                                         (tagsCursorSetTags tgs)
                                         entryCursorStateL
                                         (stateCursorSetState now ts)
-                                        (build . entryCursorTags)
+                                        (fmap build . entryCursorTags)
                 describe "header" $
                     it
                         "has the same tags after setting the tags and then changing the header" $
                     forAll genValid $ \tgs ->
                         forAll genValid $ \h ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBML
                                     ec
                                     entryCursorTagsL
                                     (tagsCursorSetTags tgs)
                                     entryCursorHeaderL
                                     (headerCursorSetHeader h)
-                                    (build . entryCursorTags)
+                                    (fmap build . entryCursorTags)
                 describe "contents" $
                     it
                         "has the same tags after setting the tags and then changing the contents" $
                     forAll genValid $ \tgs ->
                         forAll genValid $ \cts ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBLM
+                                sameCAfterSettingAAndThenBLMM
                                     ec
                                     entryCursorTagsL
                                     (tagsCursorSetTags tgs)
                                     entryCursorContentsL
                                     (contentsCursorSetContents cts)
-                                    (build . entryCursorTags)
+                                    (fmap build . entryCursorTags)
                 describe "timestamps" $
                     it
                         "has the same tags after setting the tags and then changing the timestamps" $
                     forAll genValid $ \tgs ->
                         forAll genValid $ \tss ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBML
                                     ec
                                     entryCursorTagsL
                                     (tagsCursorSetTags tgs)
                                     entryCursorTimestampsL
                                     (timestampsCursorSetTimestamps tss)
-                                    (build . entryCursorTags)
+                                    (fmap build . entryCursorTags)
             describe "contents" $ do
                 describe "header" $
                     it
@@ -302,7 +303,7 @@ spec = do
                     forAll genValid $ \cs ->
                         forAll genValid $ \tgs ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBML
+                                sameCAfterSettingAAndThenBLMM
                                     ec
                                     entryCursorContentsL
                                     (contentsCursorSetContents cs)
@@ -356,7 +357,7 @@ spec = do
                     forAll genValid $ \tss ->
                         forAll genValid $ \tgs ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBLM
                                     ec
                                     entryCursorTimestampsL
                                     (timestampsCursorSetTimestamps tss)
@@ -461,89 +462,3 @@ spec = do
                                  (selectValue
                                       (build (stateCursorSetState now ts sc)))) `shouldBe`
                         Just ts
-    describe "TagsCursor" $
-        describe "tagsCursorParent" $
-        it "rebuilds to the same" $ rebuildsToTheSame tagsCursorParent
-    describe "TagCursor" $ do
-        describe "tagCursorParent" $
-            it "rebuilds to the same" $ rebuildsToTheSame tagCursorParent
-        describe "tagCursorModify" $ do
-            it "does not change the index" $
-                forAll genValid $ \tgc ->
-                    forAll genValid $ \tc -> do
-                        let tgc' = tagCursorModify (const tc) tgc
-                        tagCursorIndex tgc' `shouldBe` tagCursorIndex tgc
-            it
-                "does not change the text cursor if the text cursor is not modified" $
-                forAll genValid $ \tgc -> do
-                    let tgc' = tagCursorModify id tgc
-                    tagCursorTag tgc' `shouldBe` tagCursorTag tgc
-            it
-                "does not change the text cursor selection if the text cursor is not modified" $
-                forAll genValid $ \tgc -> do
-                    let tgc' = tagCursorModify id tgc
-                    selection (tagCursorTag tgc') `shouldBe`
-                        selection (tagCursorTag tgc)
-            it "has the same resulting text cursor if we use it to modify" $
-                forAll genValid $ \tgc ->
-                    forAll genValid $ \tc -> do
-                        let tgc' = tagCursorModify (const tc) tgc
-                        tagCursorTag tgc' `shouldBe` tc
-        describe "tagCursorInsert" $ do
-            it "makes the resulting tag one longer" $
-                forAll genValid $ \c ->
-                    forAll genValid $ \tc ->
-                        T.length
-                            (source
-                                 (tagViewText
-                                      (selectValue
-                                           (build (tagCursorInsert c tc))))) `shouldBe`
-                        T.length (source (tagViewText (selectValue (build tc)))) +
-                        1
-            it "adds an element to the front if we're at the front" $
-                forAll genValid $ \c ->
-                    forAll genValid $ \tc ->
-                        source
-                            (tagViewText
-                                 (selectValue
-                                      (build
-                                           (tagCursorInsert
-                                                c
-                                                (tagCursorStart tc))))) `shouldBe`
-                        T.cons c (source (tagViewText (selectValue (build tc))))
-        describe "tagCursorAppend" $ do
-            it "makes the resulting tag one longer" $
-                forAll genValid $ \c ->
-                    forAll genValid $ \tc ->
-                        T.length
-                            (source $
-                             tagViewText
-                                 (selectValue (build (tagCursorAppend c tc)))) `shouldBe`
-                        T.length (source (tagViewText (selectValue (build tc)))) +
-                        1
-            it "adds an element to the end if we're at the end" $
-                forAll genValid $ \c ->
-                    forAll genValid $ \tc ->
-                        source
-                            (tagViewText
-                                 (selectValue
-                                      (build
-                                           (tagCursorAppend c (tagCursorEnd tc))))) `shouldBe`
-                        T.snoc (source (tagViewText (selectValue (build tc)))) c
-        -- describe "tagCursorRemove" $
-        -- describe "tagCursorDelete"
-        describe "tagCursorLeft" $
-            it "rebuilds to the same" $ rebuildsToTheSameIfSuceeds tagCursorLeft
-        describe "tagCursorRight" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds tagCursorRight
-        describe "tagCursorStart" $
-            it "rebuilds to the same" $ rebuildsToTheSame tagCursorStart
-        describe "tagCursorEnd" $
-            it "rebuilds to the same" $ rebuildsToTheSame tagCursorEnd
-        describe "tagCursorSelectPrev" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds tagCursorSelectNext
-        describe "tagCursorSelectNext" $
-            it "rebuilds to the same" $
-            rebuildsToTheSameIfSuceeds tagCursorSelectNext

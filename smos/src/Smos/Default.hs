@@ -34,12 +34,12 @@ defaultConfig =
                     , matchChar 'e' $ enterContents >> contentsStart
                     , afterChar 'g' $
                       mconcat
-                          [ matchChar 'i' $ enterTag >> tagsSelectStart
+                          [ matchChar 'i' $ enterTag >> tagsSelectFirst
                           , matchChar 'I' $
-                            enterTag >> tagsSelectStart >> tagsSelectPrev
-                          , matchChar 'a' $ enterTag >> tagsSelectEnd
+                            enterTag >> tagsSelectFirst >> tagsSelectPrev
+                          , matchChar 'a' $ enterTag >> tagsSelectLast
                           , matchChar 'A' $
-                            enterTag >> tagsSelectEnd >> tagsSelectNext
+                            enterTag >> tagsSelectLast >> tagsSelectNext
                           , matchChar 'w' $ tagToggle "work"
                           , matchChar 'h' $ tagToggle "home"
                           ]
@@ -107,7 +107,7 @@ defaultConfig =
                     , matchKey KEnter contentsNewline
                     , matchKey KEsc exitContents
                     ]
-              , inTag $
+              , inTags $
                 mconcat
                     [ onCharM $ \c ->
                           if c == '\t'

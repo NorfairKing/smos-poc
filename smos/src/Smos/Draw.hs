@@ -16,6 +16,7 @@ import Brick.Widgets.Center as B
 import Brick.Widgets.Core as B
 import Graphics.Vty.Input.Events (Key(..), Modifier(..))
 
+import Cursor.ListElem
 import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
@@ -75,7 +76,8 @@ drawEntry =
               intersperse (B.txt " ") $
               [B.txt ">"] ++
               maybeToList (drawTodoState entryViewTodostate) ++
-              [drawHeader entryViewHeader, drawTags entryViewTags]
+              [drawHeader entryViewHeader] ++
+              maybeToList (drawTags <$> entryViewTags)
             , drawTimestamps entryViewTimestamps
             , drawProperties entryViewProperties
             , fromMaybe emptyWidget $ drawContents <$> entryViewContents
@@ -114,15 +116,28 @@ drawContents =
     withAttr contentsAttr . drawTextFieldView . fmap contentsViewContents
 
 drawTags :: Select TagsView -> Widget ResourceName
-drawTags =
-    withSel $ withAttr tagAttr . B.hBox . addColons . map drawTag . tagsViewTags
-  where
-    addColons ls =
-        case ls of
-            [] -> []
-            _ -> colon : intersperse colon ls ++ [colon]
-      where
-        colon = B.txt ":"
+drawTags stv =
+    let tgsv = selectValue stv
+        ListElemView {..} = tagsViewTags tgsv
+    in withAttr tagAttr $
+       B.hBox
+           [ B.hBox $
+             map (\tv -> B.txt ":" <+> drawTag (select tv)) listElemViewPrev
+           , (if selected stv
+                  then withAttr selectedAttr
+                  else id) $
+             B.hBox
+                 [ B.txt ":"
+                 , drawTag
+                       Select
+                       { selected = selected stv
+                       , selectValue = listElemViewCurrent
+                       }
+                 , B.txt ":"
+                 ]
+           , B.hBox $
+             map (\tv -> drawTag (select tv) <+> B.txt ":") listElemViewNext
+           ]
 
 drawTag :: Select TagView -> Widget ResourceName
 drawTag = withAttr tagAttr . drawTextView . fmap tagViewText

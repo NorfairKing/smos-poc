@@ -14,8 +14,8 @@ module Smos.Cursor.Types
     , stateCursor
     , TagsCursor(..)
     , tagsCursor
-    , tagElems
     , TagCursor(..)
+    , tagCursor
     , TimestampsCursor(..)
     , timestampsCursor
     , KeyCursor(..)
@@ -28,6 +28,7 @@ import Data.HashMap.Lazy (HashMap)
 import Data.Time
 
 import Cursor.Class
+import Cursor.ListElem
 import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
@@ -45,7 +46,7 @@ data EntryCursor = EntryCursor
     , entryCursorTimestamps :: TimestampsCursor
     , entryCursorProperties :: HashMap PropertyName PropertyValue
     , entryCursorState :: StateCursor
-    , entryCursorTags :: TagsCursor
+    , entryCursorTags :: Maybe TagsCursor
     , entryCursorLogbook :: Logbook
     } deriving (Generic)
 
@@ -64,7 +65,7 @@ instance Show EntryCursor where
                  , "[Timestamps]: " ++ show (build entryCursorTimestamps)
                  , show entryCursorProperties
                  , "[State]: " ++ show (build entryCursorState)
-                 , "[Tags]: " ++ show (build entryCursorTags)
+                 , "[Tags]: " ++ show (build <$> entryCursorTags)
                  , show entryCursorLogbook
                  ])
 
@@ -85,7 +86,7 @@ instance Build EntryCursor where
         , entryViewTimestamps = build entryCursorTimestamps
         , entryViewProperties = select $ view entryCursorProperties
         , entryViewTodostate = build entryCursorState
-        , entryViewTags = build entryCursorTags
+        , entryViewTags = build <$> entryCursorTags
         , entryViewLogbook = select $ view entryCursorLogbook
         }
 
@@ -106,7 +107,7 @@ entryCursor par EntryView {..} = ec
               timestampsCursor ec $ selectValue entryViewTimestamps
         , entryCursorProperties = source $ selectValue entryViewProperties
         , entryCursorState = stateCursor ec $ selectValue entryViewTodostate
-        , entryCursorTags = tagsCursor ec $ selectValue entryViewTags
+        , entryCursorTags = (tagsCursor ec . selectValue) <$> entryViewTags
         , entryCursorLogbook = source $ selectValue entryViewLogbook
         }
 
@@ -208,7 +209,7 @@ stateCursor ec tsv =
 
 data TagsCursor = TagsCursor
     { tagsCursorParent :: EntryCursor
-    , tagsCursorTags :: [TagCursor]
+    , tagsCursorTags :: ListElemCursor TagCursor
     } deriving (Generic)
 
 instance Validity TagsCursor where
@@ -228,7 +229,7 @@ instance Rebuild TagsCursor where
 
 instance Build TagsCursor where
     type Building TagsCursor = Select TagsView
-    build = select . TagsView . map build . tagsCursorTags
+    build = select . TagsView . fmap build . rebuild . tagsCursorTags
 
 tagsCursor :: EntryCursor -> TagsView -> TagsCursor
 tagsCursor ec tags = tsc
@@ -236,53 +237,36 @@ tagsCursor ec tags = tsc
     tsc =
         TagsCursor
         { tagsCursorParent = ec
-        , tagsCursorTags = tagElems tsc $ map selectValue $ tagsViewTags tags
+        , tagsCursorTags =
+              makeListElemCursor $ fmap tagCursor $ source $ tagsViewTags tags
         }
 
-tagElems :: TagsCursor -> [TagView] -> [TagCursor]
-tagElems tsc sts = tcs
-  where
-    tcs = zipWith tc [0 ..] sts
-    tc i t = cur
-      where
-        cur =
-            TagCursor
-            { tagCursorParent = tsc
-            , tagCursorPrevElemens =
-                  reverse $ filter ((< i) . tagCursorIndex) tcs
-            , tagCursorNextElemens = filter ((> i) . tagCursorIndex) tcs
-            , tagCursorIndex = i
-            , tagCursorTag = makeTextCursor $ source $ tagViewText t
-            }
-
-data TagCursor = TagCursor
-    { tagCursorParent :: TagsCursor
-    , tagCursorPrevElemens :: [TagCursor]
-    , tagCursorNextElemens :: [TagCursor]
-    , tagCursorIndex :: Int
-    , tagCursorTag :: TextCursor
+newtype TagCursor = TagCursor
+    { tagCursorTag :: TextCursor
     } deriving (Generic)
 
 instance Validity TagCursor where
-    isValid a = isValid (build a) && isValid (rebuild a)
-    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+    isValid a = isValid (build a) -- && isValid (rebuild a)
+    validate a = build a <?!> "build" -- <> (rebuild a <?!> "rebuild")
 
 instance Show TagCursor where
     show TagCursor {..} = unlines ["[Tags]", " |-" ++ show tagCursorTag]
 
 instance Eq TagCursor where
-    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
+    (==) = (==) `on` build -- &&& ((==) `on` rebuild)
 
-instance Rebuild TagCursor where
-    type ReBuilding TagCursor = Select (ForestView EntryView)
-    rebuild = rebuild . tagCursorParent
-    selection TagCursor {..} =
-        selection tagCursorTag ++
-        [length tagCursorPrevElemens] ++ selection tagCursorParent
-
+-- instance Rebuild TagCursor where
+--     type ReBuilding TagCursor = TagView
+--     rebuild = rebuild . tagCursorParent
+--     selection TagCursor {..} =
+--         selection tagCursorTag ++
+--         [length tagCursorPrevElemens] ++ selection tagCursorParent
 instance Build TagCursor where
-    type Building TagCursor = Select TagView
-    build TagCursor {..} = select TagView {tagViewText = rebuild tagCursorTag}
+    type Building TagCursor = TagView
+    build TagCursor {..} = TagView {tagViewText = rebuild tagCursorTag}
+
+tagCursor :: TagView -> TagCursor
+tagCursor = TagCursor . makeTextCursor . source . tagViewText
 
 data TimestampsCursor = TimestampsCursor
     { timestampsCursorParent :: EntryCursor

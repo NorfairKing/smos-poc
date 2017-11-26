@@ -75,13 +75,17 @@ module Smos.Actions
     -- ** Tags actions
     , tagsSelectPrev
     , tagsSelectNext
-    , tagsSelectStart
-    , tagsSelectEnd
+    , tagsSelectFirst
+    , tagsSelectLast
     -- * Helper functions to define your own actions
     , modifyEntryM
     , modifyEntry
     , modifyHeaderM
     , modifyHeader
+    , modifyTagsM
+    , modifyTags
+    , modifyTagM
+    , modifyTag
     , modifyTodoState
     , modifyCursor
     , modifyMCursor
@@ -95,7 +99,6 @@ module Smos.Actions
 
 import Import
 
-import qualified Data.Text as T
 import Data.Time
 import Data.Tree
 
@@ -106,7 +109,6 @@ import Lens.Micro
 
 import Smos.Data
 
-import Cursor.Select
 import Cursor.Tree
 
 import Smos.Actions.Editor
@@ -418,38 +420,38 @@ enterTag =
     modifyCursor $ \cur ->
         case cur of
             AnEntry ec ->
-                let tsc = entryCursorTags ec
-                in case tagsCursorSelectFirst tsc of
-                       Nothing ->
-                           let tsc' = tagsCursorInsertAtStart "" tsc
-                           in case tagsCursorSelectFirst tsc' of
-                                  Nothing -> cur -- Should never happen, but fine if it does.
-                                  Just tc -> ATag tc
-                       Just tc -> ATag tc
+                case entryCursorTags ec of
+                    Nothing -> ATags $ newTagsCursor ec
+                    Just tc -> ATags tc
             _ -> cur
 
 tagToggle :: Tag -> SmosM ()
 tagToggle t =
     modifyEntry $ \ec ->
-        ec & entryCursorTagsL . tagsCursorTagsL %~
-        (\ts ->
-             if t `elem` ts
-                 then filter (/= t) ts
-                 else t : ts)
+        ec & entryCursorTagsL %~
+        (\mtc ->
+             case mtc of
+                 Nothing -> Just $ makeNewTagsCursor ec t
+                 Just tgsc -> tagsCursorToggle t tgsc)
 
 tagSet :: Tag -> SmosM ()
 tagSet t =
     modifyEntry $ \ec ->
-        ec & entryCursorTagsL . tagsCursorTagsL %~
-        (\ts ->
-             if t `elem` ts
-                 then ts
-                 else t : ts)
+        ec & entryCursorTagsL %~
+        (\mtc ->
+             Just $
+             case mtc of
+                 Nothing -> makeNewTagsCursor ec t
+                 Just tgsc -> tagsCursorSet t tgsc)
 
 tagUnset :: Tag -> SmosM ()
 tagUnset t =
-    modifyEntry $ \ec ->
-        ec & entryCursorTagsL . tagsCursorTagsL %~ filter (/= t)
+    modifyEntry $
+    entryCursorTagsL %~
+    (\mtc ->
+         case mtc of
+             Nothing -> Nothing
+             Just tgsc -> tagsCursorUnset t tgsc)
 
 tagInsert :: Char -> SmosM ()
 tagInsert = modifyTag . tagCursorInsert
@@ -477,78 +479,32 @@ tagEnd = modifyTag tagCursorEnd
 
 tagsSelectPrev :: SmosM ()
 tagsSelectPrev =
-    modifyTagM $ \tc ->
-        case tagCursorSelectPrev tc of
-            Just tc_ -> Just tc_
-            Nothing ->
-                let t = source $ selectValue $ build tc
-                in if T.null t
-                       then Nothing
-                       else let tsc = tagCursorParent tc
-                                tsc' =
-                                    tagsCursorInsertAt
-                                        (tagCursorIndex tc)
-                                        ""
-                                        tsc
-                            in tagsCursorTags tsc' `atMay` tagCursorIndex tc
+    modifyTags $ \tc ->
+        case tagsCursorSelectPrev tc of
+            Just tc_ -> tc_
+            Nothing -> tagsCursorInsertAndSelect "" tc
 
 tagsSelectNext :: SmosM ()
 tagsSelectNext =
-    modifyTagM $ \tc ->
-        case tagCursorSelectNext tc of
-            Just tc_ -> Just tc_
-            Nothing ->
-                let t = source $ selectValue $ build tc
-                in if T.null t
-                       then Nothing
-                       else let tsc = tagCursorParent tc
-                                tsc' =
-                                    tagsCursorInsertAt
-                                        (tagCursorIndex tc + 1)
-                                        ""
-                                        tsc
-                            in tagsCursorTags tsc' `atMay`
-                               (tagCursorIndex tc + 1)
+    modifyTags $ \tc ->
+        case tagsCursorSelectNext tc of
+            Just tc_ -> tc_
+            Nothing -> tagsCursorAppendAndSelect "" tc
 
-tagsSelectStart :: SmosM ()
-tagsSelectStart =
-    modifyCursor $ \cur ->
-        case cur of
-            ATag tc_ ->
-                let tsc = tagCursorParent tc_
-                in case tagsCursorSelectFirst tsc of
-                       Nothing ->
-                           let tsc' = tagsCursorInsertAtStart "" tsc
-                           in case tagsCursorSelectFirst tsc' of
-                                  Nothing -> cur -- Should never happen, but fine if it does.
-                                  Just tc -> ATag tc
-                       Just tc -> ATag tc
-            _ -> cur
+tagsSelectFirst :: SmosM ()
+tagsSelectFirst = modifyTags tagsCursorSelectFirst
 
-tagsSelectEnd :: SmosM ()
-tagsSelectEnd =
-    modifyCursor $ \cur ->
-        case cur of
-            ATag tc_ ->
-                let tsc = tagCursorParent tc_
-                in case tagsCursorSelectLast tsc of
-                       Nothing ->
-                           let tsc' = tagsCursorAppendAtEnd "" tsc
-                           in case tagsCursorSelectLast tsc' of
-                                  Nothing -> cur -- Should never happen, but fine if it does.
-                                  Just tc -> ATag tc
-                       Just tc -> ATag tc
-            _ -> cur
+tagsSelectLast :: SmosM ()
+tagsSelectLast = modifyTags tagsCursorSelectLast
 
 editorOnTags :: String -> SmosM ()
-editorOnTags =
-    editorOn (entryCursorTagsL . tagsCursorTagsL) startEditorOnTagsAsIs
+editorOnTags = editorOn entryCursorTagsListL startEditorOnTagsAsIs
 
 exitTag :: SmosM ()
 exitTag =
     modifyCursor $ \cur ->
         case cur of
-            ATag tc -> AnEntry $ tagsCursorParent $ tagCursorParent tc
+            ATags tc -> AnEntry $ tagsCursorParent tc
             _ -> cur
 
 editorOn ::
@@ -609,6 +565,16 @@ modifyTodoState func =
                 AnEntry $ stateCursorParent $ func $ entryCursorState ec
             _ -> cur
 
+modifyTagsM :: (TagsCursor -> Maybe TagsCursor) -> SmosM ()
+modifyTagsM func = modifyTags $ \tc -> fromMaybe tc $ func tc
+
+modifyTags :: (TagsCursor -> TagsCursor) -> SmosM ()
+modifyTags func =
+    modifyCursor $ \cur ->
+        case cur of
+            ATags ts -> ATags $ func ts
+            _ -> cur
+
 modifyTagM :: (TagCursor -> Maybe TagCursor) -> SmosM ()
 modifyTagM func = modifyTag $ \tc -> fromMaybe tc $ func tc
 
@@ -616,7 +582,7 @@ modifyTag :: (TagCursor -> TagCursor) -> SmosM ()
 modifyTag func =
     modifyCursor $ \cur ->
         case cur of
-            ATag t -> ATag $ func t
+            ATags t -> ATags $ t & tagsCursorSelectedL %~ func
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()

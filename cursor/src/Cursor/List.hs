@@ -69,6 +69,11 @@ data ListView a = ListView
 
 instance Validity a => Validity (ListView a)
 
+instance Functor ListView where
+    fmap f ListView {..} =
+        ListView
+        {listViewPrev = fmap f listViewPrev, listViewNext = fmap f listViewNext}
+
 instance View (ListView a) where
     type Source (ListView a) = [a]
     source ListView {..} = listViewPrev ++ listViewNext

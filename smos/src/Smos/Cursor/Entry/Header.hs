@@ -29,7 +29,8 @@ entryCursorHeaderL = lens getter setter
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
             , entryCursorState = (entryCursorState ec) {stateCursorParent = ec'}
-            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTags =
+                  (\ec_ -> ec_ {tagsCursorParent = ec'}) <$> entryCursorTags ec
             , entryCursorTimestamps =
                   (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             }
