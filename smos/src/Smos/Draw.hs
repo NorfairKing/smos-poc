@@ -116,28 +116,13 @@ drawContents =
     withAttr contentsAttr . drawTextFieldView . fmap contentsViewContents
 
 drawTags :: Select TagsView -> Widget ResourceName
-drawTags stv =
-    let tgsv = selectValue stv
-        ListElemView {..} = tagsViewTags tgsv
-    in withAttr tagAttr $
-       B.hBox
-           [ B.hBox $
-             map (\tv -> B.txt ":" <+> drawTag (select tv)) listElemViewPrev
-           , (if selected stv
-                  then withAttr selectedAttr
-                  else id) $
-             B.hBox
-                 [ B.txt ":"
-                 , drawTag
-                       Select
-                       { selected = selected stv
-                       , selectValue = listElemViewCurrent
-                       }
-                 , B.txt ":"
-                 ]
-           , B.hBox $
-             map (\tv -> drawTag (select tv) <+> B.txt ":") listElemViewNext
-           ]
+drawTags stgsv =
+    drawHorizontalListElemView drawPrev drawCur drawNext $
+    tagsViewTags <$> stgsv
+  where
+    drawPrev stv = B.txt ":" <+> drawTag stv
+    drawNext stv = drawTag stv <+> B.txt ":"
+    drawCur stv = B.txt ":" <+> drawTag stv <+> B.txt ":"
 
 drawTag :: Select TagView -> Widget ResourceName
 drawTag = withAttr tagAttr . drawTextView . fmap tagViewText
@@ -183,6 +168,40 @@ drawBoxedTimestamp ts = B.hBox [str "[", drawTimestamp ts, str "]"]
 
 drawTimestamp :: UTCTime -> Widget n
 drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
+
+drawHorizontalListElemView ::
+       (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> Select (ListElemView a)
+    -> Widget n
+drawHorizontalListElemView prevFunc curFunc nextFunc =
+    drawListElemView
+        prevFunc
+        curFunc
+        nextFunc
+        B.hBox
+        B.hBox
+        (\a b c -> a <=> b <=> c)
+
+drawListElemView ::
+       (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> ([Widget n] -> Widget n)
+    -> ([Widget n] -> Widget n)
+    -> (Widget n -> Widget n -> Widget n -> Widget n)
+    -> Select (ListElemView a)
+    -> Widget n
+drawListElemView prevFunc curFunc nextFunc prevCombFunc nextCombFunc combFunc =
+    withSel $ \ListElemView {..} ->
+        let prev = prevCombFunc $ map (prevFunc . unsel) listElemViewPrev
+            next = nextCombFunc $ map (nextFunc . unsel) listElemViewNext
+            cur = curFunc $ sel listElemViewCurrent
+        in combFunc prev next cur
+  where
+    sel a = (select a) {selected = True}
+    unsel a = (select a) {selected = False}
 
 drawTextFieldView :: Select TextFieldView -> Widget ResourceName
 drawTextFieldView stv =
