@@ -182,7 +182,7 @@ drawHorizontalListElemView prevFunc curFunc nextFunc =
         nextFunc
         B.hBox
         B.hBox
-        (\a b c -> a <=> b <=> c)
+        (\a b c -> a <+> b <+> c)
 
 drawListElemView ::
        (Select a -> Widget n)
@@ -193,14 +193,14 @@ drawListElemView ::
     -> (Widget n -> Widget n -> Widget n -> Widget n)
     -> Select (ListElemView a)
     -> Widget n
-drawListElemView prevFunc curFunc nextFunc prevCombFunc nextCombFunc combFunc =
-    withSel $ \ListElemView {..} ->
+drawListElemView prevFunc curFunc nextFunc prevCombFunc nextCombFunc combFunc slv =
+    flip withSel slv $ \ListElemView {..} ->
         let prev = prevCombFunc $ map (prevFunc . unsel) listElemViewPrev
             next = nextCombFunc $ map (nextFunc . unsel) listElemViewNext
             cur = curFunc $ sel listElemViewCurrent
-        in combFunc prev next cur
+        in combFunc prev cur next
   where
-    sel a = (select a) {selected = True}
+    sel a = (select a) {selected = selected slv}
     unsel a = (select a) {selected = False}
 
 drawTextFieldView :: Select TextFieldView -> Widget ResourceName
