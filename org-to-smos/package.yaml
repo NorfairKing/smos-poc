@@ -11,7 +11,17 @@ default-extensions:
 - NoImplicitPrelude
 
 dependencies:
+- parsec
 - base >=4.9 && <=5
+- bytestring
+- smos
+- smos-data
+- text
+- optparse-applicative
+- path
+- path-io
+- hspec
+
 library:
   source-dirs: src/
   ghc-options: -Wall
@@ -28,7 +38,6 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - base
-    - smos
     - org-to-smos
     default-extensions:
     - ImplicitPrelude
@@ -43,14 +52,6 @@ tests:
     - -with-rtsopts=-N
     - -Wall
     dependencies:
-    - QuickCheck
-    - genvalidity
-    - genvalidity-containers
-    - genvalidity-hspec
-    - genvalidity-hspec-aeson
-    - genvalidity-text
-    - genvalidity-time
-    - genvalidity-unordered-containers
     - hspec
     - smos
     - smos-data

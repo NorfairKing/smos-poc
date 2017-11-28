@@ -18,22 +18,41 @@ library
     exposed-modules:
         Smos.OrgToSmos
     build-depends:
-        base >=4.9 && <=5
+        parsec,
+        base >=4.9 && <=5,
+        bytestring,
+        smos,
+        smos-data,
+        text,
+        optparse-applicative,
+        path,
+        path-io,
+        hspec
     default-language: Haskell2010
     default-extensions: NoImplicitPrelude
     hs-source-dirs:
         src/
     other-modules:
         Import
+        Smos.OrgToSmos.OrgParse
+        Smos.OrgToSmos.Types
         Paths_org_to_smos
     ghc-options: -Wall
 
 executable org-to-smos
     main-is: Main.hs
     build-depends:
+        parsec,
         base >=4.9 && <=5,
-        base,
+        bytestring,
         smos,
+        smos-data,
+        text,
+        optparse-applicative,
+        path,
+        path-io,
+        hspec,
+        base,
         org-to-smos
     default-language: Haskell2010
     default-extensions: NoImplicitPrelude ImplicitPrelude
@@ -45,15 +64,16 @@ test-suite org-to-smos-test
     type: exitcode-stdio-1.0
     main-is: Spec.hs
     build-depends:
+        parsec,
         base >=4.9 && <=5,
-        QuickCheck,
-        genvalidity,
-        genvalidity-containers,
-        genvalidity-hspec,
-        genvalidity-hspec-aeson,
-        genvalidity-text,
-        genvalidity-time,
-        genvalidity-unordered-containers,
+        bytestring,
+        smos,
+        smos-data,
+        text,
+        optparse-applicative,
+        path,
+        path-io,
+        hspec,
         hspec,
         smos,
         smos-data,
@@ -63,4 +83,6 @@ test-suite org-to-smos-test
     default-extensions: NoImplicitPrelude
     hs-source-dirs:
         test/
+    other-modules:
+        TestImport
     ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
