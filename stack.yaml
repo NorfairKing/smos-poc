@@ -2,6 +2,7 @@ packages:
 - smos
 - smos-data
 - smos-data-gen
+- org-to-smos
 extra-deps:
 - brick-0.28
 - genvalidity-0.4.0.0
