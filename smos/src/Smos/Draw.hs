@@ -58,32 +58,32 @@ drawNoContent =
         ]
 
 drawSmosFile :: SmosFileView -> Widget ResourceName
-drawSmosFile = drawForest . smosFileViewForest
+drawSmosFile = drawForest 1 . smosFileViewForest
 
-drawForest :: Select (ForestView EntryView) -> Widget ResourceName
-drawForest = withSel $ padLeft (Pad 2) . B.vBox . map drawTree . forestViewTrees
+drawForest :: Int -> Select (ForestView EntryView) -> Widget ResourceName
+drawForest level = withSel $ B.vBox . map (drawTree level) . forestViewTrees
 
-drawTree :: Select (TreeView EntryView) -> Widget ResourceName
-drawTree =
+drawTree :: Int -> Select (TreeView EntryView) -> Widget ResourceName
+drawTree level =
     withSel $ \TreeView {..} ->
-        drawEntry treeViewValue <=> drawForest treeViewForest
+        drawEntry level treeViewValue <=> drawForest (level + 1) treeViewForest
 
-drawEntry :: Select EntryView -> Widget ResourceName
-drawEntry =
-    withSel $ \EntryView {..} ->
-        B.vBox
-            [ B.hBox $
-              intersperse (B.txt " ") $
-              [B.txt ">"] ++
-              maybeToList (drawTodoState entryViewTodostate) ++
-              [drawHeader entryViewHeader] ++
-              maybeToList (drawTags <$> entryViewTags)
-            , drawTimestamps entryViewTimestamps
-            , drawProperties entryViewProperties
-            , fromMaybe emptyWidget $ drawContents <$> entryViewContents
-            , drawLogbook entryViewLogbook
-            , drawTodoStateHistory entryViewTodostate
-            ]
+drawEntry :: Int -> Select EntryView -> Widget ResourceName
+drawEntry level sev =
+    let EntryView {..} = selectValue sev
+    in B.vBox
+           [ B.hBox $
+             intersperse (B.txt " ") $
+             [flip withSel (() <$ sev) $ \() -> B.str $ replicate level '*'] ++
+             maybeToList (drawTodoState entryViewTodostate) ++
+             [drawHeader entryViewHeader] ++
+             maybeToList (drawTags <$> entryViewTags)
+           , drawTimestamps entryViewTimestamps
+           , drawProperties entryViewProperties
+           , fromMaybe emptyWidget $ drawContents <$> entryViewContents
+           , drawLogbook entryViewLogbook
+           , drawTodoStateHistory entryViewTodostate
+           ]
 
 drawTodoState :: Select TodostateView -> Maybe (Widget n)
 drawTodoState sh = do
@@ -194,11 +194,11 @@ drawListElemView ::
     -> Select (ListElemView a)
     -> Widget n
 drawListElemView prevFunc curFunc nextFunc prevCombFunc nextCombFunc combFunc slv =
-    flip withSel slv $ \ListElemView {..} ->
-        let prev = prevCombFunc $ map (prevFunc . unsel) listElemViewPrev
-            next = nextCombFunc $ map (nextFunc . unsel) listElemViewNext
-            cur = curFunc $ sel listElemViewCurrent
-        in combFunc prev cur next
+    let ListElemView {..} = selectValue slv
+        prev = prevCombFunc $ map (prevFunc . unsel) listElemViewPrev
+        cur = curFunc $ sel listElemViewCurrent
+        next = nextCombFunc $ map (nextFunc . unsel) listElemViewNext
+    in combFunc prev cur next
   where
     sel a = (select a) {selected = selected slv}
     unsel a = (select a) {selected = False}
