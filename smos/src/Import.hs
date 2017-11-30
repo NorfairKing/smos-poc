@@ -5,7 +5,7 @@ module Import
 import Prelude as X hiding (head, init, last, tail)
 
 import Debug.Trace as X
-import GHC.Generics as X
+import GHC.Generics as X hiding (to)
 
 import Data.ByteString as X (ByteString)
 import Data.Function as X

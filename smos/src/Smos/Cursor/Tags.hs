@@ -15,6 +15,10 @@ module Smos.Cursor.Tags
     , tagsCursorSelectLast
     , tagsCursorInsertAndSelect
     , tagsCursorAppendAndSelect
+    , tagsCursorRemoveElemAndSelectPrev
+    , tagsCursorDeleteElemAndSelectNext
+    , tagsCursorRemoveElem
+    , tagsCursorDeleteElem
     , tagsCursorSet
     , tagsCursorUnset
     , tagsCursorToggle
@@ -34,6 +38,7 @@ import Cursor.Select
 import Smos.Data
 
 import Smos.Cursor.Entry.Tags
+import Smos.Cursor.Tag
 import Smos.Cursor.Tags.Tag
 import Smos.Cursor.Types
 
@@ -59,10 +64,16 @@ tagsCursorSelectedL :: Lens' TagsCursor TagCursor
 tagsCursorSelectedL = tagsCursorTagCursorsL . listElemCursorElemL
 
 tagsCursorSelectNext :: TagsCursor -> Maybe TagsCursor
-tagsCursorSelectNext = tagsCursorTagCursorsL listElemCursorSelectNext
+tagsCursorSelectNext tc =
+    if tc ^. tagsCursorSelectedL . to tagCursorNull
+        then tagsCursorDeleteElem tc
+        else tagsCursorTagCursorsL listElemCursorSelectNext tc
 
 tagsCursorSelectPrev :: TagsCursor -> Maybe TagsCursor
-tagsCursorSelectPrev = tagsCursorTagCursorsL listElemCursorSelectPrev
+tagsCursorSelectPrev tc =
+    if tc ^. tagsCursorSelectedL . to tagCursorNull
+        then tagsCursorRemoveElem tc
+        else tagsCursorTagCursorsL listElemCursorSelectPrev tc
 
 tagsCursorSelectFirst :: TagsCursor -> TagsCursor
 tagsCursorSelectFirst = tagsCursorTagCursorsL %~ listElemCursorSelectFirst
@@ -77,6 +88,20 @@ tagsCursorInsertAndSelect t =
 tagsCursorAppendAndSelect :: Text -> TagsCursor -> TagsCursor
 tagsCursorAppendAndSelect t =
     tagsCursorTagCursorsL %~ listElemCursorAppendAndSelect (tagCursor $ view t)
+
+tagsCursorRemoveElemAndSelectPrev :: TagsCursor -> Maybe TagsCursor
+tagsCursorRemoveElemAndSelectPrev =
+    tagsCursorTagCursorsL listElemCursorRemoveElemAndSelectPrev
+
+tagsCursorDeleteElemAndSelectNext :: TagsCursor -> Maybe TagsCursor
+tagsCursorDeleteElemAndSelectNext =
+    tagsCursorTagCursorsL listElemCursorDeleteElemAndSelectNext
+
+tagsCursorRemoveElem :: TagsCursor -> Maybe TagsCursor
+tagsCursorRemoveElem = tagsCursorTagCursorsL listElemCursorRemoveElem
+
+tagsCursorDeleteElem :: TagsCursor -> Maybe TagsCursor
+tagsCursorDeleteElem = tagsCursorTagCursorsL listElemCursorDeleteElem
 
 tagsCursorSet :: Tag -> TagsCursor -> TagsCursor
 tagsCursorSet t =

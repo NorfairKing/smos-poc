@@ -1,6 +1,7 @@
 module Smos.Cursor.Tag
     ( TagCursor(..)
     , tagCursorTextCursorL
+    , tagCursorNull
     , tagCursorInsert
     , tagCursorAppend
     , tagCursorRemove
@@ -25,6 +26,9 @@ tagCursorTextCursorL = lens getter setter
   where
     getter = tagCursorTag
     setter tc textC = tc {tagCursorTag = textC}
+
+tagCursorNull :: TagCursor -> Bool
+tagCursorNull = textCursorNull . tagCursorTag
 
 tagCursorInsert :: Char -> TagCursor -> TagCursor
 tagCursorInsert c = tagCursorTextCursorL %~ textCursorInsert c
