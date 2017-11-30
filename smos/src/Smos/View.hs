@@ -77,7 +77,7 @@ instance Selectable EntryView where
         EntryView
         { entryViewTodostate = drillPrefixStop 0 msel entryViewTodostate
         , entryViewHeader = drillPrefixApply 1 msel entryViewHeader
-        , entryViewTags = drillApply 2 msel <$> entryViewTags
+        , entryViewTags = drillPrefixApply 2 msel <$> entryViewTags
         , entryViewTimestamps = drillStop 3 msel entryViewTimestamps
         , entryViewProperties = drillStop 4 msel entryViewProperties
         , entryViewContents = drillPrefixApply 5 msel <$> entryViewContents

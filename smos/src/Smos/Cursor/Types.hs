@@ -225,7 +225,8 @@ instance Eq TagsCursor where
 instance Rebuild TagsCursor where
     type ReBuilding TagsCursor = Select (ForestView EntryView)
     rebuild = rebuild . tagsCursorParent
-    selection TagsCursor {..} = 2 : selection tagsCursorParent
+    selection TagsCursor {..} =
+        selection tagsCursorTags ++ 2 : selection tagsCursorParent
 
 instance Build TagsCursor where
     type Building TagsCursor = Select TagsView
@@ -255,12 +256,11 @@ instance Show TagCursor where
 instance Eq TagCursor where
     (==) = (==) `on` build -- &&& ((==) `on` rebuild)
 
--- instance Rebuild TagCursor where
---     type ReBuilding TagCursor = TagView
---     rebuild = rebuild . tagCursorParent
---     selection TagCursor {..} =
---         selection tagCursorTag ++
---         [length tagCursorPrevElemens] ++ selection tagCursorParent
+instance Rebuild TagCursor where
+    type ReBuilding TagCursor = TagView
+    rebuild = TagView . rebuild . tagCursorTag
+    selection TagCursor {..} = selection tagCursorTag
+
 instance Build TagCursor where
     type Building TagCursor = TagView
     build TagCursor {..} = TagView {tagViewText = rebuild tagCursorTag}

@@ -1,5 +1,7 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Cursor.ListElemSpec
     ( spec
@@ -13,6 +15,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Cursor.Class
 import Cursor.ListElem
 import Cursor.ListElem.Gen ()
+import Cursor.Select
 
 spec :: Spec
 spec = do
@@ -63,7 +66,7 @@ spec = do
                         lv = rebuild lc
                         lv' = rebuild lc'
                     in listElemViewPrev lv ++
-                       [c :: Int] `shouldBe` listElemViewPrev lv'
+                       [c :: IntCursor] `shouldBe` listElemViewPrev lv'
     describe "listElemCursorAppend" $ do
         it "produces valids" $
             forAllValid $ \d ->
@@ -75,7 +78,7 @@ spec = do
                     let lc' = listElemCursorAppend c lc
                         lv = rebuild lc
                         lv' = rebuild lc'
-                    in (c :: Int) :
+                    in (c :: IntCursor) :
                        listElemViewNext lv `shouldBe` listElemViewNext lv'
     describe "listElemCursorInsertAndSelect" $ do
         it "produces valids" $
@@ -88,7 +91,7 @@ spec = do
                     let lc' = listElemCursorInsertAndSelect c lc
                         lv = rebuild lc
                         lv' = rebuild lc'
-                    in do listElemViewCurrent lv' `shouldBe` (c :: Int)
+                    in do listElemViewCurrent lv' `shouldBe` (c :: IntCursor)
                           listElemViewNext lv' `shouldBe` listElemViewCurrent lv :
                               listElemViewNext lv
     describe "listElemCursorAppendAndSelect" $ do
@@ -102,7 +105,7 @@ spec = do
                     let lc' = listElemCursorAppendAndSelect c lc
                         lv = rebuild lc
                         lv' = rebuild lc'
-                    in do listElemViewCurrent lv' `shouldBe` (c :: Int)
+                    in do listElemViewCurrent lv' `shouldBe` (c :: IntCursor)
                           listElemViewPrev lv' `shouldBe` listElemViewPrev lv ++
                               [listElemViewCurrent lv]
 
@@ -129,3 +132,34 @@ isMovement func =
     forAllValid $ \lec ->
         rebuildListElemCursor (lec :: ListElemCursor Int) `shouldBe`
         rebuildListElemCursor (func lec)
+
+-- A degenerate cursor
+newtype IntView = IntView
+    { intViewInt :: Int
+    } deriving (Show, Eq, Generic)
+
+instance Validity IntView
+
+instance View IntView where
+    type Source IntView = Int
+    source = intViewInt
+    view = IntView
+
+newtype IntCursor = IntCursor
+    { intValue :: Int
+    } deriving (Show, Eq, Generic)
+
+instance Validity IntCursor
+
+instance GenUnchecked IntCursor
+
+instance GenValid IntCursor
+
+instance Build IntCursor where
+    type Building IntCursor = IntView
+    build = view . intValue
+
+instance Rebuild IntCursor where
+    type ReBuilding IntCursor = Select IntView
+    rebuild = select . IntView . intValue
+    selection _ = [0]
