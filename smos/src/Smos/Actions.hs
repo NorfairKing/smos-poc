@@ -109,6 +109,7 @@ import Lens.Micro
 
 import Smos.Data
 
+import Cursor.Class
 import Cursor.Tree
 
 import Smos.Actions.Editor
@@ -460,10 +461,10 @@ tagAppend :: Char -> SmosM ()
 tagAppend = modifyTag . tagCursorAppend
 
 tagRemove :: SmosM ()
-tagRemove = modifyTagM tagCursorRemove
+tagRemove = modifyTagNOUOD tagsCursorRemove
 
 tagDelete :: SmosM ()
-tagDelete = modifyTagM tagCursorDelete
+tagDelete = modifyTagNOUOD tagsCursorDelete
 
 tagLeft :: SmosM ()
 tagLeft = modifyTagM tagCursorLeft
@@ -573,6 +574,19 @@ modifyTags func =
     modifyCursor $ \cur ->
         case cur of
             ATags ts -> ATags $ func ts
+            _ -> cur
+
+modifyTagNOUOD :: (TagsCursor -> NOUOD TagsCursor) -> SmosM ()
+modifyTagNOUOD func =
+    modifyCursor $ \cur ->
+        case cur of
+            ATags tgs ->
+                case func tgs of
+                    New t -> ATags t
+                    Unchanged -> cur
+                    Deleted ->
+                        AnEntry $
+                        tagsCursorParent tgs & entryCursorTagsL .~ Nothing
             _ -> cur
 
 modifyTagM :: (TagCursor -> Maybe TagCursor) -> SmosM ()

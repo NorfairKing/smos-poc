@@ -19,6 +19,8 @@ module Smos.Cursor.Tags
     , tagsCursorDeleteElemAndSelectNext
     , tagsCursorRemoveElem
     , tagsCursorDeleteElem
+    , tagsCursorRemove
+    , tagsCursorDelete
     , tagsCursorSet
     , tagsCursorUnset
     , tagsCursorToggle
@@ -102,6 +104,26 @@ tagsCursorRemoveElem = tagsCursorTagCursorsL listElemCursorRemoveElem
 
 tagsCursorDeleteElem :: TagsCursor -> Maybe TagsCursor
 tagsCursorDeleteElem = tagsCursorTagCursorsL listElemCursorDeleteElem
+
+tagsCursorRemove :: TagsCursor -> NOUOD TagsCursor
+tagsCursorRemove tgsc =
+    if tgsc ^. tagsCursorSelectedL . to tagCursorNull
+        then case tagsCursorRemoveElem tgsc of
+                 Nothing -> Deleted
+                 Just t -> New t
+        else case tgsc & tagsCursorSelectedL tagCursorRemove of
+                 Nothing -> Unchanged
+                 Just t -> New t
+
+tagsCursorDelete :: TagsCursor -> NOUOD TagsCursor
+tagsCursorDelete tgsc =
+    if tgsc ^. tagsCursorSelectedL . to tagCursorNull
+        then case tagsCursorDeleteElem tgsc of
+                 Nothing -> Deleted
+                 Just t -> New t
+        else case tgsc & tagsCursorSelectedL tagCursorDelete of
+                 Nothing -> Unchanged
+                 Just t -> New t
 
 tagsCursorSet :: Tag -> TagsCursor -> TagsCursor
 tagsCursorSet t =
