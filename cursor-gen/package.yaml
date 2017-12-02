@@ -34,9 +34,10 @@ library:
   source-dirs: src/
   ghc-options: -Wall
   exposed-modules:
-  - Cursor.TestUtils
   - Cursor.List.Gen
   - Cursor.ListElem.Gen
+  - Cursor.Map.Gen
+  - Cursor.TestUtils
   - Cursor.Text.Gen
   - Cursor.TextField.Gen
   - Cursor.Tree.Gen
