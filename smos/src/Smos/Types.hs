@@ -125,7 +125,7 @@ runSmosM = runMkSmosM
 
 data SmosState = SmosState
     { smosStateFilePath :: Path Abs File
-    , smosStateCursor :: Maybe ACursor
+    , smosStateCursor :: Maybe SmosFileCursor
     , smosStateKeyHistory :: [KeyPress]
     } deriving (Generic)
 

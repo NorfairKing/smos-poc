@@ -31,7 +31,7 @@ import Smos.View
 smosDraw :: SmosState -> [Widget ResourceName]
 smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
   where
-    renderCursor :: ACursor -> Widget ResourceName
+    renderCursor :: SmosFileCursor -> Widget ResourceName
     renderCursor cur =
         drawSmosFile sfv <=> str (show rsel) <=> drawHistory smosStateKeyHistory <=>
         strWrap (show sfv) <=>
@@ -41,8 +41,7 @@ smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
         rsel = reverse $ selection $ selectAnyCursor cur
 
 applyFileViewSelection :: [Int] -> SmosFileView -> SmosFileView
-applyFileViewSelection sel (SmosFileView f) =
-    SmosFileView $ select $ applySelection (Just sel) $ selectValue f
+applyFileViewSelection sel = applySelection (Just sel)
 
 drawNoContent :: Widget n
 drawNoContent =

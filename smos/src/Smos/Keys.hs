@@ -133,35 +133,38 @@ onEventM = rawKeymap
 
 inEmpty :: Keymap -> Keymap
 inEmpty =
-    filterKeymap $ \s ->
+    inFileAnd $ \s ->
         case smosStateCursor s of
             Nothing -> True
             _ -> False
 
 inEntry :: Keymap -> Keymap
 inEntry =
-    filterKeymap $ \s ->
+    inFileAnd $ \s ->
         case smosStateCursor s of
             Just (AnEntry _) -> True
             _ -> False
 
 inHeader :: Keymap -> Keymap
 inHeader =
-    filterKeymap $ \s ->
+    inFileAnd $ \s ->
         case smosStateCursor s of
             Just (AHeader _) -> True
             _ -> False
 
 inContents :: Keymap -> Keymap
 inContents =
-    filterKeymap $ \s ->
+    inFileAnd $ \s ->
         case smosStateCursor s of
             Just (AContents _) -> True
             _ -> False
 
 inTag :: Keymap -> Keymap
 inTag =
-    filterKeymap $ \s ->
+    inFileAnd $ \s ->
         case smosStateCursor s of
             Just (ATag _) -> True
             _ -> False
+
+inFileAnd :: (ACursor -> Bool) -> Keymap -> Keymap
+inFileAnd pred_ = filterKeymap $ pred_ . fileCursorA . smosStateCursor
