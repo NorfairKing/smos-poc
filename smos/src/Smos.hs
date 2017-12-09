@@ -37,8 +37,9 @@ initState :: Path Abs File -> SmosFile -> SmosState
 initState p sf =
     SmosState
     { smosStateFilePath = p
-    , smosStateCursor = selectACursor $ makeAnyCursor sf
+    , smosStateCursor = makeSmosFileCursor sf
     , smosStateKeyHistory = []
+    , smosStateShowDebug = False
     }
 
 rebuildSmosFile :: SmosState -> SmosFile

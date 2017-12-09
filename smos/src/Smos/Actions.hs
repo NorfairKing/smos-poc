@@ -18,6 +18,7 @@ module Smos.Actions
     , swapDown
     , swapLeft
     , swapRight
+    , toggleShowDebug
     -- * Clock action
     , clockIn
     , clockOut
@@ -85,6 +86,12 @@ module Smos.Actions
     , modifyTodoState
     , modifyCursor
     , modifyMCursor
+    , modifyCursorS
+    , modifyMCursorS
+    , modifyFileCursor
+    , modifyMFileCursor
+    , modifyFileCursorS
+    , modifyMFileCursorS
     , withEntryCursor
     , withHeaderCursor
     , withFullMod
@@ -263,6 +270,10 @@ swapLeft = modifyTreeM treeCursorMoveLeft
 
 swapRight :: SmosM ()
 swapRight = modifyTreeM treeCursorMoveRight
+
+toggleShowDebug :: SmosM ()
+toggleShowDebug =
+    modify $ \ss -> ss {smosStateShowDebug = not $ smosStateShowDebug ss}
 
 modifyTreeM ::
        (TreeCursor EntryCursor -> Maybe (TreeCursor EntryCursor)) -> SmosM ()
@@ -620,20 +631,42 @@ modifyTag func =
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()
-modifyCursor func = modifyMCursor $ \mc -> func <$> mc
+modifyCursor func = modifyMCursor $ fmap func
 
 modifyCursorS :: (ACursor -> SmosM ACursor) -> SmosM ()
 modifyCursorS func =
-    modifyMCursorS $ \mc ->
-        case mc of
+    modifyMCursorS $ \mac ->
+        case mac of
             Nothing -> pure Nothing
-            Just c -> Just <$> func c
+            Just ac -> do
+                r <- func ac
+                pure $ Just r
 
 modifyMCursor :: (Maybe ACursor -> Maybe ACursor) -> SmosM ()
 modifyMCursor func = modifyMCursorS $ pure . func
 
 modifyMCursorS :: (Maybe ACursor -> SmosM (Maybe ACursor)) -> SmosM ()
-modifyMCursorS func = do
+modifyMCursorS func =
+    modifyMFileCursorS $ \msfc -> do
+        mr <- func $ fileCursorA <$> msfc
+        pure $ SmosFileCursor <$> mr
+
+modifyFileCursor :: (SmosFileCursor -> SmosFileCursor) -> SmosM ()
+modifyFileCursor func = modifyMFileCursor $ \mc -> func <$> mc
+
+modifyFileCursorS :: (SmosFileCursor -> SmosM SmosFileCursor) -> SmosM ()
+modifyFileCursorS func =
+    modifyMFileCursorS $ \mc ->
+        case mc of
+            Nothing -> pure Nothing
+            Just c -> Just <$> func c
+
+modifyMFileCursor :: (Maybe SmosFileCursor -> Maybe SmosFileCursor) -> SmosM ()
+modifyMFileCursor func = modifyMFileCursorS $ pure . func
+
+modifyMFileCursorS ::
+       (Maybe SmosFileCursor -> SmosM (Maybe SmosFileCursor)) -> SmosM ()
+modifyMFileCursorS func = do
     ss <- get
     let msc = smosStateCursor ss
     msc' <- func msc
@@ -641,17 +674,24 @@ modifyMCursorS func = do
     put ss'
 
 withEntryCursor :: (EntryCursor -> SmosM ()) -> SmosM ()
-withEntryCursor func = do
-    ss <- get
-    case smosStateCursor ss of
-        Just (AnEntry fc) -> func fc
-        _ -> pure ()
+withEntryCursor func =
+    withACursor $ \acur ->
+        case acur of
+            AnEntry ec -> func ec
+            _ -> pure ()
 
 withHeaderCursor :: (HeaderCursor -> SmosM ()) -> SmosM ()
-withHeaderCursor func = do
+withHeaderCursor func =
+    withACursor $ \acur ->
+        case acur of
+            AHeader fc -> func fc
+            _ -> pure ()
+
+withACursor :: (ACursor -> SmosM ()) -> SmosM ()
+withACursor func = do
     ss <- get
     case smosStateCursor ss of
-        Just (AHeader fc) -> func fc
+        Just acur -> func $ fileCursorA acur
         _ -> pure ()
 
 withFullMod :: (SmosFile -> SmosFile) -> SmosM ()
@@ -661,10 +701,15 @@ withFullMod func =
             Nothing -> ss
             Just cur ->
                 let sf = rebuild cur
-                    sel = selection $ selectAnyCursor cur
+                    sel = selection $ selectAnyCursor $ fileCursorA cur
                     sf' = func $ source sf
                     cur' = selectACursor $ reselectCursor sel sf'
-                in ss {smosStateCursor = cur'}
+                in ss
+                   { smosStateCursor =
+                         case cur' of
+                             Nothing -> Nothing
+                             Just ac -> Just $ cur {fileCursorA = ac}
+                   }
 
 withAgendaFilesMod :: (Path Abs File -> SmosFile -> SmosFile) -> SmosM ()
 withAgendaFilesMod func = do

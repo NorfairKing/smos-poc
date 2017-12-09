@@ -12,6 +12,7 @@ import Cursor.Tree
 
 import Smos.Cursor
 import Smos.Cursor.Gen ()
+import Smos.Data
 import Smos.Data.Gen ()
 
 {-# ANN module ("HLint: ignore Functor law" :: String) #-}
@@ -84,5 +85,5 @@ spec =
             it "selects the cursor that was handed to selection" $
                 forAll genValid $ \ac ->
                     let sel = selection ac
-                        sf = source $ rebuild ac
+                        sf = SmosFile $ source $ selectValue $ rebuild ac
                     in reselectCursor sel sf `shouldBe` ac

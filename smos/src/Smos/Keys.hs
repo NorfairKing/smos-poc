@@ -1,5 +1,6 @@
 module Smos.Keys
     ( Keymap
+    , matchString
     , matchChar
     , satisfyChar
     , onChar
@@ -41,6 +42,11 @@ import qualified Graphics.Vty as V
 
 import Smos.Cursor
 import Smos.Types
+
+matchString :: String -> SmosM () -> Keymap
+matchString [] _ = mempty
+matchString [c] func = matchChar c func
+matchString (c:cs) func = afterChar c $ matchString cs func
 
 matchChar :: Char -> SmosM () -> Keymap
 matchChar c = matchKey $ V.KChar c
@@ -131,6 +137,37 @@ onEvent func = onEventM (Just . func)
 onEventM :: (B.BrickEvent ResourceName () -> Maybe (SmosM ())) -> Keymap
 onEventM = rawKeymap
 
+inEntry :: Keymap -> Keymap
+inEntry =
+    inFileAnd $ \s ->
+        case s of
+            AnEntry _ -> True
+            _ -> False
+
+inHeader :: Keymap -> Keymap
+inHeader =
+    inFileAnd $ \s ->
+        case s of
+            AHeader _ -> True
+            _ -> False
+
+inContents :: Keymap -> Keymap
+inContents =
+    inFileAnd $ \s ->
+        case s of
+            AContents _ -> True
+            _ -> False
+
+inTag :: Keymap -> Keymap
+inTag =
+    inFileAnd $ \s ->
+        case s of
+            ATag _ -> True
+            _ -> False
+
+inFileAnd :: (ACursor -> Bool) -> Keymap -> Keymap
+inFileAnd pred_ = inNonEmpty $ pred_ . fileCursorA
+
 inEmpty :: Keymap -> Keymap
 inEmpty =
     filterKeymap $ \s ->
@@ -138,30 +175,9 @@ inEmpty =
             Nothing -> True
             _ -> False
 
-inEntry :: Keymap -> Keymap
-inEntry =
+inNonEmpty :: (SmosFileCursor -> Bool) -> Keymap -> Keymap
+inNonEmpty pred_ =
     filterKeymap $ \s ->
         case smosStateCursor s of
-            Just (AnEntry _) -> True
-            _ -> False
-
-inHeader :: Keymap -> Keymap
-inHeader =
-    filterKeymap $ \s ->
-        case smosStateCursor s of
-            Just (AHeader _) -> True
-            _ -> False
-
-inContents :: Keymap -> Keymap
-inContents =
-    filterKeymap $ \s ->
-        case smosStateCursor s of
-            Just (AContents _) -> True
-            _ -> False
-
-inTag :: Keymap -> Keymap
-inTag =
-    filterKeymap $ \s ->
-        case smosStateCursor s of
-            Just (ATag _) -> True
+            Just sf -> pred_ sf
             _ -> False

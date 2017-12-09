@@ -4,7 +4,10 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Smos.Cursor
-    ( SmosFileView(..)
+    ( SmosFileCursor(..)
+    , makeSmosFileCursor
+    , SmosFileView(..)
+    , smosFileCursorAL
     , AnyCursor(..)
     , makeAnyCursor
     , reselectCursor
@@ -26,6 +29,8 @@ module Smos.Cursor
 
 import Import
 
+import Lens.Micro
+
 import Cursor.Class
 import Cursor.Select
 import Cursor.Tree
@@ -41,6 +46,9 @@ import Smos.Cursor.Tags
 import Smos.Cursor.Timestamps
 import Smos.View
 
+makeSmosFileCursor :: SmosFile -> Maybe SmosFileCursor
+makeSmosFileCursor sf = SmosFileCursor <$> selectACursor (makeAnyCursor sf)
+
 newtype SmosFileView = SmosFileView
     { smosFileViewForest :: Select (ForestView EntryView)
     } deriving (Show, Eq, Generic)
@@ -50,6 +58,29 @@ instance View SmosFileView where
     source = SmosFile . source . selectValue . smosFileViewForest
     view SmosFile {..} =
         SmosFileView {smosFileViewForest = select $ view smosFileForest}
+
+instance Selectable SmosFileView where
+    applySelection msel sfv =
+        sfv
+        { smosFileViewForest =
+              select $
+              applySelection msel $ selectValue $ smosFileViewForest sfv
+        }
+
+newtype SmosFileCursor = SmosFileCursor
+    { fileCursorA :: ACursor
+    } deriving (Show, Eq, Generic)
+
+instance Validity SmosFileCursor
+
+instance Rebuild SmosFileCursor where
+    type ReBuilding SmosFileCursor = SmosFileView
+    rebuild SmosFileCursor {..} =
+        SmosFileView {smosFileViewForest = rebuild fileCursorA}
+    selection = selection . fileCursorA
+
+smosFileCursorAL :: Lens' SmosFileCursor ACursor
+smosFileCursorAL = lens fileCursorA $ \fc a -> fc {fileCursorA = a}
 
 data AnyCursor
     = AnyForest (ForestCursor EntryCursor)
@@ -65,18 +96,17 @@ data AnyCursor
 instance Validity AnyCursor
 
 instance Rebuild AnyCursor where
-    type ReBuilding AnyCursor = SmosFileView
+    type ReBuilding AnyCursor = Select (ForestView EntryView)
     rebuild ac =
-        SmosFileView $
         case ac of
-            (AnyForest fc) -> rebuild fc
-            (AnyTree tc) -> rebuild tc
-            (AnyEntry ec) -> rebuild ec
-            (AnyHeader hc) -> rebuild hc
-            (AnyContents cc) -> rebuild cc
-            (AnyState sc) -> rebuild sc
-            (AnyTags tsc) -> rebuild tsc
-            (AnyTag tc) -> rebuild tc
+            AnyForest fc -> rebuild fc
+            AnyTree tc -> rebuild tc
+            AnyEntry ec -> rebuild ec
+            AnyHeader hc -> rebuild hc
+            AnyContents cc -> rebuild cc
+            AnyState sc -> rebuild sc
+            AnyTags tsc -> rebuild tsc
+            AnyTag tc -> rebuild tc
     selection (AnyForest fc) = selection fc
     selection (AnyTree tc) = selection tc
     selection (AnyEntry ec) = selection ec
@@ -96,9 +126,8 @@ data ACursor
 instance Validity ACursor
 
 instance Rebuild ACursor where
-    type ReBuilding ACursor = SmosFileView
+    type ReBuilding ACursor = Select (ForestView EntryView)
     rebuild ac =
-        SmosFileView $
         case ac of
             AnEntry ec -> rebuild ec
             AHeader hc -> rebuild hc
