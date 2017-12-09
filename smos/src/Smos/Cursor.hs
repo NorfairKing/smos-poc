@@ -5,6 +5,7 @@
 
 module Smos.Cursor
     ( SmosFileCursor(..)
+    , makeSmosFileCursor
     , SmosFileView(..)
     , smosFileCursorAL
     , AnyCursor(..)
@@ -45,19 +46,18 @@ import Smos.Cursor.Tags
 import Smos.Cursor.Timestamps
 import Smos.View
 
-data SmosFileView = SmosFileView
+makeSmosFileCursor :: SmosFile -> Maybe SmosFileCursor
+makeSmosFileCursor sf = SmosFileCursor <$> selectACursor (makeAnyCursor sf)
+
+newtype SmosFileView = SmosFileView
     { smosFileViewForest :: Select (ForestView EntryView)
-    , smosFileViewShowDebug :: Bool
     } deriving (Show, Eq, Generic)
 
 instance View SmosFileView where
     type Source SmosFileView = SmosFile
     source = SmosFile . source . selectValue . smosFileViewForest
     view SmosFile {..} =
-        SmosFileView
-        { smosFileViewForest = select $ view smosFileForest
-        , smosFileViewShowDebug = False
-        }
+        SmosFileView {smosFileViewForest = select $ view smosFileForest}
 
 instance Selectable SmosFileView where
     applySelection msel sfv =
@@ -67,7 +67,7 @@ instance Selectable SmosFileView where
               applySelection msel $ selectValue $ smosFileViewForest sfv
         }
 
-data SmosFileCursor = SmosFileCursor
+newtype SmosFileCursor = SmosFileCursor
     { fileCursorA :: ACursor
     } deriving (Show, Eq, Generic)
 

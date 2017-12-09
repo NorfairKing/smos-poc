@@ -1,5 +1,6 @@
 module Smos.Keys
     ( Keymap
+    , matchString
     , matchChar
     , satisfyChar
     , onChar
@@ -41,6 +42,11 @@ import qualified Graphics.Vty as V
 
 import Smos.Cursor
 import Smos.Types
+
+matchString :: String -> SmosM () -> Keymap
+matchString [] _ = mempty
+matchString [c] func = matchChar c func
+matchString (c:cs) func = afterChar c $ matchString cs func
 
 matchChar :: Char -> SmosM () -> Keymap
 matchChar c = matchKey $ V.KChar c
@@ -131,40 +137,47 @@ onEvent func = onEventM (Just . func)
 onEventM :: (B.BrickEvent ResourceName () -> Maybe (SmosM ())) -> Keymap
 onEventM = rawKeymap
 
-inEmpty :: Keymap -> Keymap
-inEmpty =
-    inFileAnd $ \s ->
-        case smosStateCursor s of
-            Nothing -> True
-            _ -> False
-
 inEntry :: Keymap -> Keymap
 inEntry =
     inFileAnd $ \s ->
-        case smosStateCursor s of
-            Just (AnEntry _) -> True
+        case s of
+            AnEntry _ -> True
             _ -> False
 
 inHeader :: Keymap -> Keymap
 inHeader =
     inFileAnd $ \s ->
-        case smosStateCursor s of
-            Just (AHeader _) -> True
+        case s of
+            AHeader _ -> True
             _ -> False
 
 inContents :: Keymap -> Keymap
 inContents =
     inFileAnd $ \s ->
-        case smosStateCursor s of
-            Just (AContents _) -> True
+        case s of
+            AContents _ -> True
             _ -> False
 
 inTag :: Keymap -> Keymap
 inTag =
     inFileAnd $ \s ->
-        case smosStateCursor s of
-            Just (ATag _) -> True
+        case s of
+            ATag _ -> True
             _ -> False
 
 inFileAnd :: (ACursor -> Bool) -> Keymap -> Keymap
-inFileAnd pred_ = filterKeymap $ pred_ . fileCursorA . smosStateCursor
+inFileAnd pred_ = inNonEmpty $ pred_ . fileCursorA
+
+inEmpty :: Keymap -> Keymap
+inEmpty =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Nothing -> True
+            _ -> False
+
+inNonEmpty :: (SmosFileCursor -> Bool) -> Keymap -> Keymap
+inNonEmpty pred_ =
+    filterKeymap $ \s ->
+        case smosStateCursor s of
+            Just sf -> pred_ sf
+            _ -> False

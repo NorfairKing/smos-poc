@@ -84,6 +84,7 @@ defaultConfig =
                     , matchChar 's' save
                     , matchChar 'q' stop
                     , matchKey KEsc stop
+                    , matchString "DD" toggleShowDebug
                     ]
               , inHeader $
                 mconcat

@@ -18,6 +18,7 @@ module Smos.Actions
     , swapDown
     , swapLeft
     , swapRight
+    , toggleShowDebug
     -- * Clock action
     , clockIn
     , clockOut
@@ -85,6 +86,12 @@ module Smos.Actions
     , modifyTodoState
     , modifyCursor
     , modifyMCursor
+    , modifyCursorS
+    , modifyMCursorS
+    , modifyFileCursor
+    , modifyMFileCursor
+    , modifyFileCursorS
+    , modifyMFileCursorS
     , withEntryCursor
     , withHeaderCursor
     , withFullMod
@@ -263,6 +270,10 @@ swapLeft = modifyTreeM treeCursorMoveLeft
 
 swapRight :: SmosM ()
 swapRight = modifyTreeM treeCursorMoveRight
+
+toggleShowDebug :: SmosM ()
+toggleShowDebug =
+    modify $ \ss -> ss {smosStateShowDebug = not $ smosStateShowDebug ss}
 
 modifyTreeM ::
        (TreeCursor EntryCursor -> Maybe (TreeCursor EntryCursor)) -> SmosM ()
@@ -620,21 +631,25 @@ modifyTag func =
             _ -> cur
 
 modifyCursor :: (ACursor -> ACursor) -> SmosM ()
-modifyCursor func = undefined
+modifyCursor func = modifyMCursor $ fmap func
 
 modifyCursorS :: (ACursor -> SmosM ACursor) -> SmosM ()
-modifyCursorS func = undefined
+modifyCursorS func =
+    modifyMCursorS $ \mac ->
+        case mac of
+            Nothing -> pure Nothing
+            Just ac -> do
+                r <- func ac
+                pure $ Just r
 
 modifyMCursor :: (Maybe ACursor -> Maybe ACursor) -> SmosM ()
 modifyMCursor func = modifyMCursorS $ pure . func
 
 modifyMCursorS :: (Maybe ACursor -> SmosM (Maybe ACursor)) -> SmosM ()
-modifyMCursorS func = modifyFileCursorS $ \sfc ->
-    ss <- get
-    let msc = smosStateCursor ss
-    msc' <- func msc
-    let ss' = ss {smosStateCursor = msc'}
-    put ss'
+modifyMCursorS func =
+    modifyMFileCursorS $ \msfc -> do
+        mr <- func $ fileCursorA <$> msfc
+        pure $ SmosFileCursor <$> mr
 
 modifyFileCursor :: (SmosFileCursor -> SmosFileCursor) -> SmosM ()
 modifyFileCursor func = modifyMFileCursor $ \mc -> func <$> mc
@@ -659,7 +674,7 @@ modifyMFileCursorS func = do
     put ss'
 
 withEntryCursor :: (EntryCursor -> SmosM ()) -> SmosM ()
-withEntryCursor func = do
+withEntryCursor func =
     withACursor $ \acur ->
         case acur of
             AnEntry ec -> func ec

@@ -33,12 +33,18 @@ smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
   where
     renderCursor :: SmosFileCursor -> Widget ResourceName
     renderCursor cur =
-        drawSmosFile sfv <=> str (show rsel) <=> drawHistory smosStateKeyHistory <=>
-        strWrap (show sfv) <=>
-        strWrap (show cur)
+        drawSmosFile sfv <=>
+        if smosStateShowDebug
+            then B.vBox
+                     [ str $ show rsel
+                     , drawHistory smosStateKeyHistory
+                     , strWrap $ show sfv
+                     , strWrap $ show cur
+                     ]
+            else emptyWidget
       where
         sfv = applyFileViewSelection rsel $ rebuild cur
-        rsel = reverse $ selection $ selectAnyCursor cur
+        rsel = reverse $ selection $ selectAnyCursor $ fileCursorA cur
 
 applyFileViewSelection :: [Int] -> SmosFileView -> SmosFileView
 applyFileViewSelection sel = applySelection (Just sel)
