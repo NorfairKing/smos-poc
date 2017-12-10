@@ -16,6 +16,7 @@ import Brick.Widgets.Center as B
 import Brick.Widgets.Core as B
 import Graphics.Vty.Input.Events (Key(..), Modifier(..))
 
+import Cursor.ListElem
 import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
@@ -62,31 +63,32 @@ drawNoContent =
         ]
 
 drawSmosFile :: SmosFileView -> Widget ResourceName
-drawSmosFile = drawForest . smosFileViewForest
+drawSmosFile = drawForest 1 . smosFileViewForest
 
-drawForest :: Select (ForestView EntryView) -> Widget ResourceName
-drawForest = withSel $ padLeft (Pad 2) . B.vBox . map drawTree . forestViewTrees
+drawForest :: Int -> Select (ForestView EntryView) -> Widget ResourceName
+drawForest level = withSel $ B.vBox . map (drawTree level) . forestViewTrees
 
-drawTree :: Select (TreeView EntryView) -> Widget ResourceName
-drawTree =
+drawTree :: Int -> Select (TreeView EntryView) -> Widget ResourceName
+drawTree level =
     withSel $ \TreeView {..} ->
-        drawEntry treeViewValue <=> drawForest treeViewForest
+        drawEntry level treeViewValue <=> drawForest (level + 1) treeViewForest
 
-drawEntry :: Select EntryView -> Widget ResourceName
-drawEntry =
-    withSel $ \EntryView {..} ->
-        B.vBox
-            [ B.hBox $
-              intersperse (B.txt " ") $
-              [B.txt ">"] ++
-              maybeToList (drawTodoState entryViewTodostate) ++
-              [drawHeader entryViewHeader, drawTags entryViewTags]
-            , drawTimestamps entryViewTimestamps
-            , drawProperties entryViewProperties
-            , fromMaybe emptyWidget $ drawContents <$> entryViewContents
-            , drawLogbook entryViewLogbook
-            , drawTodoStateHistory entryViewTodostate
-            ]
+drawEntry :: Int -> Select EntryView -> Widget ResourceName
+drawEntry level sev =
+    let EntryView {..} = selectValue sev
+    in B.vBox
+           [ B.hBox $
+             intersperse (B.txt " ") $
+             [flip withSel (() <$ sev) $ \() -> B.str $ replicate level '*'] ++
+             maybeToList (drawTodoState entryViewTodostate) ++
+             [drawHeader entryViewHeader] ++
+             maybeToList (drawTags <$> entryViewTags)
+           , drawTimestamps entryViewTimestamps
+           , drawProperties entryViewProperties
+           , fromMaybe emptyWidget $ drawContents <$> entryViewContents
+           , drawLogbook entryViewLogbook
+           , drawTodoStateHistory entryViewTodostate
+           ]
 
 drawTodoState :: Select TodostateView -> Maybe (Widget n)
 drawTodoState sh = do
@@ -119,15 +121,13 @@ drawContents =
     withAttr contentsAttr . drawTextFieldView . fmap contentsViewContents
 
 drawTags :: Select TagsView -> Widget ResourceName
-drawTags =
-    withSel $ withAttr tagAttr . B.hBox . addColons . map drawTag . tagsViewTags
+drawTags stgsv =
+    drawHorizontalListElemView drawPrev drawCur drawNext $
+    tagsViewTags <$> stgsv
   where
-    addColons ls =
-        case ls of
-            [] -> []
-            _ -> colon : intersperse colon ls ++ [colon]
-      where
-        colon = B.txt ":"
+    drawPrev stv = B.txt ":" <+> drawTag stv
+    drawNext stv = drawTag stv <+> B.txt ":"
+    drawCur stv = B.txt ":" <+> drawTag stv <+> B.txt ":"
 
 drawTag :: Select TagView -> Widget ResourceName
 drawTag = withAttr tagAttr . drawTextView . fmap tagViewText
@@ -173,6 +173,40 @@ drawBoxedTimestamp ts = B.hBox [str "[", drawTimestamp ts, str "]"]
 
 drawTimestamp :: UTCTime -> Widget n
 drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
+
+drawHorizontalListElemView ::
+       (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> Select (ListElemView a)
+    -> Widget n
+drawHorizontalListElemView prevFunc curFunc nextFunc =
+    drawListElemView
+        prevFunc
+        curFunc
+        nextFunc
+        B.hBox
+        B.hBox
+        (\a b c -> a <+> b <+> c)
+
+drawListElemView ::
+       (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> ([Widget n] -> Widget n)
+    -> ([Widget n] -> Widget n)
+    -> (Widget n -> Widget n -> Widget n -> Widget n)
+    -> Select (ListElemView a)
+    -> Widget n
+drawListElemView prevFunc curFunc nextFunc prevCombFunc nextCombFunc combFunc slv =
+    let ListElemView {..} = selectValue slv
+        prev = prevCombFunc $ map (prevFunc . unsel) listElemViewPrev
+        cur = curFunc $ sel listElemViewCurrent
+        next = nextCombFunc $ map (nextFunc . unsel) listElemViewNext
+    in combFunc prev cur next
+  where
+    sel a = (select a) {selected = selected slv}
+    unsel a = (select a) {selected = False}
 
 drawTextFieldView :: Select TextFieldView -> Widget ResourceName
 drawTextFieldView stv =

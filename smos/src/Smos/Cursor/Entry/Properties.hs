@@ -34,7 +34,8 @@ entryCursorPropertiesL = lens getter setter
             , entryCursorContents =
                   (\ec_ -> ec_ {contentsCursorParent = ec'}) <$>
                   entryCursorContents ec
-            , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
+            , entryCursorTags =
+                  (\ec_ -> ec_ {tagsCursorParent = ec'}) <$> entryCursorTags ec
             , entryCursorTimestamps =
                   (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
             , entryCursorProperties = ps

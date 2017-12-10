@@ -9,6 +9,7 @@ module Smos.Cursor.Entry
     , entryCursorContentsL
     , entryCursorStateL
     , entryCursorTagsL
+    , entryCursorTagsListL
     , entryCursorTimestampsL
     , entryCursorLogbookL
     , entryCursorPropertiesL

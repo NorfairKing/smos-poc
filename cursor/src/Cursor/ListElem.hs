@@ -64,7 +64,7 @@ instance Build (ListElemCursor a) where
     type Building (ListElemCursor a) = a
     build = listElemCursorCurrent
 
-instance Rebuild (ListElemCursor a) where
+instance Rebuild a => Rebuild (ListElemCursor a) where
     type ReBuilding (ListElemCursor a) = ListElemView a
     rebuild ListElemCursor {..} =
         ListElemView
@@ -72,7 +72,8 @@ instance Rebuild (ListElemCursor a) where
         , listElemViewCurrent = listElemCursorCurrent
         , listElemViewNext = listElemCursorNext
         }
-    selection = (: []) . length . listElemCursorPrev
+    selection ListElemCursor {..} =
+        selection listElemCursorCurrent ++ [length listElemCursorPrev]
 
 data ListElemView a = ListElemView
     { listElemViewPrev :: [a]
@@ -81,6 +82,14 @@ data ListElemView a = ListElemView
     } deriving (Eq, Generic)
 
 instance Validity a => Validity (ListElemView a)
+
+instance Functor ListElemView where
+    fmap f ListElemView {..} =
+        ListElemView
+        { listElemViewPrev = fmap f listElemViewPrev
+        , listElemViewCurrent = f listElemViewCurrent
+        , listElemViewNext = fmap f listElemViewNext
+        }
 
 instance Show a => Show (ListElemView a) where
     show ListElemView {..} =
@@ -96,7 +105,12 @@ instance View (ListElemView a) where
         nonemptyPrepend
             listElemViewPrev
             (listElemViewCurrent :| listElemViewNext)
-    view = rebuild . makeListElemCursor
+    view (c :| rest) =
+        ListElemView
+        { listElemViewPrev = []
+        , listElemViewCurrent = c
+        , listElemViewNext = rest
+        }
 
 instance Selectable a => Selectable (ListElemView a) where
     applySelection =
@@ -104,32 +118,41 @@ instance Selectable a => Selectable (ListElemView a) where
             case mixr_ of
                 Nothing -> view $ source lec
                 Just (ix_, sel) ->
-                    rebuild $
-                    makeListElemCursorWithSelection ix_ (source lec) &
-                    listElemCursorElemL %~
+                    makeListElemViewWithSelection ix_ (source lec) &
+                    listElemViewElemL %~
                     applySelection (Just sel)
+
+listElemViewElemL :: Lens' (ListElemView a) a
+listElemViewElemL =
+    lens listElemViewCurrent $ \lec le -> lec {listElemViewCurrent = le}
+
+makeListElemViewWithSelection :: Int -> NonEmpty a -> ListElemView a
+makeListElemViewWithSelection i ne =
+    let (l, m, r) = applyListElemSelection ne i
+    in ListElemView
+       {listElemViewPrev = l, listElemViewCurrent = m, listElemViewNext = r}
 
 makeListElemCursor :: NonEmpty a -> ListElemCursor a
 makeListElemCursor = makeListElemCursorWithSelection 0
 
 makeListElemCursorWithSelection :: Int -> NonEmpty a -> ListElemCursor a
 makeListElemCursorWithSelection i ne =
-    let (l, m, r) = applyListSelection ne i
+    let (l, m, r) = applyListElemSelection ne i
     in ListElemCursor
        { listElemCursorPrev = reverse l
        , listElemCursorCurrent = m
        , listElemCursorNext = r
        }
-  where
-    applyListSelection :: NonEmpty a -> Int -> ([a], a, [a])
-    applyListSelection (c :| rest) i_
-        | i_ <= 0 = ([], c, rest)
-        | otherwise =
-            case NE.nonEmpty rest of
-                Nothing -> ([], c, [])
-                Just ne_ ->
-                    let (l, m, r) = applyListSelection ne_ (i_ - 1)
-                    in (c : l, m, r)
+
+applyListElemSelection :: NonEmpty a -> Int -> ([a], a, [a])
+applyListElemSelection (c :| rest) i_
+    | i_ <= 0 = ([], c, rest)
+    | otherwise =
+        case NE.nonEmpty rest of
+            Nothing -> ([], c, [])
+            Just ne_ ->
+                let (l, m, r) = applyListElemSelection ne_ (i_ - 1)
+                in (c : l, m, r)
 
 makeNonEmptyListElemCursor :: [a] -> Maybe (ListElemCursor a)
 makeNonEmptyListElemCursor = fmap makeListElemCursor . NE.nonEmpty
@@ -138,7 +161,9 @@ singletonListElemCursor :: a -> ListElemCursor a
 singletonListElemCursor a = makeListElemCursor $ a :| []
 
 rebuildListElemCursor :: ListElemCursor a -> NonEmpty a
-rebuildListElemCursor = source . rebuild
+rebuildListElemCursor ListElemCursor {..} =
+    nonemptyPrepend (reverse listElemCursorPrev) $
+    listElemCursorCurrent :| listElemCursorNext
 
 listElemCursorElemL :: Lens' (ListElemCursor a) a
 listElemCursorElemL =

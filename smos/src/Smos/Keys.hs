@@ -24,7 +24,7 @@ module Smos.Keys
     , inEntry
     , inHeader
     , inContents
-    , inTag
+    , inTags
     -- * Raw building blocks
     , filterKeymap
     , rawKeymap
@@ -158,11 +158,11 @@ inContents =
             AContents _ -> True
             _ -> False
 
-inTag :: Keymap -> Keymap
-inTag =
+inTags :: Keymap -> Keymap
+inTags =
     inFileAnd $ \s ->
         case s of
-            ATag _ -> True
+            ATags _ -> True
             _ -> False
 
 inFileAnd :: (ACursor -> Bool) -> Keymap -> Keymap

@@ -6,15 +6,16 @@ import Import
 
 import Lens.Micro
 
+import Cursor.ListElem
+
 import Smos.Cursor.Entry.Tags
 import Smos.Cursor.Types
 
-tagsCursorTagCursorsL ::
-       Functor f => ([TagCursor] -> f [TagCursor]) -> TagsCursor -> f TagsCursor
+tagsCursorTagCursorsL :: Lens' TagsCursor (ListElemCursor TagCursor)
 tagsCursorTagCursorsL = lens getter setter
   where
     getter = tagsCursorTags
     setter cc ts = cc'
       where
-        ec' = tagsCursorParent cc & entryCursorTagsL .~ cc'
+        ec' = tagsCursorParent cc & entryCursorTagsL .~ Just cc'
         cc' = cc {tagsCursorParent = ec', tagsCursorTags = ts}

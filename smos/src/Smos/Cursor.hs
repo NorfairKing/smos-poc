@@ -90,7 +90,6 @@ data AnyCursor
     | AnyContents ContentsCursor
     | AnyState StateCursor
     | AnyTags TagsCursor
-    | AnyTag TagCursor
     deriving (Show, Eq, Generic)
 
 instance Validity AnyCursor
@@ -106,7 +105,6 @@ instance Rebuild AnyCursor where
             AnyContents cc -> rebuild cc
             AnyState sc -> rebuild sc
             AnyTags tsc -> rebuild tsc
-            AnyTag tc -> rebuild tc
     selection (AnyForest fc) = selection fc
     selection (AnyTree tc) = selection tc
     selection (AnyEntry ec) = selection ec
@@ -114,13 +112,12 @@ instance Rebuild AnyCursor where
     selection (AnyContents cc) = selection cc
     selection (AnyState sc) = selection sc
     selection (AnyTags tsc) = selection tsc
-    selection (AnyTag tc) = selection tc
 
 data ACursor
     = AnEntry EntryCursor
     | AHeader HeaderCursor
     | AContents ContentsCursor
-    | ATag TagCursor
+    | ATags TagsCursor
     deriving (Show, Eq, Generic)
 
 instance Validity ACursor
@@ -132,11 +129,11 @@ instance Rebuild ACursor where
             AnEntry ec -> rebuild ec
             AHeader hc -> rebuild hc
             AContents cc -> rebuild cc
-            ATag tc -> rebuild tc
+            ATags tc -> rebuild tc
     selection (AnEntry ec) = selection ec
     selection (AHeader hc) = selection hc
     selection (AContents cc) = selection cc
-    selection (ATag tc) = selection tc
+    selection (ATags tc) = selection tc
 
 makeAnyCursor :: SmosFile -> AnyCursor
 makeAnyCursor SmosFile {..} = AnyForest $ makeForestCursor' smosFileForest
@@ -151,7 +148,6 @@ reselectCursor s = go (reverse s) . makeAnyCursor
     go sel (AnyContents cc) = goc sel cc
     go sel (AnyState sc) = gos sel sc
     go sel (AnyTags tsc) = gotgs sel tsc
-    go sel (AnyTag tc) = gotg sel tc
     gof sel fc =
         withSel sel (AnyForest fc) $ \ix_ sel_ ->
             fromMaybe (AnyForest fc) $
@@ -167,7 +163,7 @@ reselectCursor s = go (reverse s) . makeAnyCursor
             case ix_ of
                 0 -> gos sel_ $ entryCursorState e
                 1 -> goh sel_ $ entryCursorHeader e
-                2 -> gotgs sel_ $ entryCursorTags e
+                2 -> maybe (AnyEntry e) (gotgs sel_) $ entryCursorTags e
                 -- 3: timestamps
                 -- 4: properties
                 5 -> maybe (AnyEntry e) (goc sel_) $ entryCursorContents e
@@ -176,11 +172,7 @@ reselectCursor s = go (reverse s) . makeAnyCursor
     goh _ = AnyHeader
     goc _ = AnyContents
     gos _ = AnyState
-    gotgs sel tsc =
-        withSel sel (AnyTags tsc) $ \ix_ sel_ ->
-            fromMaybe (AnyTags tsc) $
-            gotg sel_ <$> tagsCursorTags tsc `atMay` ix_
-    gotg _ = AnyTag
+    gotgs _ = AnyTags
     withSel :: [Int] -> a -> (Int -> [Int] -> a) -> a
     withSel sel a func =
         case sel of
@@ -196,8 +188,7 @@ selectACursor ac =
         AnyHeader hc -> Just $ AHeader hc
         AnyContents cc -> Just $ AContents cc
         AnyState sc -> Just $ AnEntry $ stateCursorParent sc
-        AnyTags tsc -> ATag <$> tagsCursorSelectFirst tsc
-        AnyTag tc -> Just $ ATag tc
+        AnyTags tsc -> Just $ ATags tsc
 
 selectAnyCursor :: ACursor -> AnyCursor
 selectAnyCursor ac =
@@ -205,4 +196,4 @@ selectAnyCursor ac =
         AnEntry hc -> AnyEntry hc
         AHeader hc -> AnyHeader hc
         AContents cc -> AnyContents cc
-        ATag tc -> AnyTag tc
+        ATags tc -> AnyTags tc

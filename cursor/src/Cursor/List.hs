@@ -9,6 +9,7 @@ module Cursor.List
     , makeListCursor
     , makeListCursorWithSelection
     , rebuildListCursor
+    , listCursorNull
     , listCursorIndex
     , listCursorSelectPrev
     , listCursorSelectNext
@@ -69,6 +70,11 @@ data ListView a = ListView
 
 instance Validity a => Validity (ListView a)
 
+instance Functor ListView where
+    fmap f ListView {..} =
+        ListView
+        {listViewPrev = fmap f listViewPrev, listViewNext = fmap f listViewNext}
+
 instance View (ListView a) where
     type Source (ListView a) = [a]
     source ListView {..} = listViewPrev ++ listViewNext
@@ -96,6 +102,9 @@ makeListCursorWithSelection i ls =
 
 rebuildListCursor :: ListCursor a -> [a]
 rebuildListCursor ListCursor {..} = reverse listCursorPrev ++ listCursorNext
+
+listCursorNull :: ListCursor a -> Bool
+listCursorNull ListCursor {..} = null listCursorPrev && null listCursorNext
 
 listCursorIndex :: ListCursor a -> Int
 listCursorIndex = length . listCursorPrev

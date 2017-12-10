@@ -8,7 +8,7 @@ module Cursor.Text
     , emptyTextCursor
     , makeTextCursor
     , rebuildTextCursor
-    , foldTextSel
+    , textCursorNull
     , textCursorIndex
     , textCursorSelectPrev
     , textCursorSelectNext
@@ -95,19 +95,15 @@ makeTextCursor = TextCursor . makeListCursor . T.unpack
 rebuildTextCursor :: TextCursor -> Text
 rebuildTextCursor = source . rebuild
 
-foldTextSel :: (Maybe Int -> Text -> r) -> Maybe [Int] -> Text -> r
-foldTextSel func msel =
-    case msel of
-        Nothing -> func Nothing
-        Just [ix_] -> func $ Just ix_
-        Just _ -> func Nothing
-
 textCursorListCursorL ::
        Functor f
     => (ListCursor Char -> f (ListCursor Char))
     -> TextCursor
     -> f TextCursor
 textCursorListCursorL = lens unTextCursor (\tc lc -> tc {unTextCursor = lc})
+
+textCursorNull :: TextCursor -> Bool
+textCursorNull = listCursorNull . unTextCursor
 
 textCursorIndex :: TextCursor -> Int
 textCursorIndex = listCursorIndex . unTextCursor

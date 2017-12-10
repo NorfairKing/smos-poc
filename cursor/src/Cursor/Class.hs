@@ -10,6 +10,7 @@ module Cursor.Class
     , BuiltFrom(..)
     , Reselect(..)
     , reselectLike
+    , NOUOD(..)
     ) where
 
 import Import
@@ -47,3 +48,8 @@ class Reselect a where
 
 reselectLike :: (Reselect a, Rebuild b) => a -> b -> Reselection a
 reselectLike a b = reselect (selection b) a
+
+data NOUOD a
+    = New a
+    | Unchanged
+    | Deleted
