@@ -21,6 +21,7 @@ module Smos.View
 import Import
 
 import Data.HashMap.Lazy (HashMap)
+import qualified Data.HashMap.Lazy as HM
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 import Data.Time
@@ -29,6 +30,7 @@ import Smos.Data
 
 import Cursor.Class
 import Cursor.ListElem
+import Cursor.Map
 import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
@@ -39,7 +41,7 @@ data EntryView = EntryView
     , entryViewTags :: Maybe (Select TagsView)
     , entryViewHeader :: Select HeaderView
     , entryViewContents :: Maybe (Select ContentsView)
-    , entryViewTimestamps :: Select TimestampsView
+    , entryViewTimestamps :: Maybe (Select TimestampsView)
     , entryViewProperties :: Select PropertiesView
     , entryViewLogbook :: Select LogbookView
     } deriving (Show, Eq, Generic)
@@ -54,7 +56,12 @@ instance View EntryView where
         , entryHeader = source $ selectValue entryViewHeader
         , entryTags = maybe [] (NE.toList . source . selectValue) entryViewTags
         , entryContents = (source . selectValue) <$> entryViewContents
-        , entryTimestamps = source $ selectValue entryViewTimestamps
+        , entryTimestamps =
+              case entryViewTimestamps of
+                  Nothing -> HM.empty
+                  Just stsv ->
+                      rebuildHashmapFromMapView $
+                      timestampsViewTimestamps $ selectValue stsv
         , entryProperties = source $ selectValue entryViewProperties
         , entryLogbook = source $ selectValue entryViewLogbook
         }
@@ -67,7 +74,8 @@ instance View EntryView where
                   [] -> Nothing
                   (t:ts) -> Just $ select $ view (t :| ts)
         , entryViewContents = (select . view) <$> entryContents
-        , entryViewTimestamps = select $ view entryTimestamps
+        , entryViewTimestamps =
+              fmap (select . view) . NE.nonEmpty . HM.toList $ entryTimestamps
         , entryViewProperties = select $ view entryProperties
         , entryViewLogbook = select $ view entryLogbook
         }
@@ -78,7 +86,7 @@ instance Selectable EntryView where
         { entryViewTodostate = drillPrefixStop 0 msel entryViewTodostate
         , entryViewHeader = drillPrefixApply 1 msel entryViewHeader
         , entryViewTags = drillPrefixApply 2 msel <$> entryViewTags
-        , entryViewTimestamps = drillStop 3 msel entryViewTimestamps
+        , entryViewTimestamps = drillStop 3 msel <$> entryViewTimestamps
         , entryViewProperties = drillStop 4 msel entryViewProperties
         , entryViewContents = drillPrefixApply 5 msel <$> entryViewContents
         , entryViewLogbook = drillStop 6 msel entryViewLogbook
@@ -156,15 +164,15 @@ instance Selectable ContentsView where
         ContentsView . applySelection msel . contentsViewContents
 
 newtype TimestampsView = TimestampsView
-    { timestampsViewTimestamps :: HashMap TimestampName UTCTime
+    { timestampsViewTimestamps :: MapView TimestampName UTCTime
     } deriving (Show, Eq, Generic)
 
 instance Validity TimestampsView
 
 instance View TimestampsView where
-    type Source TimestampsView = HashMap TimestampName UTCTime
-    source = timestampsViewTimestamps
-    view = TimestampsView
+    type Source TimestampsView = NonEmpty (TimestampName, UTCTime)
+    source = source . timestampsViewTimestamps
+    view = TimestampsView . view
 
 newtype PropertiesView = PropertiesView
     { propertiesViewProperties :: HashMap PropertyName PropertyValue

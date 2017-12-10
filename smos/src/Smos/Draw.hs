@@ -8,6 +8,7 @@ module Smos.Draw
 import Import
 
 import qualified Data.HashMap.Lazy as HM
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
 import Data.Time
 
@@ -83,9 +84,9 @@ drawEntry level sev =
              maybeToList (drawTodoState entryViewTodostate) ++
              [drawHeader entryViewHeader] ++
              maybeToList (drawTags <$> entryViewTags)
-           , drawTimestamps entryViewTimestamps
+           , maybe emptyWidget drawTimestamps entryViewTimestamps
            , drawProperties entryViewProperties
-           , fromMaybe emptyWidget $ drawContents <$> entryViewContents
+           , maybe emptyWidget drawContents entryViewContents
            , drawLogbook entryViewLogbook
            , drawTodoStateHistory entryViewTodostate
            ]
@@ -136,7 +137,8 @@ drawTimestamps :: Select TimestampsView -> Widget ResourceName
 drawTimestamps =
     withSel $ \TimestampsView {..} ->
         B.vBox $
-        flip map (HM.toList timestampsViewTimestamps) $ \(k, ts) ->
+        NE.toList $
+        flip fmap (source timestampsViewTimestamps) $ \(k, ts) ->
             B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
 
 drawProperties :: Select PropertiesView -> Widget ResourceName

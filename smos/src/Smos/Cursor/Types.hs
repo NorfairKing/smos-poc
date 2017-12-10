@@ -29,12 +29,11 @@ import Data.Time
 
 import Cursor.Class
 import Cursor.ListElem
+import Cursor.Map
 import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
 import Cursor.Tree
-
-import Smos.Cursor.FuzzyTime
 
 import Smos.Data
 import Smos.View
@@ -43,7 +42,7 @@ data EntryCursor = EntryCursor
     { entryCursorParent :: TreeCursor EntryCursor
     , entryCursorHeader :: HeaderCursor
     , entryCursorContents :: Maybe ContentsCursor
-    , entryCursorTimestamps :: TimestampsCursor
+    , entryCursorTimestamps :: Maybe TimestampsCursor
     , entryCursorProperties :: HashMap PropertyName PropertyValue
     , entryCursorState :: StateCursor
     , entryCursorTags :: Maybe TagsCursor
@@ -62,7 +61,7 @@ instance Show EntryCursor where
                  (" |- " ++)
                  [ "[Header]: " ++ show (build entryCursorHeader)
                  , "[Contents]: " ++ show (build <$> entryCursorContents)
-                 , "[Timestamps]: " ++ show (build entryCursorTimestamps)
+                 , "[Timestamps]: " ++ show (build <$> entryCursorTimestamps)
                  , show entryCursorProperties
                  , "[State]: " ++ show (build entryCursorState)
                  , "[Tags]: " ++ show (build <$> entryCursorTags)
@@ -83,7 +82,7 @@ instance Build EntryCursor where
         EntryView
         { entryViewHeader = build entryCursorHeader
         , entryViewContents = build <$> entryCursorContents
-        , entryViewTimestamps = build entryCursorTimestamps
+        , entryViewTimestamps = build <$> entryCursorTimestamps
         , entryViewProperties = select $ view entryCursorProperties
         , entryViewTodostate = build entryCursorState
         , entryViewTags = build <$> entryCursorTags
@@ -104,7 +103,7 @@ entryCursor par EntryView {..} = ec
         , entryCursorContents =
               (contentsCursor ec . selectValue) <$> entryViewContents
         , entryCursorTimestamps =
-              timestampsCursor ec $ selectValue entryViewTimestamps
+              (timestampsCursor ec . selectValue) <$> entryViewTimestamps
         , entryCursorProperties = source $ selectValue entryViewProperties
         , entryCursorState = stateCursor ec $ selectValue entryViewTodostate
         , entryCursorTags = (tagsCursor ec . selectValue) <$> entryViewTags
@@ -270,7 +269,7 @@ tagCursor = TagCursor . makeTextCursor . source . tagViewText
 
 data TimestampsCursor = TimestampsCursor
     { timestampsCursorParent :: EntryCursor
-    , timestampsCursorTimestamps :: HashMap TimestampName UTCTime
+    , timestampsCursorTimestamps :: MapCursor TimestampName UTCTime
     } deriving (Generic)
 
 instance Validity TimestampsCursor where
@@ -291,22 +290,14 @@ instance Rebuild TimestampsCursor where
 
 instance Build TimestampsCursor where
     type Building TimestampsCursor = Select TimestampsView
-    build = select . TimestampsView . timestampsCursorTimestamps
+    build = select . TimestampsView . rebuild . timestampsCursorTimestamps
 
 timestampsCursor :: EntryCursor -> TimestampsView -> TimestampsCursor
 timestampsCursor ec tsv =
     TimestampsCursor
-    {timestampsCursorParent = ec, timestampsCursorTimestamps = source tsv}
-
-data KeyCursor = KeyCursor
-    { keyCursorKey :: TextCursor
-    , keyCursorValue :: ValueCursor
-    } deriving (Show, Eq, Generic)
-
-data ValueCursor = ValueCursor
-    { valueCursorKey :: KeyCursor
-    , valueCursorValue :: FuzzyTimeCursor
-    } deriving (Show, Eq, Generic)
+    { timestampsCursorParent = ec
+    , timestampsCursorTimestamps = makeMapCursor $ source tsv
+    }
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b
