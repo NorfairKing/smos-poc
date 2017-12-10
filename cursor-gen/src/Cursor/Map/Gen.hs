@@ -8,27 +8,32 @@ import Cursor.Map
 
 import Cursor.ListElem.Gen (listElemElemOf)
 
-instance (GenUnchecked a, GenUnchecked b) => GenUnchecked (MapCursor a b)
+instance (Ord a, GenUnchecked a, GenUnchecked b) =>
+         GenUnchecked (MapCursor a b)
 
-instance (GenValid a, GenValid b) => GenValid (MapCursor a b)
-
-instance (GenUnchecked a, GenUnchecked b) =>
-         GenUnchecked (KeyValueCursor a b) where
-    genUnchecked = do
-        mc <- genUnchecked
-        listElemElemOf mc
-    shrinkUnchecked _ = []
-
-instance (GenValid a, GenValid b) => GenValid (KeyValueCursor a b) where
+instance (Ord a, GenValid a, GenValid b) => GenValid (MapCursor a b) where
     genValid = do
-        mc <- genUnchecked
-        listElemElemOf mc
+        m <- genValid
+        case makeMapCursor m of
+            Nothing -> scale (+ 1) genValid
+            Just mc -> pure mc
 
-instance (GenUnchecked a, GenUnchecked b) => GenUnchecked (KeyCursor a b)
+instance (Ord a, GenUnchecked a, GenUnchecked b) =>
+         GenUnchecked (KeyValueCursor a b)
 
-instance (GenValid a, GenValid b) => GenValid (KeyCursor a b)
+instance (Ord a, GenValid a, GenValid b) => GenValid (KeyValueCursor a b) where
+    genValid = do
+        mc <- genValid
+        listElemElemOf $ mapCursorList mc
 
-instance (GenUnchecked a, GenUnchecked b) =>
+instance (Ord a, GenUnchecked a, GenUnchecked b) =>
+         GenUnchecked (KeyCursor a b)
+
+instance (Ord a, GenValid a, GenValid b) => GenValid (KeyCursor a b) where
+    genValid = keyValueCursorKey <$> genValid
+
+instance (Ord a, GenUnchecked a, GenUnchecked b) =>
          GenUnchecked (ValueCursor a b)
 
-instance (GenValid a, GenValid b) => GenValid (ValueCursor a b)
+instance (Ord a, GenValid a, GenValid b) => GenValid (ValueCursor a b) where
+    genValid = keyValueCursorValue <$> genValid

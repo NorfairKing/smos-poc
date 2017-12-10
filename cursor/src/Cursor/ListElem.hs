@@ -82,6 +82,14 @@ data ListElemView a = ListElemView
 
 instance Validity a => Validity (ListElemView a)
 
+instance Functor ListElemView where
+    fmap f ListElemView {..} =
+        ListElemView
+        { listElemViewPrev = fmap f listElemViewPrev
+        , listElemViewCurrent = f listElemViewCurrent
+        , listElemViewNext = fmap f listElemViewNext
+        }
+
 instance Show a => Show (ListElemView a) where
     show ListElemView {..} =
         concat

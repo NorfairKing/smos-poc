@@ -8,7 +8,6 @@ module Cursor.MapSpec
 
 import TestImport
 
-import Cursor.Class
 import Cursor.Map
 import Cursor.Map.Gen ()
 
