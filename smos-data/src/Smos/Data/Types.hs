@@ -208,7 +208,7 @@ instance Validity TimestampName
 
 data Timestamp
     = TimestampDay Day
-    | TimestampTime LocalTime
+    | TimestampTime UTCTime
     deriving (Show, Eq, Generic)
 
 instance Validity Timestamp

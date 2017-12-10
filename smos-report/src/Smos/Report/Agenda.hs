@@ -34,7 +34,7 @@ agendaReport pred_ fs =
     got Node {..} =
         [ ( case ts of
                 TimestampDay d -> d
-                TimestampTime lt -> localDay lt
+                TimestampTime ut -> utctDay ut
           , rootLabel)
         | pred_ rootLabel
         , (_, ts) <- HM.toList entryTimestamps
