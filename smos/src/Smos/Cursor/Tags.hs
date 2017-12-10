@@ -28,7 +28,7 @@ import Smos.View
 makeTagsCursor :: EntryCursor -> [Tag] -> TagsCursor
 makeTagsCursor ec tags = tagsCursor ec $ view tags
 
-tagsCursorTagsL :: Functor f => ([Tag] -> f [Tag]) -> TagsCursor -> f TagsCursor
+tagsCursorTagsL :: Lens' TagsCursor [Tag]
 tagsCursorTagsL = lens (source . selectValue . build) setter
   where
     setter tc tgs = tc'

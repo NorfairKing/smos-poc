@@ -6,10 +6,11 @@ module Cursor.Map where
 
 import Import
 
+import Data.HashMap.Lazy (HashMap)
+import qualified Data.HashMap.Lazy as HM
+import Data.Hashable
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
-import Data.Map (Map)
-import qualified Data.Map as M
 
 import Cursor.Class
 import Cursor.ListElem
@@ -33,37 +34,38 @@ newtype MapView a b = MapView
 
 instance (Validity a, Validity b) => Validity (MapView a b)
 
-instance Ord a => View (MapView a b) where
-    type Source (MapView a b) = Map a b
-    source = M.fromList . fmap source . NE.toList . source . mapViewList
-    view m = MapView $ view . fmap view . NE.fromList $ M.assocs m -- FIXME fromList is partial
+instance (Eq a, Hashable a) => View (MapView a b) where
+    type Source (MapView a b) = NonEmpty (a, b)
+    source = fmap source . source . mapViewList
+    view = MapView . view . fmap view
 
-makeMapCursor :: Map a b -> Maybe (MapCursor a b)
-makeMapCursor m =
-    let tups = M.assocs m
+makeMapCursor :: NonEmpty (a, b) -> MapCursor a b
+makeMapCursor ne =
+    let els =
+            flip fmap ne $ \(a, b) ->
+                let kc = KeyCursor {keyCursorParent = kvc, keyCursorKey = a}
+                    vc =
+                        ValueCursor
+                        {valueCursorParent = kvc, valueCursorValue = b}
+                    kvc =
+                        KeyValueCursor
+                        { keyValueCursorParent = mc
+                        , keyValueCursorKey = kc
+                        , keyValueCursorValue = vc
+                        }
+                in kvc
+        mc = MapCursor $ makeListElemCursor els
+    in mc
+
+makeMapCursorFromMap :: HashMap a b -> Maybe (MapCursor a b)
+makeMapCursorFromMap m =
+    let tups = HM.toList m
     in case tups of
            [] -> Nothing
-           (t:ts) ->
-               let ne = t :| ts
-                   els =
-                       flip fmap ne $ \(a, b) ->
-                           let kc =
-                                   KeyCursor
-                                   {keyCursorParent = kvc, keyCursorKey = a}
-                               vc =
-                                   ValueCursor
-                                   { valueCursorParent = kvc
-                                   , valueCursorValue = b
-                                   }
-                               kvc =
-                                   KeyValueCursor
-                                   { keyValueCursorParent = mc
-                                   , keyValueCursorKey = kc
-                                   , keyValueCursorValue = vc
-                                   }
-                           in kvc
-                   mc = MapCursor $ makeListElemCursor els
-               in Just mc
+           (t:ts) -> Just $ makeMapCursor $ t :| ts
+
+rebuildHashmapFromMapView :: (Eq a, Hashable a) => MapView a b -> HashMap a b
+rebuildHashmapFromMapView = HM.fromList . NE.toList . source
 
 data KeyValueCursor a b = KeyValueCursor
     { keyValueCursorParent :: MapCursor a b

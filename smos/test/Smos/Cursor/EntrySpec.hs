@@ -34,20 +34,20 @@ import Smos.View
 --         case mb of
 --             Nothing -> a
 --             Just b -> a & l .~ b
---
--- sameCAfterSettingAAndThenBLMM ::
---        (Show c, Eq c)
---     => EntryCursor
---     -> Lens' EntryCursor (Maybe a)
---     -> (a -> a)
---     -> Lens' EntryCursor (Maybe b)
---     -> (b -> b)
---     -> (EntryCursor -> c)
---     -> Expectation
--- sameCAfterSettingAAndThenBLMM ec la am lb bm cf =
---     let ec' = ec & la %~ fmap am
---         ec'' = ec' & lb %~ fmap bm
---     in cf ec' `shouldBe` cf ec''
+sameCAfterSettingAAndThenBLMM ::
+       (Show c, Eq c)
+    => EntryCursor
+    -> Lens' EntryCursor (Maybe a)
+    -> (a -> a)
+    -> Lens' EntryCursor (Maybe b)
+    -> (b -> b)
+    -> (EntryCursor -> c)
+    -> Expectation
+sameCAfterSettingAAndThenBLMM ec la am lb bm cf =
+    let ec' = ec & la %~ fmap am
+        ec'' = ec' & lb %~ fmap bm
+    in cf ec' `shouldBe` cf ec''
+
 sameCAfterSettingAAndThenBLM ::
        (Show c, Eq c)
     => EntryCursor
@@ -153,7 +153,7 @@ spec = do
                         forAll genValid $ \tss ->
                             forAll genValid $ \ec ->
                                 forAll genValid $ \now ->
-                                    sameCAfterSettingAAndThenBL
+                                    sameCAfterSettingAAndThenBLM
                                         ec
                                         entryCursorStateL
                                         (stateCursorSetState now ts)
@@ -207,7 +207,7 @@ spec = do
                     forAll genValid $ \h ->
                         forAll genValid $ \tss ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBLM
                                     ec
                                     entryCursorHeaderL
                                     (headerCursorSetHeader h)
@@ -261,7 +261,7 @@ spec = do
                     forAll genValid $ \tgs ->
                         forAll genValid $ \tss ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBLM
                                     ec
                                     entryCursorTagsL
                                     (tagsCursorSetTags tgs)
@@ -315,7 +315,7 @@ spec = do
                     forAll genValid $ \cs ->
                         forAll genValid $ \tss ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBML
+                                sameCAfterSettingAAndThenBLMM
                                     ec
                                     entryCursorContentsL
                                     (contentsCursorSetContents cs)
@@ -330,52 +330,52 @@ spec = do
                         forAll genValid $ \ts ->
                             forAll genValid $ \now ->
                                 forAll genValid $ \ec ->
-                                    sameCAfterSettingAAndThenBL
+                                    sameCAfterSettingAAndThenBML
                                         ec
                                         entryCursorTimestampsL
                                         (timestampsCursorSetTimestamps tss)
                                         entryCursorStateL
                                         (stateCursorSetState now ts)
-                                        (build . entryCursorTimestamps)
+                                        (fmap build . entryCursorTimestamps)
                 describe "header" $
                     it
                         "has the same timestamps after setting the timestamps and then changing the header" $
                     forAll genValid $ \tss ->
                         forAll genValid $ \h ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBML
                                     ec
                                     entryCursorTimestampsL
                                     (timestampsCursorSetTimestamps tss)
                                     entryCursorHeaderL
                                     (headerCursorSetHeader h)
-                                    (build . entryCursorTimestamps)
+                                    (fmap build . entryCursorTimestamps)
                 describe "tags" $
                     it
                         "has the same timestamps after setting the timestamps and then changing the tags" $
                     forAll genValid $ \tss ->
                         forAll genValid $ \tgs ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBL
+                                sameCAfterSettingAAndThenBML
                                     ec
                                     entryCursorTimestampsL
                                     (timestampsCursorSetTimestamps tss)
                                     entryCursorTagsL
                                     (tagsCursorSetTags tgs)
-                                    (build . entryCursorTimestamps)
+                                    (fmap build . entryCursorTimestamps)
                 describe "contents" $
                     it
                         "has the same timestamps after setting the timestamps and then changing the contents" $
                     forAll genValid $ \tss ->
                         forAll genValid $ \cts ->
                             forAll genValid $ \ec ->
-                                sameCAfterSettingAAndThenBLM
+                                sameCAfterSettingAAndThenBLMM
                                     ec
                                     entryCursorTimestampsL
                                     (timestampsCursorSetTimestamps tss)
                                     entryCursorContentsL
                                     (contentsCursorSetContents cts)
-                                    (build . entryCursorTimestamps)
+                                    (fmap build . entryCursorTimestamps)
     describe "HeaderCursor" $ do
         describe "headerCursorParent" $
             it "rebuilds to the same" $ rebuildsToTheSame headerCursorParent

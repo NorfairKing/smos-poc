@@ -32,7 +32,8 @@ entryCursorStateL = lens getter setter
                   entryCursorContents ec
             , entryCursorTags = (entryCursorTags ec) {tagsCursorParent = ec'}
             , entryCursorTimestamps =
-                  (entryCursorTimestamps ec) {timestampsCursorParent = ec'}
+                  (\ec_ -> ec_ {timestampsCursorParent = ec'}) <$>
+                  entryCursorTimestamps ec
             }
 
 entryCursorStateIndex :: Int

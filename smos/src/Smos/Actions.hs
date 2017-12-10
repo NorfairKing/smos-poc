@@ -291,9 +291,7 @@ editorOnProperties = editorOn entryCursorPropertiesL startEditorOnPropertiesAsIs
 
 editorOnTimestamps :: String -> SmosM ()
 editorOnTimestamps =
-    editorOn
-        (entryCursorTimestampsL . timestampsCursorTimestampsL)
-        startEditorOnTimestampsAsIs
+    editorOn entryCursorTimestampsMapL startEditorOnTimestampsAsIs
 
 clockOutMod :: UTCTime -> (SmosFile -> SmosFile)
 clockOutMod now = SmosFile . gof . smosFileForest
