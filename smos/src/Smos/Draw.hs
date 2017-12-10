@@ -158,7 +158,7 @@ drawLogbook = withSel (go . logbookViewLogbook)
     go lb =
         case lb of
             LogOpen start es ->
-                B.hBox [str "[", drawTimestamp start, str "]"] <=>
+                B.hBox [str "[", drawUTCTime start, str "]"] <=>
                 B.vBox (map drawLogbookEntry es)
             LogClosed es -> B.vBox $ map drawLogbookEntry es
 
@@ -171,10 +171,16 @@ drawLogbookEntry LogbookEntry {..} =
         ]
 
 drawBoxedTimestamp :: UTCTime -> Widget n
-drawBoxedTimestamp ts = B.hBox [str "[", drawTimestamp ts, str "]"]
+drawBoxedTimestamp ts = B.hBox [str "[", drawUTCTime ts, str "]"]
 
-drawTimestamp :: UTCTime -> Widget n
-drawTimestamp = B.str . formatTime defaultTimeLocale "%F %R"
+drawTimestamp :: Timestamp -> Widget n
+drawTimestamp (TimestampDay d) =
+    B.str $ formatTime defaultTimeLocale timestampDayFormat d
+drawTimestamp (TimestampTime lt) =
+    B.str $ formatTime defaultTimeLocale timestampTimeFormat lt
+
+drawUTCTime :: UTCTime -> Widget n
+drawUTCTime = B.str . formatTime defaultTimeLocale "%F %R"
 
 drawHorizontalListElemView ::
        (Select a -> Widget n)

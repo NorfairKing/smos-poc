@@ -9,7 +9,6 @@ import Import
 import qualified Data.HashMap.Lazy as HM
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.List.NonEmpty as NE
-import Data.Time
 
 import Lens.Micro
 
@@ -40,7 +39,7 @@ entryCursorTimestampsL = lens getter setter
             , entryCursorTimestamps = ts
             }
 
-entryCursorTimestampsMapL :: Lens' EntryCursor (HashMap TimestampName UTCTime)
+entryCursorTimestampsMapL :: Lens' EntryCursor (HashMap TimestampName Timestamp)
 entryCursorTimestampsMapL = lens getter setter
   where
     getter ec =
@@ -49,7 +48,7 @@ entryCursorTimestampsMapL = lens getter setter
             (HM.fromList .
              NE.toList . source . rebuild . timestampsCursorTimestamps) $
         ec ^. entryCursorTimestampsL
-    setter :: EntryCursor -> HashMap TimestampName UTCTime -> EntryCursor
+    setter :: EntryCursor -> HashMap TimestampName Timestamp -> EntryCursor
     setter ec hm =
         case NE.nonEmpty (HM.toList hm) of
             Nothing -> ec & entryCursorTimestampsL .~ Nothing

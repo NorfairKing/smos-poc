@@ -42,6 +42,10 @@ instance GenUnchecked TimestampName
 
 instance GenValid TimestampName
 
+instance GenUnchecked Timestamp
+
+instance GenValid Timestamp
+
 instance GenUnchecked TodoState
 
 instance GenValid TodoState

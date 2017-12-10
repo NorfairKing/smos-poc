@@ -24,7 +24,6 @@ import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
-import Data.Time
 
 import Smos.Data
 
@@ -164,13 +163,13 @@ instance Selectable ContentsView where
         ContentsView . applySelection msel . contentsViewContents
 
 newtype TimestampsView = TimestampsView
-    { timestampsViewTimestamps :: MapView TimestampName UTCTime
+    { timestampsViewTimestamps :: MapView TimestampName Timestamp
     } deriving (Show, Eq, Generic)
 
 instance Validity TimestampsView
 
 instance View TimestampsView where
-    type Source TimestampsView = NonEmpty (TimestampName, UTCTime)
+    type Source TimestampsView = NonEmpty (TimestampName, Timestamp)
     source = source . timestampsViewTimestamps
     view = TimestampsView . view
 

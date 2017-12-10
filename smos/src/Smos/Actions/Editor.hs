@@ -23,7 +23,6 @@ module Smos.Actions.Editor
 import Import
 
 import Data.HashMap.Lazy (HashMap)
-import Data.Time
 import Data.Yaml as Yaml
 
 import qualified Data.Text as T
@@ -145,14 +144,14 @@ startEditorOnLogbookAsIs = startAsIs startEditorOnLogbook
 
 startEditorOnTimestamps ::
        String
-    -> EditorStart (HashMap TimestampName UTCTime)
-    -> IO (EditorResult (HashMap TimestampName UTCTime))
+    -> EditorStart (HashMap TimestampName Timestamp)
+    -> IO (EditorResult (HashMap TimestampName Timestamp))
 startEditorOnTimestamps = startEditorOnYaml
 
 startEditorOnTimestampsAsIs ::
        String
-    -> HashMap TimestampName UTCTime
-    -> IO (EditorResult (HashMap TimestampName UTCTime))
+    -> HashMap TimestampName Timestamp
+    -> IO (EditorResult (HashMap TimestampName Timestamp))
 startEditorOnTimestampsAsIs = startAsIs startEditorOnTimestamps
 
 startEditorOnProperties ::

@@ -25,7 +25,6 @@ module Smos.Cursor.Types
 import Import
 
 import Data.HashMap.Lazy (HashMap)
-import Data.Time
 
 import Cursor.Class
 import Cursor.ListElem
@@ -269,7 +268,7 @@ tagCursor = TagCursor . makeTextCursor . source . tagViewText
 
 data TimestampsCursor = TimestampsCursor
     { timestampsCursorParent :: EntryCursor
-    , timestampsCursorTimestamps :: MapCursor TimestampName UTCTime
+    , timestampsCursorTimestamps :: MapCursor TimestampName Timestamp
     } deriving (Generic)
 
 instance Validity TimestampsCursor where

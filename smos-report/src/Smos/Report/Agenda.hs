@@ -32,7 +32,10 @@ agendaReport pred_ fs =
     go SmosFile {..} = gof smosFileForest
     gof = concatMap got
     got Node {..} =
-        [ (utctDay ts, rootLabel)
+        [ ( case ts of
+                TimestampDay d -> d
+                TimestampTime lt -> localDay lt
+          , rootLabel)
         | pred_ rootLabel
         , (_, ts) <- HM.toList entryTimestamps
         ]

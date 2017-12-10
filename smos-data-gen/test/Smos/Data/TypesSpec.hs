@@ -11,24 +11,15 @@ import Smos.Data.Types
 
 spec :: Spec
 spec = do
-    eqSpec @SmosFile
-    genValidSpec @SmosFile
-    jsonSpecOnValid @SmosFile
-    eqSpec @(ForYaml (Forest Entry))
-    genValidSpec @(ForYaml (Forest Entry))
-    jsonSpecOnValid @(ForYaml (Forest Entry))
-    eqSpec @(ForYaml (Tree Entry))
-    genValidSpec @(ForYaml (Tree Entry))
-    jsonSpecOnValid @(ForYaml (Tree Entry))
-    eqSpec @Entry
-    genValidSpec @Entry
-    jsonSpecOnValid @Entry
     eqSpec @Contents
     genValidSpec @Contents
     jsonSpecOnValid @Contents
     eqSpec @TimestampName
     genValidSpec @TimestampName
     jsonSpecOnValid @TimestampName
+    eqSpec @Timestamp
+    genValidSpec @Timestamp
+    jsonSpecOnValid @Timestamp
     eqSpec @TodoState
     genValidSpec @TodoState
     jsonSpecOnValid @TodoState
@@ -47,3 +38,15 @@ spec = do
     eqSpec @LogbookEntry
     genValidSpec @LogbookEntry
     jsonSpecOnValid @LogbookEntry
+    eqSpec @Entry
+    genValidSpec @Entry
+    jsonSpecOnValid @Entry
+    eqSpec @(ForYaml (Tree Entry))
+    genValidSpec @(ForYaml (Tree Entry))
+    jsonSpecOnValid @(ForYaml (Tree Entry))
+    eqSpec @(ForYaml (Forest Entry))
+    genValidSpec @(ForYaml (Forest Entry))
+    jsonSpecOnValid @(ForYaml (Forest Entry))
+    eqSpec @SmosFile
+    genValidSpec @SmosFile
+    jsonSpecOnValid @SmosFile

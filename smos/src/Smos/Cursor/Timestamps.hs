@@ -7,7 +7,6 @@ module Smos.Cursor.Timestamps
 import Import
 
 import Data.List.NonEmpty (NonEmpty(..))
-import Data.Time
 
 import Lens.Micro
 
@@ -20,21 +19,23 @@ import Smos.Cursor.Types
 import Smos.View
 
 makeTimestampsCursor ::
-       EntryCursor -> NonEmpty (TimestampName, UTCTime) -> TimestampsCursor
+       EntryCursor -> NonEmpty (TimestampName, Timestamp) -> TimestampsCursor
 makeTimestampsCursor ec = timestampsCursor ec . TimestampsView . view
 
 timestampsCursorSetTimestamps ::
-       NonEmpty (TimestampName, UTCTime) -> TimestampsCursor -> TimestampsCursor
+       NonEmpty (TimestampName, Timestamp)
+    -> TimestampsCursor
+    -> TimestampsCursor
 timestampsCursorSetTimestamps ts = timestampsCursorTimestampsL .~ ts
 
 timestampsCursorTimestampsL ::
-       Lens' TimestampsCursor (NonEmpty (TimestampName, UTCTime))
+       Lens' TimestampsCursor (NonEmpty (TimestampName, Timestamp))
 timestampsCursorTimestampsL = lens getter setter
   where
     getter = source . rebuild . timestampsCursorTimestamps
     setter ::
            TimestampsCursor
-        -> NonEmpty (TimestampName, UTCTime)
+        -> NonEmpty (TimestampName, Timestamp)
         -> TimestampsCursor
     setter tsc tss = tsc'
       where

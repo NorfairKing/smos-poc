@@ -22,6 +22,10 @@ module Smos.Data.Types
     , emptyLogbook
     , LogbookEntry(..)
     , TimestampName(..)
+    , Timestamp(..)
+    , timestampDayFormat
+    , timestampTimeFormat
+    , timestampTimeExactFormat
     -- Utils
     , ForYaml(..)
     ) where
@@ -86,7 +90,7 @@ instance ToJSON (ForYaml (Tree Entry)) where
 data Entry = Entry
     { entryHeader :: Header
     , entryContents :: Maybe Contents
-    , entryTimestamps :: HashMap TimestampName UTCTime -- SCHEDULED, DEADLINE, etc.
+    , entryTimestamps :: HashMap TimestampName Timestamp -- SCHEDULED, DEADLINE, etc.
     , entryProperties :: HashMap PropertyName PropertyValue
     , entryStateHistory :: StateHistory -- TODO, DONE, etc.
     , entryTags :: [Tag] -- '@home', 'toast', etc.
@@ -201,6 +205,66 @@ newtype TimestampName = TimestampName
                )
 
 instance Validity TimestampName
+
+data Timestamp
+    = TimestampDay Day
+    | TimestampTime LocalTime
+    deriving (Show, Eq, Generic)
+
+instance Validity Timestamp
+
+instance FromJSON Timestamp where
+    parseJSON =
+        withObject "Timestamp" $ \o -> do
+            p <- o .: "precision"
+            case (p :: Text) of
+                "day" -> do
+                    s <- o .: "value"
+                    TimestampDay <$>
+                        parseTimeM False defaultTimeLocale timestampDayFormat s
+                "time" -> do
+                    s <- o .: "value"
+                    (TimestampTime <$>
+                     parseTimeM
+                         False
+                         defaultTimeLocale
+                         timestampTimeExactFormat
+                         s) <|>
+                        (TimestampTime <$>
+                         parseTimeM
+                             False
+                             defaultTimeLocale
+                             timestampTimeFormat
+                             s)
+                _ -> fail "unknown precision"
+
+instance ToJSON Timestamp where
+    toJSON ts =
+        let p :: Text
+            v :: Value
+            (p, v) =
+                case ts of
+                    TimestampDay d ->
+                        ( "day"
+                        , toJSON $
+                          formatTime defaultTimeLocale timestampDayFormat d)
+                    TimestampTime lt ->
+                        ( "time"
+                        , toJSON $
+                          formatTime
+                              defaultTimeLocale
+                              timestampTimeExactFormat
+                              lt)
+        in object ["precision" .= p, "value" .= v]
+
+timestampDayFormat :: String
+timestampDayFormat = "%F"
+
+timestampTimeFormat :: String
+timestampTimeFormat = "%F %R"
+
+timestampTimeExactFormat :: String
+timestampTimeExactFormat = "%F %R %q"
 
 newtype TodoState = TodoState
     { todoStateText :: Text
