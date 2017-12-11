@@ -12,8 +12,11 @@ import Data.Hashable
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
 
+import Lens.Micro
+
 import Cursor.Class
 import Cursor.ListElem
+import Cursor.Select
 
 newtype MapCursor a b = MapCursor
     { mapCursorList :: ListElemCursor (KeyValueCursor a b)
@@ -25,8 +28,8 @@ instance (Validity a, Validity b) => Validity (MapCursor a b) where
 
 instance Rebuild (MapCursor a b) where
     type ReBuilding (MapCursor a b) = MapView a b
-    rebuild = MapView . fmap build . rebuild . mapCursorList
-    selection = selection . mapCursorList
+    rebuild = MapView . fmap rebuild . rebuild . mapCursorList
+    selection mcl = selection (mapCursorList mcl)
 
 newtype MapView a b = MapView
     { mapViewList :: ListElemView (KeyValueView a b)
@@ -39,21 +42,15 @@ instance (Eq a, Hashable a) => View (MapView a b) where
     source = fmap source . source . mapViewList
     view = MapView . view . fmap view
 
+instance Selectable (MapView a b) where
+    applySelection msel = MapView . applySelection msel . mapViewList
+
 makeMapCursor :: NonEmpty (a, b) -> MapCursor a b
 makeMapCursor ne =
     let els =
             flip fmap ne $ \(a, b) ->
-                let kc = KeyCursor {keyCursorParent = kvc, keyCursorKey = a}
-                    vc =
-                        ValueCursor
-                        {valueCursorParent = kvc, valueCursorValue = b}
-                    kvc =
-                        KeyValueCursor
-                        { keyValueCursorParent = mc
-                        , keyValueCursorKey = kc
-                        , keyValueCursorValue = vc
-                        }
-                in kvc
+                let lkc = KeyCursor {keyCursorKey = a, keyCursorValue = b}
+                in KVK lkc
         mc = MapCursor $ makeListElemCursor els
     in mc
 
@@ -67,11 +64,19 @@ makeMapCursorFromMap m =
 rebuildHashmapFromMapView :: (Eq a, Hashable a) => MapView a b -> HashMap a b
 rebuildHashmapFromMapView = HM.fromList . NE.toList . source
 
-data KeyValueCursor a b = KeyValueCursor
-    { keyValueCursorParent :: MapCursor a b
-    , keyValueCursorKey :: KeyCursor a b
-    , keyValueCursorValue :: ValueCursor a b
-    } deriving (Show, Eq, Generic)
+mapCursorListL :: Lens' (MapCursor a b) (ListElemCursor (KeyValueCursor a b))
+mapCursorListL = lens getter setter
+  where
+    getter = mapCursorList
+    setter mc lc = mc {mapCursorList = lc}
+
+mapCursorSelectedL :: Lens' (MapCursor a b) (KeyValueCursor a b)
+mapCursorSelectedL = mapCursorListL . listElemCursorElemL
+
+data KeyValueCursor a b
+    = KVK (KeyCursor a b)
+    | KVV (ValueCursor a b)
+    deriving (Show, Eq, Generic)
 
 instance (Validity a, Validity b) => Validity (KeyValueCursor a b) where
     isValid a = isValid (build a) && isValid (rebuild a)
@@ -79,32 +84,42 @@ instance (Validity a, Validity b) => Validity (KeyValueCursor a b) where
 
 instance Build (KeyValueCursor a b) where
     type Building (KeyValueCursor a b) = KeyValueView a b
-    build KeyValueCursor {..} =
-        KeyValueView
-        { keyValueViewKey = build keyValueCursorKey
-        , keyValueViewValue = build keyValueCursorValue
-        }
+    build (KVK KeyCursor {..}) = KVVK keyCursorKey keyCursorValue
+    build (KVV ValueCursor {..}) = KVVV valueCursorKey valueCursorValue
 
 instance Rebuild (KeyValueCursor a b) where
-    type ReBuilding (KeyValueCursor a b) = MapView a b
-    rebuild = rebuild . keyValueCursorParent
-    selection = selection . keyValueCursorParent
+    type ReBuilding (KeyValueCursor a b) = KeyValueView a b
+    rebuild (KVK kc) = rebuild kc
+    rebuild (KVV vc) = rebuild vc
+    selection (KVK kc) = selection kc
+    selection (KVV vc) = selection vc
 
-data KeyValueView a b = KeyValueView
-    { keyValueViewKey :: a
-    , keyValueViewValue :: b
-    } deriving (Show, Eq, Generic)
+data KeyValueView a b
+    = KVVK a
+           b
+    | KVVV a
+           b
+    deriving (Show, Eq, Generic)
 
 instance (Validity a, Validity b) => Validity (KeyValueView a b)
 
 instance View (KeyValueView a b) where
     type Source (KeyValueView a b) = (a, b)
-    source KeyValueView {..} = (keyValueViewKey, keyValueViewValue)
-    view (a, b) = KeyValueView {keyValueViewKey = a, keyValueViewValue = b}
+    source (KVVK a b) = (a, b)
+    source (KVVV a b) = (a, b)
+    view (a, b) = KVVK a b
+
+instance Selectable (KeyValueView a b) where
+    applySelection =
+        drillWithSel_ $ \mi kv ->
+            case (mi, kv) of
+                (Just 0, KVVV a b) -> KVVK a b
+                (Just 1, KVVK a b) -> KVVV a b
+                (_, _) -> kv
 
 data KeyCursor a b = KeyCursor
-    { keyCursorParent :: KeyValueCursor a b
-    , keyCursorKey :: a
+    { keyCursorKey :: a
+    , keyCursorValue :: b
     } deriving (Show, Eq, Generic)
 
 instance (Validity a, Validity b) => Validity (KeyCursor a b) where
@@ -116,12 +131,17 @@ instance Build (KeyCursor a b) where
     build = keyCursorKey
 
 instance Rebuild (KeyCursor a b) where
-    type ReBuilding (KeyCursor a b) = MapView a b
-    rebuild = rebuild . keyCursorParent
-    selection KeyCursor {..} = 0 : selection keyCursorParent
+    type ReBuilding (KeyCursor a b) = KeyValueView a b
+    rebuild KeyCursor {..} = KVVK keyCursorKey keyCursorValue
+    selection KeyCursor {..} = [0]
+
+keyCursorSelectValue :: KeyCursor a b -> ValueCursor a b
+keyCursorSelectValue KeyCursor {..} =
+    ValueCursor
+    {valueCursorKey = keyCursorKey, valueCursorValue = keyCursorValue}
 
 data ValueCursor a b = ValueCursor
-    { valueCursorParent :: KeyValueCursor a b
+    { valueCursorKey :: a
     , valueCursorValue :: b
     } deriving (Show, Eq, Generic)
 
@@ -130,10 +150,14 @@ instance Build (ValueCursor a b) where
     build = valueCursorValue
 
 instance Rebuild (ValueCursor a b) where
-    type ReBuilding (ValueCursor a b) = MapView a b
-    rebuild = rebuild . valueCursorParent
-    selection ValueCursor {..} = 1 : selection valueCursorParent
+    type ReBuilding (ValueCursor a b) = KeyValueView a b
+    rebuild ValueCursor {..} = KVVV valueCursorKey valueCursorValue
+    selection ValueCursor {..} = [1]
 
 instance (Validity a, Validity b) => Validity (ValueCursor a b) where
     isValid a = isValid (build a) && isValid (rebuild a)
     validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+valueCursorSelectKey :: ValueCursor a b -> KeyCursor a b
+valueCursorSelectKey ValueCursor {..} =
+    KeyCursor {keyCursorKey = valueCursorKey, keyCursorValue = valueCursorValue}

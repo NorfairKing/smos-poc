@@ -64,6 +64,10 @@ module Smos.Actions
     , tagUnset
     , editorOnTags
     , exitTag
+    -- * Timestamps actions
+    , enterTimestamps
+    , timestampSwitch
+    , exitTimestamps
     -- ** Single Tag Actions
     , tagInsert
     , tagAppend
@@ -117,6 +121,7 @@ import Lens.Micro
 import Smos.Data
 
 import Cursor.Class
+import Cursor.Map
 import Cursor.Tree
 
 import Smos.Actions.Editor
@@ -516,6 +521,52 @@ exitTag =
         case cur of
             ATags tc -> AnEntry $ tagsCursorParent tc
             _ -> cur
+
+enterTimestamps :: SmosM ()
+enterTimestamps =
+    modifyCursorS $ \cur ->
+        case cur of
+            AnEntry ec ->
+                case entryCursorTimestamps ec of
+                    Nothing -> do
+                        now <- liftIO getCurrentTime
+                        pure $ ATimestamps $ newTimestampsCursor ec now
+                    Just tc -> pure $ ATimestamps tc
+            _ -> pure cur
+
+timestampSwitch :: SmosM ()
+timestampSwitch =
+    modifyTimestamp $ \kvc ->
+        case kvc of
+            KVK kc -> KVV $ keyCursorSelectValue kc
+            KVV vc -> KVK $ valueCursorSelectKey vc
+
+exitTimestamps :: SmosM ()
+exitTimestamps =
+    modifyCursor $ \cur ->
+        case cur of
+            ATimestamps tc -> AnEntry $ timestampsCursorParent tc
+            _ -> cur
+
+modifyTimestamp ::
+       (KeyValueCursor TimestampName Timestamp -> KeyValueCursor TimestampName Timestamp)
+    -> SmosM ()
+modifyTimestamp func = modifyTimestampS $ pure . func
+
+modifyTimestampS ::
+       (KeyValueCursor TimestampName Timestamp -> SmosM (KeyValueCursor TimestampName Timestamp))
+    -> SmosM ()
+modifyTimestampS func =
+    modifyTimestampsS $ \tsc -> do
+        r <- func $ tsc ^. timestampsCursorSelectedL
+        pure $ tsc & timestampsCursorSelectedL .~ r
+
+modifyTimestampsS :: (TimestampsCursor -> SmosM TimestampsCursor) -> SmosM ()
+modifyTimestampsS func =
+    modifyCursorS $ \cur ->
+        case cur of
+            ATimestamps tc -> ATimestamps <$> func tc
+            _ -> pure cur
 
 editorOn ::
        Lens' EntryCursor a

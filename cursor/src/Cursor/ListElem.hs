@@ -52,6 +52,14 @@ data ListElemCursor a = ListElemCursor
 
 instance Validity a => Validity (ListElemCursor a)
 
+instance Functor ListElemCursor where
+    fmap f ListElemCursor {..} =
+        ListElemCursor
+        { listElemCursorPrev = fmap f listElemCursorPrev
+        , listElemCursorCurrent = f listElemCursorCurrent
+        , listElemCursorNext = fmap f listElemCursorNext
+        }
+
 instance Show a => Show (ListElemCursor a) where
     show ListElemCursor {..} =
         concat

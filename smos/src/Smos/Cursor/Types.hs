@@ -285,7 +285,9 @@ instance Eq TimestampsCursor where
 instance Rebuild TimestampsCursor where
     type ReBuilding TimestampsCursor = Select (ForestView EntryView)
     rebuild = rebuild . timestampsCursorParent
-    selection TimestampsCursor {..} = 3 : selection timestampsCursorParent
+    selection TimestampsCursor {..} =
+        selection timestampsCursorTimestamps ++
+        3 : selection timestampsCursorParent
 
 instance Build TimestampsCursor where
     type Building TimestampsCursor = Select TimestampsView

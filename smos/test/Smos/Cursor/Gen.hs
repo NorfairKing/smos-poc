@@ -16,8 +16,25 @@ import Smos.Data.Gen ()
 
 instance GenUnchecked AnyCursor
 
-instance GenValid AnyCursor
+instance GenValid AnyCursor where
+    genValid =
+        oneof
+            [ AnyForest <$> genValid
+            , AnyTree <$> genValid
+            , AnyEntry <$> genValid
+            , AnyHeader <$> genValid
+            , AnyContents <$> genValid
+            , AnyState <$> genValid
+            , AnyTags <$> genValid
+            ]
 
 instance GenUnchecked ACursor
 
-instance GenValid ACursor
+instance GenValid ACursor where
+    genValid =
+        oneof
+            [ AnEntry <$> genValid
+            , AHeader <$> genValid
+            , AContents <$> genValid
+            , ATags <$> genValid
+            ]

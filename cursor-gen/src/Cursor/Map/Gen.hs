@@ -32,11 +32,21 @@ instance (Eq a, Hashable a, GenUnchecked a, GenUnchecked b) =>
 
 instance (Eq a, Hashable a, GenValid a, GenValid b) =>
          GenValid (KeyCursor a b) where
-    genValid = keyValueCursorKey <$> genValid
+    genValid = do
+        kvc <- genValid
+        pure $
+            case kvc of
+                KVK kc -> kc
+                KVV vc -> valueCursorSelectKey vc
 
 instance (Eq a, Hashable a, GenUnchecked a, GenUnchecked b) =>
          GenUnchecked (ValueCursor a b)
 
 instance (Eq a, Hashable a, GenValid a, GenValid b) =>
          GenValid (ValueCursor a b) where
-    genValid = keyValueCursorValue <$> genValid
+    genValid = do
+        kvc <- genValid
+        pure $
+            case kvc of
+                KVK kc -> keyCursorSelectValue kc
+                KVV vc -> vc

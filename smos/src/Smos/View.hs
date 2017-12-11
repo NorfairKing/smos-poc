@@ -85,7 +85,7 @@ instance Selectable EntryView where
         { entryViewTodostate = drillPrefixStop 0 msel entryViewTodostate
         , entryViewHeader = drillPrefixApply 1 msel entryViewHeader
         , entryViewTags = drillPrefixApply 2 msel <$> entryViewTags
-        , entryViewTimestamps = drillStop 3 msel <$> entryViewTimestamps
+        , entryViewTimestamps = drillPrefixApply 3 msel <$> entryViewTimestamps
         , entryViewProperties = drillStop 4 msel entryViewProperties
         , entryViewContents = drillPrefixApply 5 msel <$> entryViewContents
         , entryViewLogbook = drillStop 6 msel entryViewLogbook
@@ -172,6 +172,10 @@ instance View TimestampsView where
     type Source TimestampsView = NonEmpty (TimestampName, Timestamp)
     source = source . timestampsViewTimestamps
     view = TimestampsView . view
+
+instance Selectable TimestampsView where
+    applySelection msel =
+        TimestampsView . applySelection msel . timestampsViewTimestamps
 
 newtype PropertiesView = PropertiesView
     { propertiesViewProperties :: HashMap PropertyName PropertyValue

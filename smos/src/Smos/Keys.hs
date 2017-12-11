@@ -25,6 +25,9 @@ module Smos.Keys
     , inHeader
     , inContents
     , inTags
+    , inTimestamps
+    , inTimestampName
+    , inTimestampValue
     -- * Raw building blocks
     , filterKeymap
     , rawKeymap
@@ -37,8 +40,12 @@ module Smos.Keys
 
 import Import
 
+import Lens.Micro
+
 import qualified Brick.Types as B
 import qualified Graphics.Vty as V
+
+import Cursor.Map
 
 import Smos.Cursor
 import Smos.Types
@@ -163,6 +170,30 @@ inTags =
     inFileAnd $ \s ->
         case s of
             ATags _ -> True
+            _ -> False
+
+inTimestampName :: Keymap -> Keymap
+inTimestampName =
+    inTimestampsAnd $ \tsc ->
+        case tsc ^. timestampsCursorSelectedL of
+            KVK _ -> True
+            _ -> False
+
+inTimestampValue :: Keymap -> Keymap
+inTimestampValue =
+    inTimestampsAnd $ \tsc ->
+        case tsc ^. timestampsCursorSelectedL of
+            KVV _ -> True
+            _ -> False
+
+inTimestamps :: Keymap -> Keymap
+inTimestamps = inTimestampsAnd $ const True
+
+inTimestampsAnd :: (TimestampsCursor -> Bool) -> Keymap -> Keymap
+inTimestampsAnd pred_ =
+    inFileAnd $ \s ->
+        case s of
+            ATimestamps tsc -> pred_ tsc
             _ -> False
 
 inFileAnd :: (ACursor -> Bool) -> Keymap -> Keymap

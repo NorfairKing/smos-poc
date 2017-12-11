@@ -83,7 +83,7 @@ spec =
                     reselectCursor [1, ix_] (source $ SmosFileView $ rebuild fc) `shouldBe`
                     AnyForest fc
             it "selects the cursor that was handed to selection" $
-                forAll genValid $ \ac ->
+                forAllValid $ \ac ->
                     let sel = selection ac
                         sf = SmosFile $ source $ selectValue $ rebuild ac
                     in reselectCursor sel sf `shouldBe` ac

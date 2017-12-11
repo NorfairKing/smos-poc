@@ -8,7 +8,6 @@ module Smos.Draw
 import Import
 
 import qualified Data.HashMap.Lazy as HM
-import qualified Data.List.NonEmpty as NE
 import qualified Data.Text as T
 import Data.Time
 
@@ -18,6 +17,7 @@ import Brick.Widgets.Core as B
 import Graphics.Vty.Input.Events (Key(..), Modifier(..))
 
 import Cursor.ListElem
+import Cursor.Map
 import Cursor.Select
 import Cursor.Text
 import Cursor.TextField
@@ -134,12 +134,26 @@ drawTag :: Select TagView -> Widget ResourceName
 drawTag = withAttr tagAttr . drawTextView . fmap tagViewText
 
 drawTimestamps :: Select TimestampsView -> Widget ResourceName
-drawTimestamps =
-    withSel $ \TimestampsView {..} ->
-        B.vBox $
-        NE.toList $
-        flip fmap (source timestampsViewTimestamps) $ \(k, ts) ->
-            B.hBox [B.txt $ timestampNameText k, B.txt ": ", drawTimestamp ts]
+drawTimestamps stsv =
+    let d :: Select (KeyValueView TimestampName Timestamp)
+          -> Widget ResourceName
+        d =
+            withSel $ \kvv ->
+                case kvv of
+                    KVVK k ts ->
+                        B.hBox
+                            [ B.txt $ timestampNameText k
+                            , B.txt ": "
+                            , drawTimestamp ts
+                            ]
+                    KVVV k ts ->
+                        B.hBox
+                            [ B.txt $ timestampNameText k
+                            , B.txt ": "
+                            , drawTimestamp ts
+                            ]
+    in drawVerticalListElemView d d d $
+       (mapViewList . timestampsViewTimestamps) <$> stsv
 
 drawProperties :: Select PropertiesView -> Widget ResourceName
 drawProperties =
@@ -181,6 +195,21 @@ drawTimestamp (TimestampTime lt) =
 
 drawUTCTime :: UTCTime -> Widget n
 drawUTCTime = B.str . formatTime defaultTimeLocale "%F %R"
+
+drawVerticalListElemView ::
+       (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> (Select a -> Widget n)
+    -> Select (ListElemView a)
+    -> Widget n
+drawVerticalListElemView prevFunc curFunc nextFunc =
+    drawListElemView
+        prevFunc
+        curFunc
+        nextFunc
+        B.vBox
+        B.vBox
+        (\a b c -> a <=> b <=> c)
 
 drawHorizontalListElemView ::
        (Select a -> Widget n)

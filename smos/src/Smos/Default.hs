@@ -43,6 +43,11 @@ defaultConfig =
                           , matchChar 'w' $ tagToggle "work"
                           , matchChar 'h' $ tagToggle "home"
                           ]
+                    , afterChar 'm' $
+                      mconcat
+                          [ matchChar 'k' enterTimestamps
+                          , matchChar 'j' enterTimestamps
+                          ]
                     , afterChar 'c' $
                       mconcat [matchChar 'i' clockIn, matchChar 'o' clockOut]
                     , afterChar 't' $
@@ -125,6 +130,11 @@ defaultConfig =
                           tagsSelectPrev
                     , matchKey KEnter exitTag
                     , matchKey KEsc exitTag
+                    ]
+              , inTimestamps $
+                mconcat
+                    [ matchChar '\t' timestampSwitch
+                    , matchKey KEsc exitTimestamps
                     ]
               ]
     , configAttrMap =

@@ -12,54 +12,39 @@ import Cursor.Tree
 
 import Smos.Cursor.Types
 
+import Cursor.ListElem.Gen ()
+import Cursor.Map.Gen ()
 import Cursor.Text.Gen ()
+import Cursor.TextField.Gen ()
 import Cursor.Tree.Gen ()
 
 import Smos.Data.Gen ()
 
-instance GenUnchecked EntryCursor where
-    genUnchecked = treeCursorValue <$> genUnchecked
-    shrinkUnchecked = shrinkNothing
+instance GenUnchecked EntryCursor
 
 instance GenValid EntryCursor where
     genValid = treeCursorValue <$> genValid
 
-instance GenUnchecked HeaderCursor where
-    genUnchecked = entryCursorHeader <$> genUnchecked
-    shrinkUnchecked = shrinkNothing
+instance GenUnchecked HeaderCursor
 
 instance GenValid HeaderCursor where
     genValid = entryCursorHeader <$> genValid
 
-instance GenUnchecked ContentsCursor where
-    genUnchecked =
-        genUnchecked >>= \ec ->
-            case entryCursorContents ec of
-                Nothing -> genUnchecked
-                Just c -> pure c
-    shrinkUnchecked = shrinkNothing
+instance GenUnchecked ContentsCursor
 
 instance GenValid ContentsCursor where
     genValid =
         genValid >>= \ec ->
             case entryCursorContents ec of
-                Nothing -> genValid
+                Nothing -> scale (+ 1) genValid
                 Just c -> pure c
 
-instance GenUnchecked StateCursor where
-    genUnchecked = entryCursorState <$> genUnchecked
-    shrinkUnchecked = shrinkNothing
+instance GenUnchecked StateCursor
 
 instance GenValid StateCursor where
     genValid = entryCursorState <$> genValid
 
-instance GenUnchecked TagsCursor where
-    genUnchecked = do
-        ec <- genUnchecked
-        case entryCursorTags ec of
-            Nothing -> scale (+ 1) genUnchecked
-            Just tc -> pure tc
-    shrinkUnchecked = shrinkNothing
+instance GenUnchecked TagsCursor
 
 instance GenValid TagsCursor where
     genValid = do
@@ -68,9 +53,16 @@ instance GenValid TagsCursor where
             Nothing -> scale (+ 1) genValid
             Just tc -> pure tc
 
-instance GenUnchecked TagCursor where
-    genUnchecked = TagCursor <$> genUnchecked
-    shrinkUnchecked = shrinkNothing
+instance GenUnchecked TagCursor
 
 instance GenValid TagCursor where
     genValid = TagCursor <$> genValid
+
+instance GenUnchecked TimestampsCursor
+
+instance GenValid TimestampsCursor where
+    genValid = do
+        ec <- genValid
+        case entryCursorTimestamps ec of
+            Nothing -> scale (+ 1) genValid
+            Just tc -> pure tc

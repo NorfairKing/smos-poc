@@ -1,22 +1,34 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Smos.Cursor.Timestamps
-    ( makeTimestampsCursor
+    ( TimestampsCursor(..)
+    , newTimestampsCursor
+    , makeTimestampsCursor
     , timestampsCursorSetTimestamps
     , timestampsCursorTimestampsL
+    , timestampsCursorListL
+    , timestampsCursorSelectedL
     ) where
 
 import Import
 
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Time
 
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.Map
 
 import Smos.Data
 
 import Smos.Cursor.Entry.Timestamps
 import Smos.Cursor.Types
 import Smos.View
+
+newTimestampsCursor :: EntryCursor -> UTCTime -> TimestampsCursor
+newTimestampsCursor ec now =
+    makeTimestampsCursor ec $ (TimestampName "", TimestampTime now) :| []
 
 makeTimestampsCursor ::
        EntryCursor -> NonEmpty (TimestampName, Timestamp) -> TimestampsCursor
@@ -41,3 +53,14 @@ timestampsCursorTimestampsL = lens getter setter
       where
         ec' = timestampsCursorParent tsc & entryCursorTimestampsL .~ Just tsc'
         tsc' = timestampsCursor ec' $ TimestampsView $ view tss
+
+timestampsCursorListL ::
+       Lens' TimestampsCursor (MapCursor TimestampName Timestamp)
+timestampsCursorListL = lens getter setter
+  where
+    getter = timestampsCursorTimestamps
+    setter tsc l = tsc {timestampsCursorTimestamps = l}
+
+timestampsCursorSelectedL ::
+       Lens' TimestampsCursor (KeyValueCursor TimestampName Timestamp)
+timestampsCursorSelectedL = timestampsCursorListL . mapCursorSelectedL
