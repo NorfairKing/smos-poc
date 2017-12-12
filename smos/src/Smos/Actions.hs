@@ -436,7 +436,10 @@ enterTag =
         case cur of
             AnEntry ec ->
                 case entryCursorTags ec of
-                    Nothing -> ATags $ newTagsCursor ec
+                    Nothing ->
+                        let ec' = ec & entryCursorTagsL .~ Just tsc
+                            tsc = newTagsCursor ec'
+                        in ATags tsc
                     Just tc -> ATags tc
             _ -> cur
 
@@ -530,7 +533,9 @@ enterTimestamps =
                 case entryCursorTimestamps ec of
                     Nothing -> do
                         now <- liftIO getCurrentTime
-                        pure $ ATimestamps $ newTimestampsCursor ec now
+                        let ec' = ec & entryCursorTimestampsL .~ Just tsc
+                            tsc = newTimestampsCursor ec' now
+                        pure $ ATimestamps tsc
                     Just tc -> pure $ ATimestamps tc
             _ -> pure cur
 
