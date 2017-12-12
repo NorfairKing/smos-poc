@@ -17,3 +17,7 @@ listElemElemOf :: ListElemCursor a -> Gen a
 listElemElemOf ListElemCursor {..} =
     elements $
     listElemCursorPrev ++ [listElemCursorCurrent] ++ listElemCursorNext
+
+instance GenUnchecked a => GenUnchecked (ListElemView a)
+
+instance GenValid a => GenValid (ListElemView a)

@@ -64,6 +64,9 @@ makeMapCursorFromMap m =
 rebuildHashmapFromMapView :: (Eq a, Hashable a) => MapView a b -> HashMap a b
 rebuildHashmapFromMapView = HM.fromList . NE.toList . source
 
+rebuildMapCursor :: (Eq a, Hashable a) => MapCursor a b -> NonEmpty (a, b)
+rebuildMapCursor = source . rebuild
+
 mapCursorListL :: Lens' (MapCursor a b) (ListElemCursor (KeyValueCursor a b))
 mapCursorListL = lens getter setter
   where
@@ -72,6 +75,54 @@ mapCursorListL = lens getter setter
 
 mapCursorSelectedL :: Lens' (MapCursor a b) (KeyValueCursor a b)
 mapCursorSelectedL = mapCursorListL . listElemCursorElemL
+
+mapCursorSelectPrev :: MapCursor a b -> Maybe (MapCursor a b)
+mapCursorSelectPrev = mapCursorListL listElemCursorSelectPrev
+
+mapCursorSelectNext :: MapCursor a b -> Maybe (MapCursor a b)
+mapCursorSelectNext = mapCursorListL listElemCursorSelectNext
+
+mapCursorSelectFirst :: MapCursor a b -> MapCursor a b
+mapCursorSelectFirst = mapCursorListL %~ listElemCursorSelectFirst
+
+mapCursorSelectLast :: MapCursor a b -> MapCursor a b
+mapCursorSelectLast = mapCursorListL %~ listElemCursorSelectLast
+
+mapCursorInsert :: a -> b -> MapCursor a b -> MapCursor a b
+mapCursorInsert a b =
+    mapCursorListL %~
+    listElemCursorInsert (KVK KeyCursor {keyCursorKey = a, keyCursorValue = b})
+
+mapCursorAppend :: a -> b -> MapCursor a b -> MapCursor a b
+mapCursorAppend a b =
+    mapCursorListL %~
+    listElemCursorAppend (KVK KeyCursor {keyCursorKey = a, keyCursorValue = b})
+
+mapCursorInsertAndSelect :: a -> b -> MapCursor a b -> MapCursor a b
+mapCursorInsertAndSelect a b =
+    mapCursorListL %~
+    listElemCursorInsertAndSelect
+        (KVK KeyCursor {keyCursorKey = a, keyCursorValue = b})
+
+mapCursorAppendAndSelect :: a -> b -> MapCursor a b -> MapCursor a b
+mapCursorAppendAndSelect a b =
+    mapCursorListL %~
+    listElemCursorAppendAndSelect
+        (KVK KeyCursor {keyCursorKey = a, keyCursorValue = b})
+
+mapCursorRemoveElemAndSelectPrev :: MapCursor a b -> Maybe (MapCursor a b)
+mapCursorRemoveElemAndSelectPrev =
+    mapCursorListL listElemCursorRemoveElemAndSelectPrev
+
+mapCursorDeleteElemAndSelectNext :: MapCursor a b -> Maybe (MapCursor a b)
+mapCursorDeleteElemAndSelectNext =
+    mapCursorListL listElemCursorDeleteElemAndSelectNext
+
+mapCursorRemoveElem :: MapCursor a b -> Maybe (MapCursor a b)
+mapCursorRemoveElem = mapCursorListL listElemCursorRemoveElem
+
+mapCursorDeleteElem :: MapCursor a b -> Maybe (MapCursor a b)
+mapCursorDeleteElem = mapCursorListL listElemCursorDeleteElem
 
 data KeyValueCursor a b
     = KVK (KeyCursor a b)

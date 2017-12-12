@@ -50,3 +50,12 @@ instance (Eq a, Hashable a, GenValid a, GenValid b) =>
             case kvc of
                 KVK kc -> keyCursorSelectValue kc
                 KVV vc -> vc
+
+instance (GenUnchecked a, GenUnchecked b) => GenUnchecked (MapView a b)
+
+instance (GenValid a, GenValid b) => GenValid (MapView a b)
+
+instance (GenUnchecked a, GenUnchecked b) =>
+         GenUnchecked (KeyValueView a b)
+
+instance (GenValid a, GenValid b) => GenValid (KeyValueView a b)
