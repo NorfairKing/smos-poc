@@ -554,12 +554,12 @@ exitTimestamps =
             _ -> cur
 
 modifyTimestamp ::
-       (KeyValueCursor TimestampName Timestamp -> KeyValueCursor TimestampName Timestamp)
+       (KeyValueCursor TimestampNameCursor Timestamp -> KeyValueCursor TimestampNameCursor Timestamp)
     -> SmosM ()
 modifyTimestamp func = modifyTimestampS $ pure . func
 
 modifyTimestampS ::
-       (KeyValueCursor TimestampName Timestamp -> SmosM (KeyValueCursor TimestampName Timestamp))
+       (KeyValueCursor TimestampNameCursor Timestamp -> SmosM (KeyValueCursor TimestampNameCursor Timestamp))
     -> SmosM ()
 modifyTimestampS func =
     modifyTimestampsS $ \tsc -> do

@@ -45,13 +45,13 @@ import Smos.Cursor.Tags.Tag
 import Smos.Cursor.Types
 
 newTagsCursor :: EntryCursor -> TagsCursor
-newTagsCursor ec = makeTagsCursor ec $ Tag "" :| []
+newTagsCursor ec = makeNewTagsCursor ec $ Tag ""
 
 makeNewTagsCursor :: EntryCursor -> Tag -> TagsCursor
 makeNewTagsCursor ec tag = tagsCursor ec $ view (tag :| [])
 
 makeTagsCursor :: EntryCursor -> NonEmpty Tag -> TagsCursor
-makeTagsCursor ec tags = tagsCursor ec $ view tags
+makeTagsCursor ec = tagsCursor ec . view
 
 tagsCursorTagsL :: Lens' TagsCursor (NonEmpty Tag)
 tagsCursorTagsL = lens (source . selectValue . build) (flip tagsCursorSetTags)

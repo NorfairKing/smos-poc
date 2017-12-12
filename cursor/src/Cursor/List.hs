@@ -28,6 +28,8 @@ module Cursor.List
 
 import Import
 
+import Data.Hashable
+
 import Cursor.Class
 import Cursor.Select
 
@@ -41,6 +43,8 @@ instance Validity a => Validity (ListCursor a)
 instance Show a => Show (ListCursor a) where
     show ListCursor {..} =
         unwords [show listCursorPrev, "|", show listCursorNext]
+
+instance Hashable a => Hashable (ListCursor a)
 
 instance Build (ListCursor a) where
     type Building (ListCursor a) = Maybe a

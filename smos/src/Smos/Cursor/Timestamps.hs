@@ -3,10 +3,11 @@
 module Smos.Cursor.Timestamps
     ( TimestampsCursor(..)
     , newTimestampsCursor
+    , makeNewTimestampsCursor
     , makeTimestampsCursor
     , timestampsCursorSetTimestamps
     , timestampsCursorTimestampsL
-    , timestampsCursorListL
+    , timestampsCursorMapL
     , timestampsCursorSelectedL
     , timestampsCursorSelectPrev
     , timestampsCursorSelectNext
@@ -20,6 +21,7 @@ module Smos.Cursor.Timestamps
     , timestampsCursorDeleteElemAndSelectNext
     , timestampsCursorRemoveElem
     , timestampsCursorDeleteElem
+    , TimestampNameCursor(..)
     ) where
 
 import Import
@@ -31,94 +33,92 @@ import Lens.Micro
 
 import Cursor.Class
 import Cursor.Map
+import Cursor.Select
 
 import Smos.Data
 
 import Smos.Cursor.Entry.Timestamps
 import Smos.Cursor.Types
-import Smos.View
 
 newTimestampsCursor :: EntryCursor -> UTCTime -> TimestampsCursor
 newTimestampsCursor ec now =
     makeTimestampsCursor ec $ (TimestampName "", TimestampTime now) :| []
 
+makeNewTimestampsCursor ::
+       EntryCursor -> TimestampName -> Timestamp -> TimestampsCursor
+makeNewTimestampsCursor ec tsn ts = makeTimestampsCursor ec $ (tsn, ts) :| []
+
 makeTimestampsCursor ::
        EntryCursor -> NonEmpty (TimestampName, Timestamp) -> TimestampsCursor
-makeTimestampsCursor ec = timestampsCursor ec . TimestampsView . view
+makeTimestampsCursor ec = timestampsCursor ec . view
+
+timestampsCursorTimestampsL ::
+       Lens' TimestampsCursor (NonEmpty (TimestampName, Timestamp))
+timestampsCursorTimestampsL =
+    lens (source . selectValue . build) (flip timestampsCursorSetTimestamps)
 
 timestampsCursorSetTimestamps ::
        NonEmpty (TimestampName, Timestamp)
     -> TimestampsCursor
     -> TimestampsCursor
-timestampsCursorSetTimestamps ts = timestampsCursorTimestampsL .~ ts
-
-timestampsCursorTimestampsL ::
-       Lens' TimestampsCursor (NonEmpty (TimestampName, Timestamp))
-timestampsCursorTimestampsL = lens getter setter
+timestampsCursorSetTimestamps tss tsc = tsc'
   where
-    getter = source . rebuild . timestampsCursorTimestamps
-    setter ::
-           TimestampsCursor
-        -> NonEmpty (TimestampName, Timestamp)
-        -> TimestampsCursor
-    setter tsc tss = tsc'
-      where
-        ec' = timestampsCursorParent tsc & entryCursorTimestampsL .~ Just tsc'
-        tsc' = timestampsCursor ec' $ TimestampsView $ view tss
+    ec' = timestampsCursorParent tsc & entryCursorTimestampsL .~ Just tsc'
+    tsc' = timestampsCursor ec' $ view tss
 
-timestampsCursorListL ::
-       Lens' TimestampsCursor (MapCursor TimestampName Timestamp)
-timestampsCursorListL = lens getter setter
+timestampsCursorMapL ::
+       Lens' TimestampsCursor (MapCursor TimestampNameCursor Timestamp)
+timestampsCursorMapL = lens getter setter
   where
     getter = timestampsCursorTimestamps
     setter tsc l = tsc {timestampsCursorTimestamps = l}
 
 timestampsCursorSelectedL ::
-       Lens' TimestampsCursor (KeyValueCursor TimestampName Timestamp)
-timestampsCursorSelectedL = timestampsCursorListL . mapCursorSelectedL
+       Lens' TimestampsCursor (KeyValueCursor TimestampNameCursor Timestamp)
+timestampsCursorSelectedL = timestampsCursorMapL . mapCursorSelectedL
 
 timestampsCursorSelectPrev :: TimestampsCursor -> Maybe TimestampsCursor
-timestampsCursorSelectPrev = timestampsCursorListL mapCursorSelectPrev
+timestampsCursorSelectPrev = timestampsCursorMapL mapCursorSelectPrev
 
 timestampsCursorSelectNext :: TimestampsCursor -> Maybe TimestampsCursor
-timestampsCursorSelectNext = timestampsCursorListL mapCursorSelectNext
+timestampsCursorSelectNext = timestampsCursorMapL mapCursorSelectNext
 
 timestampsCursorSelectFirst :: TimestampsCursor -> TimestampsCursor
-timestampsCursorSelectFirst = timestampsCursorListL %~ mapCursorSelectFirst
+timestampsCursorSelectFirst = timestampsCursorMapL %~ mapCursorSelectFirst
 
 timestampsCursorSelectLast :: TimestampsCursor -> TimestampsCursor
-timestampsCursorSelectLast = timestampsCursorListL %~ mapCursorSelectLast
+timestampsCursorSelectLast = timestampsCursorMapL %~ mapCursorSelectLast
 
 timestampsCursorInsert ::
-       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
-timestampsCursorInsert n ts = timestampsCursorListL %~ mapCursorInsert n ts
+       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
+timestampsCursorInsert n ts = timestampsCursorMapL %~ mapCursorInsert n ts
 
 timestampsCursorAppend ::
-       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
-timestampsCursorAppend n ts = timestampsCursorListL %~ mapCursorAppend n ts
+       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
+timestampsCursorAppend n ts = timestampsCursorMapL %~ mapCursorAppend n ts
 
 timestampsCursorInsertAndSelect ::
-       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
+       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
 timestampsCursorInsertAndSelect n ts =
-    timestampsCursorListL %~ mapCursorInsertAndSelect n ts
+    timestampsCursorMapL %~ mapCursorInsertAndSelect n ts
 
 timestampsCursorAppendAndSelect ::
-       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
+       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
 timestampsCursorAppendAndSelect n ts =
-    timestampsCursorListL %~ mapCursorInsertAndSelect n ts
+    timestampsCursorMapL %~ mapCursorInsertAndSelect n ts
 
 timestampsCursorRemoveElemAndSelectPrev ::
        TimestampsCursor -> Maybe TimestampsCursor
 timestampsCursorRemoveElemAndSelectPrev =
-    timestampsCursorListL mapCursorRemoveElemAndSelectPrev
+    timestampsCursorMapL mapCursorRemoveElemAndSelectPrev
 
 timestampsCursorDeleteElemAndSelectNext ::
        TimestampsCursor -> Maybe TimestampsCursor
 timestampsCursorDeleteElemAndSelectNext =
-    timestampsCursorListL mapCursorDeleteElemAndSelectNext
+    timestampsCursorMapL mapCursorDeleteElemAndSelectNext
 
 timestampsCursorRemoveElem :: TimestampsCursor -> Maybe TimestampsCursor
-timestampsCursorRemoveElem = timestampsCursorListL mapCursorRemoveElem
+timestampsCursorRemoveElem = timestampsCursorMapL mapCursorRemoveElem
 
 timestampsCursorDeleteElem :: TimestampsCursor -> Maybe TimestampsCursor
-timestampsCursorDeleteElem = timestampsCursorListL mapCursorDeleteElem
+timestampsCursorDeleteElem = timestampsCursorMapL mapCursorDeleteElem

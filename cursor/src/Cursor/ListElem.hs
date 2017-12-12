@@ -5,12 +5,17 @@
 module Cursor.ListElem
     ( ListElemCursor(..)
     , ListElemView(..)
+    , listElemViewElemL
+    , listElemViewElemsL
+    , listElemViewElemsT
     , makeListElemCursor
     , makeNonEmptyListElemCursor
     , makeListElemCursorWithSelection
     , singletonListElemCursor
     , rebuildListElemCursor
     , listElemCursorElemL
+    , listElemCursorElemsL
+    , listElemCursorElemsT
     , listElemCursorSelectPrev
     , listElemCursorSelectNext
     , listElemCursorSelectFirst
@@ -80,8 +85,8 @@ instance Rebuild a => Rebuild (ListElemCursor a) where
         , listElemViewCurrent = listElemCursorCurrent
         , listElemViewNext = listElemCursorNext
         }
-    selection ListElemCursor {..} =
-        selection listElemCursorCurrent ++ [length listElemCursorPrev]
+    selection lec@ListElemCursor {..} =
+        selection listElemCursorCurrent ++ [listElemCursorSelection lec]
 
 data ListElemView a = ListElemView
     { listElemViewPrev :: [a]
@@ -130,15 +135,31 @@ instance Selectable a => Selectable (ListElemView a) where
                     listElemViewElemL %~
                     applySelection (Just sel)
 
+listElemViewSelection :: ListElemView a -> Int
+listElemViewSelection ListElemView {..} = length listElemViewPrev
+
 listElemViewElemL :: Lens' (ListElemView a) a
 listElemViewElemL =
     lens listElemViewCurrent $ \lec le -> lec {listElemViewCurrent = le}
+
+listElemViewElemsL ::
+       Traversal (ListElemView a) (ListElemView b) (NonEmpty a) (NonEmpty b)
+listElemViewElemsL =
+    lens source $ \lec ne ->
+        let sel = listElemViewSelection lec
+        in makeListElemViewWithSelection sel ne
+
+listElemViewElemsT :: Traversal (ListElemView a) (ListElemView b) a b
+listElemViewElemsT = listElemViewElemsL . traversed
 
 makeListElemViewWithSelection :: Int -> NonEmpty a -> ListElemView a
 makeListElemViewWithSelection i ne =
     let (l, m, r) = applyListElemSelection ne i
     in ListElemView
        {listElemViewPrev = l, listElemViewCurrent = m, listElemViewNext = r}
+
+listElemCursorSelection :: ListElemCursor a -> Int
+listElemCursorSelection ListElemCursor {..} = length listElemCursorPrev
 
 makeListElemCursor :: NonEmpty a -> ListElemCursor a
 makeListElemCursor = makeListElemCursorWithSelection 0
@@ -176,6 +197,16 @@ rebuildListElemCursor ListElemCursor {..} =
 listElemCursorElemL :: Lens' (ListElemCursor a) a
 listElemCursorElemL =
     lens listElemCursorCurrent $ \lec le -> lec {listElemCursorCurrent = le}
+
+listElemCursorElemsL ::
+       Traversal (ListElemCursor a) (ListElemCursor b) (NonEmpty a) (NonEmpty b)
+listElemCursorElemsL =
+    lens rebuildListElemCursor $ \lec ne ->
+        let sel = listElemCursorSelection lec
+        in makeListElemCursorWithSelection sel ne
+
+listElemCursorElemsT :: Traversal (ListElemCursor a) (ListElemCursor b) a b
+listElemCursorElemsT = listElemCursorElemsL . traversed
 
 listElemCursorSelectPrev :: ListElemCursor a -> Maybe (ListElemCursor a)
 listElemCursorSelectPrev lec =

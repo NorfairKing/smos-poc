@@ -12,6 +12,8 @@ module Smos.View
     , TagsView(..)
     , TagView(..)
     , tagView
+    , TimestampNameView(..)
+    , timestampNameView
     , ContentsView(..)
     , TimestampsView(..)
     , PropertiesView(..)
@@ -24,6 +26,8 @@ import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NE
+
+import Lens.Micro
 
 import Smos.Data
 
@@ -60,6 +64,7 @@ instance View EntryView where
                   Nothing -> HM.empty
                   Just stsv ->
                       rebuildHashmapFromMapView $
+                      (mapViewListElemViewKeysT %~ (TimestampName . source)) $
                       timestampsViewTimestamps $ selectValue stsv
         , entryProperties = source $ selectValue entryViewProperties
         , entryLogbook = source $ selectValue entryViewLogbook
@@ -147,6 +152,25 @@ tagView t = TagView {tagViewText = view $ tagText t}
 instance Selectable TagView where
     applySelection msel = TagView . applySelection msel . tagViewText
 
+newtype TimestampNameView = TimestampNameView
+    { timestampNameViewText :: TextView
+    } deriving (Show, Eq, Generic)
+
+instance Validity TimestampNameView
+
+instance View TimestampNameView where
+    type Source TimestampNameView = Text
+    source = source . timestampNameViewText
+    view = TimestampNameView . view
+
+timestampNameView :: TimestampName -> TimestampNameView
+timestampNameView t =
+    TimestampNameView {timestampNameViewText = view $ timestampNameText t}
+
+instance Selectable TimestampNameView where
+    applySelection msel =
+        TimestampNameView . applySelection msel . timestampNameViewText
+
 newtype ContentsView = ContentsView
     { contentsViewContents :: TextFieldView
     } deriving (Show, Eq, Generic)
@@ -163,15 +187,20 @@ instance Selectable ContentsView where
         ContentsView . applySelection msel . contentsViewContents
 
 newtype TimestampsView = TimestampsView
-    { timestampsViewTimestamps :: MapView TimestampName Timestamp
+    { timestampsViewTimestamps :: MapView TimestampNameView Timestamp
     } deriving (Show, Eq, Generic)
 
 instance Validity TimestampsView
 
 instance View TimestampsView where
     type Source TimestampsView = NonEmpty (TimestampName, Timestamp)
-    source = source . timestampsViewTimestamps
-    view = TimestampsView . view
+    source =
+        source .
+        (mapViewListElemViewKeysT %~ (TimestampName . source)) .
+        timestampsViewTimestamps
+    view =
+        TimestampsView .
+        (mapViewListElemViewKeysT %~ (view . timestampNameText)) . view
 
 instance Selectable TimestampsView where
     applySelection msel =

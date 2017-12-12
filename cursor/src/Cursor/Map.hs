@@ -45,6 +45,34 @@ instance (Eq a, Hashable a) => View (MapView a b) where
 instance Selectable (MapView a b) where
     applySelection msel = MapView . applySelection msel . mapViewList
 
+mapViewListElemViewL ::
+       Lens (MapView a b) (MapView c d) (ListElemView (KeyValueView a b)) (ListElemView (KeyValueView c d))
+mapViewListElemViewL = lens mapViewList $ \mv l -> mv {mapViewList = l}
+
+mapViewListElemViewT ::
+       Traversal (MapView a b) (MapView c d) (KeyValueView a b) (KeyValueView c d)
+mapViewListElemViewT = mapViewListElemViewL . listElemViewElemsT
+
+mapViewListElemViewKeysT :: Traversal (MapView a b) (MapView c b) a c
+mapViewListElemViewKeysT = mapViewListElemViewT . keyValueViewKeyL
+
+mapViewListElemViewValuesT :: Traversal (MapView a b) (MapView a d) b d
+mapViewListElemViewValuesT = mapViewListElemViewT . keyValueViewValueL
+
+mapCursorListElemCursorL ::
+       Lens (MapCursor a b) (MapCursor c d) (ListElemCursor (KeyValueCursor a b)) (ListElemCursor (KeyValueCursor c d))
+mapCursorListElemCursorL = lens mapCursorList $ \mv l -> mv {mapCursorList = l}
+
+mapCursorListElemCursorT ::
+       Traversal (MapCursor a b) (MapCursor c d) (KeyValueCursor a b) (KeyValueCursor c d)
+mapCursorListElemCursorT = mapCursorListElemCursorL . listElemCursorElemsT
+
+mapCursorListElemCursorKeysT :: Traversal (MapCursor a b) (MapCursor c b) a c
+mapCursorListElemCursorKeysT = mapCursorListElemCursorT . keyValueCursorKeyL
+
+mapCursorListElemCursorValuesT :: Traversal (MapCursor a b) (MapCursor a d) b d
+mapCursorListElemCursorValuesT = mapCursorListElemCursorT . keyValueCursorValueL
+
 makeMapCursor :: NonEmpty (a, b) -> MapCursor a b
 makeMapCursor ne =
     let els =
@@ -72,6 +100,15 @@ mapCursorListL = lens getter setter
   where
     getter = mapCursorList
     setter mc lc = mc {mapCursorList = lc}
+
+mapCursorListT :: Traversal' (MapCursor a b) (KeyValueCursor a b)
+mapCursorListT = mapCursorListL . listElemCursorElemsT
+
+mapCursorKeysT :: Traversal' (MapCursor a b) a
+mapCursorKeysT = mapCursorListT . keyValueCursorKeyL
+
+mapCursorValuesT :: Traversal' (MapCursor a b) b
+mapCursorValuesT = mapCursorListT . keyValueCursorValueL
 
 mapCursorSelectedL :: Lens' (MapCursor a b) (KeyValueCursor a b)
 mapCursorSelectedL = mapCursorListL . listElemCursorElemL
@@ -145,6 +182,30 @@ instance Rebuild (KeyValueCursor a b) where
     selection (KVK kc) = selection kc
     selection (KVV vc) = selection vc
 
+keyValueCursorKeyL :: Lens (KeyValueCursor a b) (KeyValueCursor c b) a c
+keyValueCursorKeyL = lens getter setter
+  where
+    getter kvc =
+        case kvc of
+            KVK kc -> keyCursorKey kc
+            KVV vc -> valueCursorKey vc
+    setter kvc k =
+        case kvc of
+            KVK kc -> KVK $ kc {keyCursorKey = k}
+            KVV vc -> KVV $ vc {valueCursorKey = k}
+
+keyValueCursorValueL :: Lens (KeyValueCursor a b) (KeyValueCursor a d) b d
+keyValueCursorValueL = lens getter setter
+  where
+    getter kvc =
+        case kvc of
+            KVK kc -> keyCursorValue kc
+            KVV vc -> valueCursorValue vc
+    setter kvc k =
+        case kvc of
+            KVK kc -> KVK $ kc {keyCursorValue = k}
+            KVV vc -> KVV $ vc {valueCursorValue = k}
+
 data KeyValueView a b
     = KVVK a
            b
@@ -168,6 +229,30 @@ instance Selectable (KeyValueView a b) where
                 (Just 1, KVVK a b) -> KVVV a b
                 (_, _) -> kv
 
+keyValueViewKeyL :: Lens (KeyValueView a b) (KeyValueView c b) a c
+keyValueViewKeyL = lens getter setter
+  where
+    getter kvc =
+        case kvc of
+            KVVK a _ -> a
+            KVVV a _ -> a
+    setter kvc a =
+        case kvc of
+            KVVK _ b -> KVVK a b
+            KVVV _ b -> KVVV a b
+
+keyValueViewValueL :: Lens (KeyValueView a b) (KeyValueView a d) b d
+keyValueViewValueL = lens getter setter
+  where
+    getter kvc =
+        case kvc of
+            KVVK _ b -> b
+            KVVV _ b -> b
+    setter kvc b =
+        case kvc of
+            KVVK a _ -> KVVK a b
+            KVVV a _ -> KVVV a b
+
 data KeyCursor a b = KeyCursor
     { keyCursorKey :: a
     , keyCursorValue :: b
@@ -185,6 +270,12 @@ instance Rebuild (KeyCursor a b) where
     type ReBuilding (KeyCursor a b) = KeyValueView a b
     rebuild KeyCursor {..} = KVVK keyCursorKey keyCursorValue
     selection KeyCursor {..} = [0]
+
+keyCursorKeyL :: Lens (KeyCursor a b) (KeyCursor c b) a c
+keyCursorKeyL = lens keyCursorKey $ \kc k -> kc {keyCursorKey = k}
+
+keyCursorValueL :: Lens (KeyCursor a b) (KeyCursor a d) b d
+keyCursorValueL = lens keyCursorValue $ \kc v -> kc {keyCursorValue = v}
 
 keyCursorSelectValue :: KeyCursor a b -> ValueCursor a b
 keyCursorSelectValue KeyCursor {..} =
@@ -212,3 +303,9 @@ instance (Validity a, Validity b) => Validity (ValueCursor a b) where
 valueCursorSelectKey :: ValueCursor a b -> KeyCursor a b
 valueCursorSelectKey ValueCursor {..} =
     KeyCursor {keyCursorKey = valueCursorKey, keyCursorValue = valueCursorValue}
+
+valueCursorKeyL :: Lens' (ValueCursor a b) a
+valueCursorKeyL = lens valueCursorKey $ \vc k -> vc {valueCursorKey = k}
+
+valueCursorValueL :: Lens' (ValueCursor a b) b
+valueCursorValueL = lens valueCursorValue $ \vc v -> vc {valueCursorValue = v}

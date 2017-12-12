@@ -27,7 +27,9 @@ module Cursor.Text
 
 import Import
 
+import Data.Hashable
 import qualified Data.Text as T
+
 import Lens.Micro
 
 import Cursor.Class
@@ -39,6 +41,8 @@ newtype TextCursor = TextCursor
     } deriving (Show, Eq, Generic)
 
 instance Validity TextCursor
+
+instance Hashable TextCursor
 
 instance Build TextCursor where
     type Building TextCursor = Maybe Char

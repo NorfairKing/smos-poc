@@ -13,6 +13,8 @@ import qualified Data.List.NonEmpty as NE
 import Lens.Micro
 
 import Cursor.Class
+import Cursor.Map
+import Cursor.Select
 import Cursor.Tree
 
 import Smos.Cursor.Types
@@ -42,11 +44,13 @@ entryCursorTimestampsL = lens getter setter
 entryCursorTimestampsMapL :: Lens' EntryCursor (HashMap TimestampName Timestamp)
 entryCursorTimestampsMapL = lens getter setter
   where
+    getter :: EntryCursor -> HashMap TimestampName Timestamp
     getter ec =
         maybe
             HM.empty
-            (HM.fromList .
-             NE.toList . source . rebuild . timestampsCursorTimestamps) $
+            (rebuildHashmapFromMapView .
+             (mapViewListElemViewKeysT %~ (TimestampName . source)) .
+             timestampsViewTimestamps . selectValue . build) $
         ec ^. entryCursorTimestampsL
     setter :: EntryCursor -> HashMap TimestampName Timestamp -> EntryCursor
     setter ec hm =
@@ -54,7 +58,7 @@ entryCursorTimestampsMapL = lens getter setter
             Nothing -> ec & entryCursorTimestampsL .~ Nothing
             Just ne ->
                 ec & entryCursorTimestampsL .~
-                Just (timestampsCursor ec $ TimestampsView $ view ne)
+                Just (timestampsCursor ec $ view ne)
 
 entryCursorTimestampsIndex :: Int
 entryCursorTimestampsIndex = 4

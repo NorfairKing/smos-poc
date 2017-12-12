@@ -135,25 +135,14 @@ drawTag = withAttr tagAttr . drawTextView . fmap tagViewText
 
 drawTimestamps :: Select TimestampsView -> Widget ResourceName
 drawTimestamps stsv =
-    let d :: Select (KeyValueView TimestampName Timestamp)
-          -> Widget ResourceName
-        d =
-            withSel $ \kvv ->
-                case kvv of
-                    KVVK k ts ->
-                        B.hBox
-                            [ B.txt $ timestampNameText k
-                            , B.txt ": "
-                            , drawTimestamp ts
-                            ]
-                    KVVV k ts ->
-                        B.hBox
-                            [ B.txt $ timestampNameText k
-                            , B.txt ": "
-                            , drawTimestamp ts
-                            ]
-    in drawVerticalListElemView d d d $
-       (mapViewList . timestampsViewTimestamps) <$> stsv
+    let d :: Select TimestampNameView -> Select Timestamp -> Widget ResourceName
+        d stsnv sts =
+            B.hBox
+                [drawTimestampName stsnv, B.txt ": ", withSel drawTimestamp sts]
+    in drawVerticalMapView d d d $ timestampsViewTimestamps <$> stsv
+
+drawTimestampName :: Select TimestampNameView -> Widget ResourceName
+drawTimestampName stsnv = drawTextView $ timestampNameViewText <$> stsnv
 
 drawProperties :: Select PropertiesView -> Widget ResourceName
 drawProperties =
@@ -196,20 +185,47 @@ drawTimestamp (TimestampTime lt) =
 drawUTCTime :: UTCTime -> Widget n
 drawUTCTime = B.str . formatTime defaultTimeLocale "%F %R"
 
-drawVerticalListElemView ::
-       (Select a -> Widget n)
-    -> (Select a -> Widget n)
-    -> (Select a -> Widget n)
-    -> Select (ListElemView a)
+drawVerticalMapView ::
+       (Select a -> Select b -> Widget n)
+    -> (Select a -> Select b -> Widget n)
+    -> (Select a -> Select b -> Widget n)
+    -> Select (MapView a b)
     -> Widget n
-drawVerticalListElemView prevFunc curFunc nextFunc =
-    drawListElemView
+drawVerticalMapView prevFunc curFunc nextFunc =
+    drawMapView
         prevFunc
         curFunc
         nextFunc
         B.vBox
         B.vBox
         (\a b c -> a <=> b <=> c)
+
+drawMapView ::
+       (Select a -> Select b -> Widget n)
+    -> (Select a -> Select b -> Widget n)
+    -> (Select a -> Select b -> Widget n)
+    -> ([Widget n] -> Widget n)
+    -> ([Widget n] -> Widget n)
+    -> (Widget n -> Widget n -> Widget n -> Widget n)
+    -> Select (MapView a b)
+    -> Widget n
+drawMapView prevFunc curFunc nextFunc prevCombFunc nextCombFunc combFunc smv =
+    drawListElemView
+        prevFunc'
+        curFunc'
+        nextFunc'
+        prevCombFunc
+        nextCombFunc
+        combFunc $
+    mapViewList <$> smv
+  where
+    prevFunc' = m prevFunc
+    nextFunc' = m nextFunc
+    curFunc' = m curFunc
+    m func skvv =
+        case selectValue skvv of
+            KVVK k v -> func (k <$ skvv) (select v)
+            KVVV k v -> func (select k) (v <$ skvv)
 
 drawHorizontalListElemView ::
        (Select a -> Widget n)

@@ -19,6 +19,9 @@ spec = do
     describe "newTimestampsCursor" $
         it "produces valid tags cursors" $
         producesValidsOnValids2 newTimestampsCursor
+    describe "makeNewTimestampsCursor" $
+        it "produces valid tags cursors" $
+        producesValidsOnValids3 makeNewTimestampsCursor
     describe "makeTimestampsCursor" $
         it "produces valid tags cursors" $
         producesValidsOnValids2 makeTimestampsCursor

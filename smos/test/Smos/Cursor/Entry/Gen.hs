@@ -66,3 +66,8 @@ instance GenValid TimestampsCursor where
         case entryCursorTimestamps ec of
             Nothing -> scale (+ 1) genValid
             Just tc -> pure tc
+
+instance GenUnchecked TimestampNameCursor
+
+instance GenValid TimestampNameCursor where
+    genValid = TimestampNameCursor <$> genValid
