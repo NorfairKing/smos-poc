@@ -8,6 +8,18 @@ module Smos.Cursor.Timestamps
     , timestampsCursorTimestampsL
     , timestampsCursorListL
     , timestampsCursorSelectedL
+    , timestampsCursorSelectPrev
+    , timestampsCursorSelectNext
+    , timestampsCursorSelectFirst
+    , timestampsCursorSelectLast
+    , timestampsCursorInsert
+    , timestampsCursorAppend
+    , timestampsCursorInsertAndSelect
+    , timestampsCursorAppendAndSelect
+    , timestampsCursorRemoveElemAndSelectPrev
+    , timestampsCursorDeleteElemAndSelectNext
+    , timestampsCursorRemoveElem
+    , timestampsCursorDeleteElem
     ) where
 
 import Import
@@ -64,3 +76,49 @@ timestampsCursorListL = lens getter setter
 timestampsCursorSelectedL ::
        Lens' TimestampsCursor (KeyValueCursor TimestampName Timestamp)
 timestampsCursorSelectedL = timestampsCursorListL . mapCursorSelectedL
+
+timestampsCursorSelectPrev :: TimestampsCursor -> Maybe TimestampsCursor
+timestampsCursorSelectPrev = timestampsCursorListL mapCursorSelectPrev
+
+timestampsCursorSelectNext :: TimestampsCursor -> Maybe TimestampsCursor
+timestampsCursorSelectNext = timestampsCursorListL mapCursorSelectNext
+
+timestampsCursorSelectFirst :: TimestampsCursor -> TimestampsCursor
+timestampsCursorSelectFirst = timestampsCursorListL %~ mapCursorSelectFirst
+
+timestampsCursorSelectLast :: TimestampsCursor -> TimestampsCursor
+timestampsCursorSelectLast = timestampsCursorListL %~ mapCursorSelectLast
+
+timestampsCursorInsert ::
+       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
+timestampsCursorInsert n ts = timestampsCursorListL %~ mapCursorInsert n ts
+
+timestampsCursorAppend ::
+       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
+timestampsCursorAppend n ts = timestampsCursorListL %~ mapCursorAppend n ts
+
+timestampsCursorInsertAndSelect ::
+       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
+timestampsCursorInsertAndSelect n ts =
+    timestampsCursorListL %~ mapCursorInsertAndSelect n ts
+
+timestampsCursorAppendAndSelect ::
+       TimestampName -> Timestamp -> TimestampsCursor -> TimestampsCursor
+timestampsCursorAppendAndSelect n ts =
+    timestampsCursorListL %~ mapCursorInsertAndSelect n ts
+
+timestampsCursorRemoveElemAndSelectPrev ::
+       TimestampsCursor -> Maybe TimestampsCursor
+timestampsCursorRemoveElemAndSelectPrev =
+    timestampsCursorListL mapCursorRemoveElemAndSelectPrev
+
+timestampsCursorDeleteElemAndSelectNext ::
+       TimestampsCursor -> Maybe TimestampsCursor
+timestampsCursorDeleteElemAndSelectNext =
+    timestampsCursorListL mapCursorDeleteElemAndSelectNext
+
+timestampsCursorRemoveElem :: TimestampsCursor -> Maybe TimestampsCursor
+timestampsCursorRemoveElem = timestampsCursorListL mapCursorRemoveElem
+
+timestampsCursorDeleteElem :: TimestampsCursor -> Maybe TimestampsCursor
+timestampsCursorDeleteElem = timestampsCursorListL mapCursorDeleteElem
