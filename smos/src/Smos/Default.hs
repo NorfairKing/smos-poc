@@ -133,7 +133,16 @@ defaultConfig =
                     ]
               , inTimestamps $
                 mconcat
-                    [ matchChar '\t' timestampSwitch
+                    [ inTimestampName $
+                      mconcat
+                          [ onCharM $ \c ->
+                                if c == '\t'
+                                    then Nothing
+                                    else Just $ timestampNameInsert c
+                          , matchKey KLeft timestampNameLeft
+                          , matchKey KRight timestampNameRight
+                          ]
+                    , matchChar '\t' timestampSwitch
                     , matchKey KEsc exitTimestamps
                     ]
               ]

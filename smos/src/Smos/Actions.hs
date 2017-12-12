@@ -64,10 +64,6 @@ module Smos.Actions
     , tagUnset
     , editorOnTags
     , exitTag
-    -- * Timestamps actions
-    , enterTimestamps
-    , timestampSwitch
-    , exitTimestamps
     -- ** Single Tag Actions
     , tagInsert
     , tagAppend
@@ -82,6 +78,17 @@ module Smos.Actions
     , tagsSelectNext
     , tagsSelectFirst
     , tagsSelectLast
+    -- * Timestamps actions
+    , enterTimestamps
+    , timestampSwitch
+    , exitTimestamps
+    -- ** Single Timestamp name actions
+    , timestampNameInsert
+    , timestampNameAppend
+    , timestampNameLeft
+    , timestampNameRight
+    , timestampNameStart
+    , timestampNameEnd
     -- * Helper functions to define your own actions
     , modifyEntryM
     , modifyEntry
@@ -552,6 +559,32 @@ exitTimestamps =
         case cur of
             ATimestamps tc -> AnEntry $ timestampsCursorParent tc
             _ -> cur
+
+timestampNameInsert :: Char -> SmosM ()
+timestampNameInsert = modifyTimestampName . timestampNameCursorInsert
+
+timestampNameAppend :: Char -> SmosM ()
+timestampNameAppend = modifyTimestampName . timestampNameCursorAppend
+
+timestampNameLeft :: SmosM ()
+timestampNameLeft = modifyTimestampNameM timestampNameCursorLeft
+
+timestampNameRight :: SmosM ()
+timestampNameRight = modifyTimestampNameM timestampNameCursorRight
+
+timestampNameStart :: SmosM ()
+timestampNameStart = modifyTimestampName timestampNameCursorStart
+
+timestampNameEnd :: SmosM ()
+timestampNameEnd = modifyTimestampName timestampNameCursorEnd
+
+modifyTimestampNameM ::
+       (TimestampNameCursor -> Maybe TimestampNameCursor) -> SmosM ()
+modifyTimestampNameM func = modifyTimestampName $ \tc -> fromMaybe tc $ func tc
+
+modifyTimestampName :: (TimestampNameCursor -> TimestampNameCursor) -> SmosM ()
+modifyTimestampName func =
+    modifyTimestamp $ \kvc -> kvc & keyValueCursorKeyL %~ func
 
 modifyTimestamp ::
        (KeyValueCursor TimestampNameCursor Timestamp -> KeyValueCursor TimestampNameCursor Timestamp)
