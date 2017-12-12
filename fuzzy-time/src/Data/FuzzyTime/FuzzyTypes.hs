@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Data.FuzzyTime.FuzzyTypes
-    ( FuzzyZonedTime(..)
+    ( FuzzyDateTime(..)
     , FuzzyDay(..)
     , FuzzyDayOfTheWeek(..)
     ) where
@@ -10,8 +10,8 @@ import Import
 
 import Data.Time
 
-data FuzzyZonedTime =
-    ZonedNow
+data FuzzyDateTime =
+    DateTimeNow
     deriving (Show, Eq, Generic)
 
 data FuzzyDay

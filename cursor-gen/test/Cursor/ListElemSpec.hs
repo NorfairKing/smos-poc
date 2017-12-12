@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -14,8 +13,9 @@ import Data.List.NonEmpty (NonEmpty)
 
 import Cursor.Class
 import Cursor.ListElem
+
 import Cursor.ListElem.Gen ()
-import Cursor.Select
+import Cursor.TestUtils
 
 spec :: Spec
 spec = do
@@ -132,34 +132,3 @@ isMovement func =
     forAllValid $ \lec ->
         rebuildListElemCursor (lec :: ListElemCursor Int) `shouldBe`
         rebuildListElemCursor (func lec)
-
--- A degenerate cursor
-newtype IntView = IntView
-    { intViewInt :: Int
-    } deriving (Show, Eq, Generic)
-
-instance Validity IntView
-
-instance View IntView where
-    type Source IntView = Int
-    source = intViewInt
-    view = IntView
-
-newtype IntCursor = IntCursor
-    { intValue :: Int
-    } deriving (Show, Eq, Generic)
-
-instance Validity IntCursor
-
-instance GenUnchecked IntCursor
-
-instance GenValid IntCursor
-
-instance Build IntCursor where
-    type Building IntCursor = IntView
-    build = view . intValue
-
-instance Rebuild IntCursor where
-    type ReBuilding IntCursor = Select IntView
-    rebuild = select . IntView . intValue
-    selection _ = [0]

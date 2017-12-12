@@ -22,10 +22,11 @@ module Smos.Cursor
     , module Smos.Cursor.Entry
     , module Smos.Cursor.Header
     , module Smos.Cursor.State
-    , module Smos.Cursor.Tags
     , module Smos.Cursor.Tag
-    , module Smos.Cursor.Timestamps
+    , module Smos.Cursor.Tags
+    , module Smos.Cursor.Timestamp
     , module Smos.Cursor.TimestampName
+    , module Smos.Cursor.Timestamps
     ) where
 
 import Import
@@ -44,6 +45,7 @@ import Smos.Cursor.Header
 import Smos.Cursor.State
 import Smos.Cursor.Tag
 import Smos.Cursor.Tags
+import Smos.Cursor.Timestamp
 import Smos.Cursor.TimestampName
 import Smos.Cursor.Timestamps
 import Smos.View

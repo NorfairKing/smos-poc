@@ -20,6 +20,8 @@ module Smos.Cursor.Types
     , timestampsCursor
     , TimestampNameCursor(..)
     , timestampNameCursor
+    , TimestampCursor(..)
+    , timestampCursor
     , KeyCursor(..)
     , ValueCursor(..)
     ) where
@@ -273,7 +275,7 @@ tagCursor = TagCursor . makeTextCursor . source . tagViewText
 
 data TimestampsCursor = TimestampsCursor
     { timestampsCursorParent :: EntryCursor
-    , timestampsCursorTimestamps :: MapCursor TimestampNameCursor Timestamp
+    , timestampsCursorTimestamps :: MapCursor TimestampNameCursor TimestampCursor
     } deriving (Generic)
 
 instance Validity TimestampsCursor where
@@ -300,6 +302,7 @@ instance Build TimestampsCursor where
         select .
         TimestampsView .
         (mapViewListElemViewKeysT %~ rebuild) .
+        (mapViewListElemViewValuesT %~ rebuild) .
         rebuild . timestampsCursorTimestamps
 
 timestampsCursor :: EntryCursor -> TimestampsView -> TimestampsCursor
@@ -308,7 +311,8 @@ timestampsCursor ec tsv =
     { timestampsCursorParent = ec
     , timestampsCursorTimestamps =
           (mapCursorListElemCursorKeysT %~
-           (timestampNameCursor . timestampNameView)) $
+           (timestampNameCursor . timestampNameView)) .
+          (mapCursorListElemCursorValuesT %~ (timestampCursor . view)) $
           makeMapCursor $ source tsv
     }
 
@@ -317,8 +321,8 @@ newtype TimestampNameCursor = TimestampNameCursor
     } deriving (Generic)
 
 instance Validity TimestampNameCursor where
-    isValid a = isValid (build a) -- && isValid (rebuild a)
-    validate a = build a <?!> "build" -- <> (rebuild a <?!> "rebuild")
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
 instance Show TimestampNameCursor where
     show TimestampNameCursor {..} =
@@ -326,7 +330,7 @@ instance Show TimestampNameCursor where
             ["[TimestampNames]", " |-" ++ show timestampNameCursorTimestampName]
 
 instance Eq TimestampNameCursor where
-    (==) = (==) `on` build -- &&& ((==) `on` rebuild)
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
 
 instance Hashable TimestampNameCursor
 
@@ -345,6 +349,48 @@ instance Build TimestampNameCursor where
 timestampNameCursor :: TimestampNameView -> TimestampNameCursor
 timestampNameCursor =
     TimestampNameCursor . makeTextCursor . source . timestampNameViewText
+
+data TimestampCursor = TimestampCursor
+    { timestampCursorText :: TextCursor
+    , timestampCursorCurrent :: Timestamp
+    } deriving (Generic)
+
+instance Validity TimestampCursor where
+    isValid a = isValid (build a) && isValid (rebuild a)
+    validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
+
+instance Show TimestampCursor where
+    show TimestampCursor {..} =
+        unlines ["[Timestamps]", " |-" ++ show timestampCursorText]
+
+instance Eq TimestampCursor where
+    (==) = ((==) `on` build) &&& ((==) `on` rebuild)
+
+instance Hashable TimestampCursor
+
+instance Rebuild TimestampCursor where
+    type ReBuilding TimestampCursor = TimestampView
+    rebuild TimestampCursor {..} =
+        TimestampView
+        { timestampViewText = rebuild timestampCursorText
+        , timestampViewTimestamp = timestampCursorCurrent
+        }
+    selection TimestampCursor {..} = selection timestampCursorText
+
+instance Build TimestampCursor where
+    type Building TimestampCursor = TimestampView
+    build TimestampCursor {..} =
+        TimestampView
+        { timestampViewText = rebuild timestampCursorText
+        , timestampViewTimestamp = timestampCursorCurrent
+        }
+
+timestampCursor :: TimestampView -> TimestampCursor
+timestampCursor TimestampView {..} =
+    TimestampCursor
+    { timestampCursorText = makeTextCursor $ source timestampViewText
+    , timestampCursorCurrent = timestampViewTimestamp
+    }
 
 (&&&) :: (a -> b -> Bool) -> (a -> b -> Bool) -> a -> b -> Bool
 (&&&) op1 op2 a b = op1 a b && op2 a b

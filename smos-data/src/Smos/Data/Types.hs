@@ -36,6 +36,7 @@ import Data.Aeson as JSON
 import Data.HashMap.Lazy (HashMap)
 import qualified Data.HashMap.Lazy as HM
 import Data.Hashable
+import Data.Hashable.Time ()
 import Data.String
 import Data.Text (Text)
 import Data.Time
@@ -212,6 +213,8 @@ data Timestamp
     deriving (Show, Eq, Generic)
 
 instance Validity Timestamp
+
+instance Hashable Timestamp
 
 instance FromJSON Timestamp where
     parseJSON =

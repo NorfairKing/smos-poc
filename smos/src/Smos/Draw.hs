@@ -135,14 +135,22 @@ drawTag = withAttr tagAttr . drawTextView . fmap tagViewText
 
 drawTimestamps :: Select TimestampsView -> Widget ResourceName
 drawTimestamps stsv =
-    let d :: Select TimestampNameView -> Select Timestamp -> Widget ResourceName
+    let d :: Select TimestampNameView
+          -> Select TimestampView
+          -> Widget ResourceName
         d stsnv sts =
-            B.hBox
-                [drawTimestampName stsnv, B.txt ": ", withSel drawTimestamp sts]
+            B.hBox [drawTimestampName stsnv, B.txt ": ", drawTimestampView sts]
     in drawVerticalMapView d d d $ timestampsViewTimestamps <$> stsv
 
 drawTimestampName :: Select TimestampNameView -> Widget ResourceName
 drawTimestampName stsnv = drawTextView $ timestampNameViewText <$> stsnv
+
+drawTimestampView :: Select TimestampView -> Widget ResourceName
+drawTimestampView tsv =
+    B.hBox
+        [ drawTextView $ timestampViewText <$> tsv
+        , withSel drawTimestamp $ timestampViewTimestamp <$> tsv
+        ]
 
 drawProperties :: Select PropertiesView -> Widget ResourceName
 drawProperties =

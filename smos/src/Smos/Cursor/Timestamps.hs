@@ -67,14 +67,18 @@ timestampsCursorSetTimestamps tss tsc = tsc'
     tsc' = timestampsCursor ec' $ view tss
 
 timestampsCursorMapL ::
-       Lens' TimestampsCursor (MapCursor TimestampNameCursor Timestamp)
+       Lens' TimestampsCursor (MapCursor TimestampNameCursor TimestampCursor)
 timestampsCursorMapL = lens getter setter
   where
     getter = timestampsCursorTimestamps
-    setter tsc l = tsc {timestampsCursorTimestamps = l}
+    setter tsc l = tsc'
+      where
+        ec' = timestampsCursorParent tsc & entryCursorTimestampsL .~ Just tsc'
+        tsc' =
+            tsc {timestampsCursorParent = ec', timestampsCursorTimestamps = l}
 
 timestampsCursorSelectedL ::
-       Lens' TimestampsCursor (KeyValueCursor TimestampNameCursor Timestamp)
+       Lens' TimestampsCursor (KeyValueCursor TimestampNameCursor TimestampCursor)
 timestampsCursorSelectedL = timestampsCursorMapL . mapCursorSelectedL
 
 timestampsCursorSelectPrev :: TimestampsCursor -> Maybe TimestampsCursor
@@ -90,20 +94,32 @@ timestampsCursorSelectLast :: TimestampsCursor -> TimestampsCursor
 timestampsCursorSelectLast = timestampsCursorMapL %~ mapCursorSelectLast
 
 timestampsCursorInsert ::
-       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
+       TimestampNameCursor
+    -> TimestampCursor
+    -> TimestampsCursor
+    -> TimestampsCursor
 timestampsCursorInsert n ts = timestampsCursorMapL %~ mapCursorInsert n ts
 
 timestampsCursorAppend ::
-       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
+       TimestampNameCursor
+    -> TimestampCursor
+    -> TimestampsCursor
+    -> TimestampsCursor
 timestampsCursorAppend n ts = timestampsCursorMapL %~ mapCursorAppend n ts
 
 timestampsCursorInsertAndSelect ::
-       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
+       TimestampNameCursor
+    -> TimestampCursor
+    -> TimestampsCursor
+    -> TimestampsCursor
 timestampsCursorInsertAndSelect n ts =
     timestampsCursorMapL %~ mapCursorInsertAndSelect n ts
 
 timestampsCursorAppendAndSelect ::
-       TimestampNameCursor -> Timestamp -> TimestampsCursor -> TimestampsCursor
+       TimestampNameCursor
+    -> TimestampCursor
+    -> TimestampsCursor
+    -> TimestampsCursor
 timestampsCursorAppendAndSelect n ts =
     timestampsCursorMapL %~ mapCursorInsertAndSelect n ts
 

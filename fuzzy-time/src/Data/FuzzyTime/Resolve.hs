@@ -1,5 +1,5 @@
 module Data.FuzzyTime.Resolve
-    ( resolveZonedTime
+    ( resolveDateTime
     , resolveDay
     ) where
 
@@ -7,8 +7,8 @@ import Data.Time
 
 import Data.FuzzyTime.FuzzyTypes
 
-resolveZonedTime :: ZonedTime -> FuzzyZonedTime -> ZonedTime
-resolveZonedTime zt ZonedNow = zt
+resolveDateTime :: ZonedTime -> FuzzyDateTime -> UTCTime
+resolveDateTime zt DateTimeNow = zonedTimeToUTC zt
 
 resolveDay :: Day -> FuzzyDay -> Day
 resolveDay d fd =

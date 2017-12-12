@@ -53,12 +53,13 @@ library:
   - Smos.Cursor.Entry.State
   - Smos.Cursor.Entry.Tags
   - Smos.Cursor.Entry.Timestamps
-  - Smos.Cursor.FuzzyTime
   - Smos.Cursor.Header
   - Smos.Cursor.State
   - Smos.Cursor.Tag
   - Smos.Cursor.Tags
   - Smos.Cursor.Tags.Tag
+  - Smos.Cursor.Timestamp
+  - Smos.Cursor.TimestampName
   - Smos.Cursor.Timestamps
   - Smos.Cursor.Types
   - Smos.Default

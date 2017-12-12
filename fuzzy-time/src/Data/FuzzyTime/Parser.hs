@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Data.FuzzyTime.Parser
-    ( fuzzyZonedTimeP
+    ( fuzzyDateTimeP
     , fuzzyDayP
     , fuzzyDayOfTheWeekP
     , Parser
@@ -20,8 +20,8 @@ import Data.FuzzyTime.FuzzyTypes
 
 type Parser = Parsec Dec String
 
-fuzzyZonedTimeP :: Parser FuzzyZonedTime
-fuzzyZonedTimeP = pure ZonedNow
+fuzzyDateTimeP :: Parser FuzzyDateTime
+fuzzyDateTimeP = pure DateTimeNow
 
 -- | Can handle:
 --

@@ -50,6 +50,7 @@ entryCursorTimestampsMapL = lens getter setter
             HM.empty
             (rebuildHashmapFromMapView .
              (mapViewListElemViewKeysT %~ (TimestampName . source)) .
+             (mapViewListElemViewValuesT %~ source) .
              timestampsViewTimestamps . selectValue . build) $
         ec ^. entryCursorTimestampsL
     setter :: EntryCursor -> HashMap TimestampName Timestamp -> EntryCursor

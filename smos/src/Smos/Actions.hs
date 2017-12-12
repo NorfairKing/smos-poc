@@ -587,12 +587,12 @@ modifyTimestampName func =
     modifyTimestamp $ \kvc -> kvc & keyValueCursorKeyL %~ func
 
 modifyTimestamp ::
-       (KeyValueCursor TimestampNameCursor Timestamp -> KeyValueCursor TimestampNameCursor Timestamp)
+       (KeyValueCursor TimestampNameCursor TimestampCursor -> KeyValueCursor TimestampNameCursor TimestampCursor)
     -> SmosM ()
 modifyTimestamp func = modifyTimestampS $ pure . func
 
 modifyTimestampS ::
-       (KeyValueCursor TimestampNameCursor Timestamp -> SmosM (KeyValueCursor TimestampNameCursor Timestamp))
+       (KeyValueCursor TimestampNameCursor TimestampCursor -> SmosM (KeyValueCursor TimestampNameCursor TimestampCursor))
     -> SmosM ()
 modifyTimestampS func =
     modifyTimestampsS $ \tsc -> do

@@ -71,3 +71,8 @@ instance GenUnchecked TimestampNameCursor
 
 instance GenValid TimestampNameCursor where
     genValid = TimestampNameCursor <$> genValid
+
+instance GenUnchecked TimestampCursor
+
+instance GenValid TimestampCursor where
+    genValid = TimestampCursor <$> genValid <*> genValid

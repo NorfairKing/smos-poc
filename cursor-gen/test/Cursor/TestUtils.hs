@@ -1,4 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -13,11 +14,16 @@ module Cursor.TestUtils
     , rebuildsToTheSame
     , rebuildsToTheSameIfSuceeds
     , reselectsToTheSameSelection
+    , IntCursor(..)
+    , IntView(..)
     ) where
 
 import TestImport
 
+import Data.Hashable
+
 import Cursor.Class
+import Cursor.Select
 
 buildsToValid ::
        ( Show a
@@ -173,3 +179,36 @@ reselectsToTheSameSelection ::
 reselectsToTheSameSelection =
     forAll (genValid @a) $ \cur ->
         selection (reselect (selection cur) cur) `shouldBe` selection cur
+
+-- A degenerate cursor
+newtype IntView = IntView
+    { intViewInt :: Int
+    } deriving (Show, Eq, Generic)
+
+instance Validity IntView
+
+instance View IntView where
+    type Source IntView = Int
+    source = intViewInt
+    view = IntView
+
+newtype IntCursor = IntCursor
+    { intValue :: Int
+    } deriving (Show, Eq, Generic)
+
+instance Validity IntCursor
+
+instance Hashable IntCursor
+
+instance GenUnchecked IntCursor
+
+instance GenValid IntCursor
+
+instance Build IntCursor where
+    type Building IntCursor = IntView
+    build = view . intValue
+
+instance Rebuild IntCursor where
+    type ReBuilding IntCursor = Select IntView
+    rebuild = select . IntView . intValue
+    selection _ = [0]
