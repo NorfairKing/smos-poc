@@ -84,13 +84,13 @@ spec = do
         it "is a movement" $
         forAllValid $ \kc -> do
             let vc = keyCursorSelectValue (kc :: KeyCursor IntCursor IntCursor)
-            source (rebuild kc) `shouldBe` source (rebuild vc)
+            source (rebuild $ KVK kc) `shouldBe` source (rebuild $ KVV vc)
     describe "valueCursorSelectKey" $
         it "is a movement" $
         forAllValid $ \vc -> do
             let kc =
                     valueCursorSelectKey (vc :: ValueCursor IntCursor IntCursor)
-            source (rebuild kc) `shouldBe` source (rebuild vc)
+            source (rebuild $ KVK kc) `shouldBe` source (rebuild $ KVV vc)
 
 isMovement :: (forall a b. MapCursor a b -> MapCursor a b) -> Property
 isMovement func =

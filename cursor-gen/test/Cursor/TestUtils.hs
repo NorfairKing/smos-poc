@@ -187,6 +187,8 @@ newtype IntView = IntView
 
 instance Validity IntView
 
+instance Hashable IntView
+
 instance View IntView where
     type Source IntView = Int
     source = intViewInt

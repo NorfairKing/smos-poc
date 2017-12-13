@@ -39,9 +39,17 @@ smosDraw SmosState {..} = [maybe drawNoContent renderCursor smosStateCursor]
         if smosStateShowDebug
             then B.vBox
                      [ str $ show rsel
-                     , drawHistory smosStateKeyHistory
-                     , strWrap $ show sfv
-                     , strWrap $ show cur
+                     , B.txt "history: " <+> drawHistory smosStateKeyHistory
+                     , B.txt "rebuild: " <+> strWrap (show sfv)
+                     , B.txt "build:   " <+>
+                       strWrap
+                           (case fileCursorA cur of
+                                AnEntry ec -> show $ build ec
+                                AHeader hc -> show $ build hc
+                                AContents cc -> show $ build cc
+                                ATags tc -> show $ build tc
+                                ATimestamps tc -> show $ build tc)
+                     , B.txt "cursor:  " <+> strWrap (show cur)
                      ]
             else emptyWidget
       where

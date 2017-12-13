@@ -298,12 +298,7 @@ instance Rebuild TimestampsCursor where
 
 instance Build TimestampsCursor where
     type Building TimestampsCursor = Select TimestampsView
-    build =
-        select .
-        TimestampsView .
-        (mapViewListElemViewKeysT %~ rebuild) .
-        (mapViewListElemViewValuesT %~ rebuild) .
-        rebuild . timestampsCursorTimestamps
+    build = select . TimestampsView . rebuild . timestampsCursorTimestamps
 
 timestampsCursor :: EntryCursor -> TimestampsView -> TimestampsCursor
 timestampsCursor ec tsv =

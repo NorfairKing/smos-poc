@@ -5,6 +5,8 @@ module Cursor.Select where
 
 import Import
 
+import Data.Hashable
+
 import Lens.Micro
 
 data Select a = Select
@@ -13,6 +15,8 @@ data Select a = Select
     } deriving (Show, Eq, Generic)
 
 instance Validity a => Validity (Select a)
+
+instance Hashable a => Hashable (Select a)
 
 instance Functor Select where
     fmap f (Select b a) = Select b $ f a

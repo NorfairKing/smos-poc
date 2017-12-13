@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Cursor.Map.Gen where
 
@@ -15,14 +16,30 @@ import Cursor.ListElem.Gen (listElemElemOf)
 instance (Eq a, Hashable a, GenUnchecked a, GenUnchecked b) =>
          GenUnchecked (MapCursor a b)
 
-instance (Eq a, Hashable a, Rebuild a, Rebuild b, GenValid a, GenValid b) =>
+instance ( Eq a
+         , Hashable a
+         , Rebuild a
+         , Rebuild b
+         , Validity (ReBuilding a)
+         , Validity (ReBuilding b)
+         , GenValid a
+         , GenValid b
+         ) =>
          GenValid (MapCursor a b) where
     genValid = makeMapCursor <$> genValid
 
 instance (Eq a, Hashable a, GenUnchecked a, GenUnchecked b) =>
          GenUnchecked (KeyValueCursor a b)
 
-instance (Eq a, Hashable a, Rebuild a, Rebuild b, GenValid a, GenValid b) =>
+instance ( Eq a
+         , Hashable a
+         , Rebuild a
+         , Rebuild b
+         , Validity (ReBuilding a)
+         , Validity (ReBuilding b)
+         , GenValid a
+         , GenValid b
+         ) =>
          GenValid (KeyValueCursor a b) where
     genValid = do
         mc <- genValid
@@ -31,7 +48,15 @@ instance (Eq a, Hashable a, Rebuild a, Rebuild b, GenValid a, GenValid b) =>
 instance (Eq a, Hashable a, GenUnchecked a, GenUnchecked b) =>
          GenUnchecked (KeyCursor a b)
 
-instance (Eq a, Hashable a, Rebuild a, Rebuild b, GenValid a, GenValid b) =>
+instance ( Eq a
+         , Hashable a
+         , Rebuild a
+         , Rebuild b
+         , Validity (ReBuilding a)
+         , Validity (ReBuilding b)
+         , GenValid a
+         , GenValid b
+         ) =>
          GenValid (KeyCursor a b) where
     genValid = do
         kvc <- genValid
@@ -43,7 +68,15 @@ instance (Eq a, Hashable a, Rebuild a, Rebuild b, GenValid a, GenValid b) =>
 instance (Eq a, Hashable a, GenUnchecked a, GenUnchecked b) =>
          GenUnchecked (ValueCursor a b)
 
-instance (Eq a, Hashable a, Rebuild a, Rebuild b, GenValid a, GenValid b) =>
+instance ( Eq a
+         , Hashable a
+         , Rebuild a
+         , Rebuild b
+         , Validity (ReBuilding a)
+         , Validity (ReBuilding b)
+         , GenValid a
+         , GenValid b
+         ) =>
          GenValid (ValueCursor a b) where
     genValid = do
         kvc <- genValid

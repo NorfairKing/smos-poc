@@ -5,10 +5,10 @@ module Smos.Cursor.Timestamp
     ( TimestampCursor(..)
     , timestampCursorResolve
     , timestampCursorIndex
-    , timestampCursorSelectPrev
-    , timestampCursorSelectNext
-    , timestampCursorSelectStart
-    , timestampCursorSelectEnd
+    , timestampCursorLeft
+    , timestampCursorRight
+    , timestampCursorStart
+    , timestampCursorEnd
     , timestampCursorInsert
     , timestampCursorAppend
     , timestampCursorRemove
@@ -48,17 +48,17 @@ timestampCursorTextCursorL =
 timestampCursorIndex :: TimestampCursor -> Int
 timestampCursorIndex = textCursorIndex . timestampCursorText
 
-timestampCursorSelectPrev :: TimestampCursor -> Maybe TimestampCursor
-timestampCursorSelectPrev = timestampCursorTextCursorL textCursorSelectPrev
+timestampCursorLeft :: TimestampCursor -> Maybe TimestampCursor
+timestampCursorLeft = timestampCursorTextCursorL textCursorSelectPrev
 
-timestampCursorSelectNext :: TimestampCursor -> Maybe TimestampCursor
-timestampCursorSelectNext = timestampCursorTextCursorL textCursorSelectNext
+timestampCursorRight :: TimestampCursor -> Maybe TimestampCursor
+timestampCursorRight = timestampCursorTextCursorL textCursorSelectNext
 
-timestampCursorSelectStart :: TimestampCursor -> TimestampCursor
-timestampCursorSelectStart = timestampCursorTextCursorL %~ textCursorSelectStart
+timestampCursorStart :: TimestampCursor -> TimestampCursor
+timestampCursorStart = timestampCursorTextCursorL %~ textCursorSelectStart
 
-timestampCursorSelectEnd :: TimestampCursor -> TimestampCursor
-timestampCursorSelectEnd = timestampCursorTextCursorL %~ textCursorSelectEnd
+timestampCursorEnd :: TimestampCursor -> TimestampCursor
+timestampCursorEnd = timestampCursorTextCursorL %~ textCursorSelectEnd
 
 timestampCursorInsert :: Char -> TimestampCursor -> TimestampCursor
 timestampCursorInsert c = timestampCursorTextCursorL %~ textCursorInsert c

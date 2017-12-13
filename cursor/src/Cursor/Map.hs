@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 
@@ -22,13 +23,19 @@ newtype MapCursor a b = MapCursor
     { mapCursorList :: ListElemCursor (KeyValueCursor a b)
     } deriving (Show, Eq, Generic)
 
-instance (Validity a, Validity b, Rebuild a, Rebuild b) =>
+instance ( Validity a
+         , Validity b
+         , Rebuild a
+         , Rebuild b
+         , Validity (ReBuilding a)
+         , Validity (ReBuilding b)
+         ) =>
          Validity (MapCursor a b) where
     isValid a = isValid (rebuild a)
     validate a = rebuild a <?!> "rebuild"
 
 instance (Rebuild a, Rebuild b) => Rebuild (MapCursor a b) where
-    type ReBuilding (MapCursor a b) = MapView a b
+    type ReBuilding (MapCursor a b) = MapView (ReBuilding a) (ReBuilding b)
     rebuild = MapView . fmap rebuild . rebuild . mapCursorList
     selection mcl = selection (mapCursorList mcl)
 
@@ -94,9 +101,15 @@ rebuildHashmapFromMapView :: (Eq a, Hashable a) => MapView a b -> HashMap a b
 rebuildHashmapFromMapView = HM.fromList . NE.toList . source
 
 rebuildMapCursor ::
-       (Eq a, Hashable a, Rebuild a, Rebuild b)
+       ( Eq a
+       , Hashable a
+       , Rebuild a
+       , Rebuild b
+       , Eq (ReBuilding a)
+       , Hashable (ReBuilding a)
+       )
     => MapCursor a b
-    -> NonEmpty (a, b)
+    -> NonEmpty (ReBuilding a, ReBuilding b)
 rebuildMapCursor = source . rebuild
 
 mapCursorListL :: Lens' (MapCursor a b) (ListElemCursor (KeyValueCursor a b))
@@ -170,7 +183,13 @@ data KeyValueCursor a b
     | KVV (ValueCursor a b)
     deriving (Show, Eq, Generic)
 
-instance (Validity a, Validity b, Rebuild a, Rebuild b) =>
+instance ( Validity a
+         , Validity b
+         , Rebuild a
+         , Rebuild b
+         , Validity (ReBuilding a)
+         , Validity (ReBuilding b)
+         ) =>
          Validity (KeyValueCursor a b) where
     isValid a = isValid (build a) && isValid (rebuild a)
     validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
@@ -181,9 +200,9 @@ instance Build (KeyValueCursor a b) where
     build (KVV ValueCursor {..}) = KVVV valueCursorKey valueCursorValue
 
 instance (Rebuild a, Rebuild b) => Rebuild (KeyValueCursor a b) where
-    type ReBuilding (KeyValueCursor a b) = KeyValueView a b
-    rebuild (KVK kc) = rebuild kc
-    rebuild (KVV vc) = rebuild vc
+    type ReBuilding (KeyValueCursor a b) = KeyValueView (ReBuilding a) (ReBuilding b)
+    rebuild (KVK kc) = rebuild kc & keyValueViewValueL %~ rebuild
+    rebuild (KVV vc) = rebuild vc & keyValueViewKeyL %~ rebuild
     selection (KVK kc) = selection kc
     selection (KVV vc) = selection vc
 
@@ -265,7 +284,8 @@ data KeyCursor a b = KeyCursor
     , keyCursorValue :: b
     } deriving (Show, Eq, Generic)
 
-instance (Validity a, Validity b, Rebuild a) => Validity (KeyCursor a b) where
+instance (Validity a, Validity b, Rebuild a, Validity (ReBuilding a)) =>
+         Validity (KeyCursor a b) where
     isValid a = isValid (build a) && isValid (rebuild a)
     validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
@@ -274,8 +294,8 @@ instance Build (KeyCursor a b) where
     build = keyCursorKey
 
 instance Rebuild a => Rebuild (KeyCursor a b) where
-    type ReBuilding (KeyCursor a b) = KeyValueView a b
-    rebuild KeyCursor {..} = KVVK keyCursorKey keyCursorValue
+    type ReBuilding (KeyCursor a b) = KeyValueView (ReBuilding a) b
+    rebuild KeyCursor {..} = KVVK (rebuild keyCursorKey) keyCursorValue
     selection KeyCursor {..} = selection keyCursorKey ++ [0]
 
 keyCursorKeyL :: Lens (KeyCursor a b) (KeyCursor c b) a c
@@ -299,11 +319,12 @@ instance Build (ValueCursor a b) where
     build = valueCursorValue
 
 instance Rebuild b => Rebuild (ValueCursor a b) where
-    type ReBuilding (ValueCursor a b) = KeyValueView a b
-    rebuild ValueCursor {..} = KVVV valueCursorKey valueCursorValue
+    type ReBuilding (ValueCursor a b) = KeyValueView a (ReBuilding b)
+    rebuild ValueCursor {..} = KVVV valueCursorKey (rebuild valueCursorValue)
     selection ValueCursor {..} = selection valueCursorValue ++ [1]
 
-instance (Validity a, Validity b, Rebuild b) => Validity (ValueCursor a b) where
+instance (Validity a, Validity b, Rebuild b, Validity (ReBuilding b)) =>
+         Validity (ValueCursor a b) where
     isValid a = isValid (build a) && isValid (rebuild a)
     validate a = (build a <?!> "build") <> (rebuild a <?!> "rebuild")
 
