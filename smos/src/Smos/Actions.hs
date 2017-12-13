@@ -89,6 +89,13 @@ module Smos.Actions
     , timestampNameRight
     , timestampNameStart
     , timestampNameEnd
+    -- ** Single Timestamp actions
+    , timestampInsert
+    , timestampAppend
+    , timestampLeft
+    , timestampRight
+    , timestampStart
+    , timestampEnd
     -- * Helper functions to define your own actions
     , modifyEntryM
     , modifyEntry
@@ -578,6 +585,32 @@ timestampNameStart = modifyTimestampName timestampNameCursorStart
 timestampNameEnd :: SmosM ()
 timestampNameEnd = modifyTimestampName timestampNameCursorEnd
 
+timestampInsert :: Char -> SmosM ()
+timestampInsert = modifyTimestampValue . timestampCursorInsert
+
+timestampAppend :: Char -> SmosM ()
+timestampAppend = modifyTimestampValue . timestampCursorAppend
+
+timestampLeft :: SmosM ()
+timestampLeft = modifyTimestampValueM timestampCursorLeft
+
+timestampRight :: SmosM ()
+timestampRight = modifyTimestampValueM timestampCursorRight
+
+timestampStart :: SmosM ()
+timestampStart = modifyTimestampValue timestampCursorStart
+
+timestampEnd :: SmosM ()
+timestampEnd = modifyTimestampValue timestampCursorEnd
+
+modifyTimestampValueM :: (TimestampCursor -> Maybe TimestampCursor) -> SmosM ()
+modifyTimestampValueM func =
+    modifyTimestampValue $ \tc -> fromMaybe tc $ func tc
+
+modifyTimestampValue :: (TimestampCursor -> TimestampCursor) -> SmosM ()
+modifyTimestampValue func =
+    modifyTimestamp $ \kvc -> kvc & keyValueCursorValueL %~ func
+
 modifyTimestampNameM ::
        (TimestampNameCursor -> Maybe TimestampNameCursor) -> SmosM ()
 modifyTimestampNameM func = modifyTimestampName $ \tc -> fromMaybe tc $ func tc
@@ -595,9 +628,7 @@ modifyTimestampS ::
        (KeyValueCursor TimestampNameCursor TimestampCursor -> SmosM (KeyValueCursor TimestampNameCursor TimestampCursor))
     -> SmosM ()
 modifyTimestampS func =
-    modifyTimestampsS $ \tsc -> do
-        r <- func $ tsc ^. timestampsCursorSelectedL
-        pure $ tsc & timestampsCursorSelectedL .~ r
+    modifyTimestampsS $ traverseOf timestampsCursorSelectedL func
 
 modifyTimestampsS :: (TimestampsCursor -> SmosM TimestampsCursor) -> SmosM ()
 modifyTimestampsS func =
