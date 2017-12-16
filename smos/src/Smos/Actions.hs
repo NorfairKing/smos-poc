@@ -81,6 +81,8 @@ module Smos.Actions
     -- * Timestamps actions
     , enterTimestamps
     , timestampSwitch
+    , timestampRemove
+    , timestampDelete
     , exitTimestamps
     -- ** Single Timestamp name actions
     , timestampNameInsert
@@ -560,6 +562,12 @@ timestampSwitch =
             KVK kc -> KVV $ keyCursorSelectValue kc
             KVV vc -> KVK $ valueCursorSelectKey vc
 
+timestampRemove :: SmosM ()
+timestampRemove = modifyTimestampsNOUOD timestampsCursorRemove
+
+timestampDelete :: SmosM ()
+timestampDelete = modifyTimestampsNOUOD timestampsCursorDelete
+
 exitTimestamps :: SmosM ()
 exitTimestamps =
     modifyCursor $ \cur ->
@@ -629,6 +637,21 @@ modifyTimestampS ::
     -> SmosM ()
 modifyTimestampS func =
     modifyTimestampsS $ traverseOf timestampsCursorSelectedL func
+
+modifyTimestampsNOUOD ::
+       (TimestampsCursor -> NOUOD TimestampsCursor) -> SmosM ()
+modifyTimestampsNOUOD func =
+    modifyCursor $ \cur ->
+        case cur of
+            ATimestamps tc ->
+                case func tc of
+                    Unchanged -> cur
+                    Deleted ->
+                        AnEntry $
+                        timestampsCursorParent tc & entryCursorTimestampsL .~
+                        Nothing
+                    New tc' -> ATimestamps tc'
+            _ -> cur
 
 modifyTimestampsS :: (TimestampsCursor -> SmosM TimestampsCursor) -> SmosM ()
 modifyTimestampsS func =

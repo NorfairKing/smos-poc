@@ -152,6 +152,8 @@ defaultConfig =
                           , matchKey KRight timestampRight
                           ]
                     , matchChar '\t' timestampSwitch
+                    , matchKey KBS timestampRemove
+                    , matchKey KDel timestampDelete
                     , matchKey KEsc exitTimestamps
                     ]
               ]

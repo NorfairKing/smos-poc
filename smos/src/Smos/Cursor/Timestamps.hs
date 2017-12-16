@@ -21,6 +21,8 @@ module Smos.Cursor.Timestamps
     , timestampsCursorDeleteElemAndSelectNext
     , timestampsCursorRemoveElem
     , timestampsCursorDeleteElem
+    , timestampsCursorRemove
+    , timestampsCursorDelete
     , TimestampNameCursor(..)
     ) where
 
@@ -38,6 +40,8 @@ import Cursor.Select
 import Smos.Data
 
 import Smos.Cursor.Entry.Timestamps
+import Smos.Cursor.Timestamp
+import Smos.Cursor.TimestampName
 import Smos.Cursor.Types
 
 newTimestampsCursor :: EntryCursor -> UTCTime -> TimestampsCursor
@@ -138,3 +142,51 @@ timestampsCursorRemoveElem = timestampsCursorMapL mapCursorRemoveElem
 
 timestampsCursorDeleteElem :: TimestampsCursor -> Maybe TimestampsCursor
 timestampsCursorDeleteElem = timestampsCursorMapL mapCursorDeleteElem
+
+timestampsCursorRemove :: TimestampsCursor -> NOUOD TimestampsCursor
+timestampsCursorRemove tsc =
+    case tsc ^. timestampsCursorSelectedL of
+        KVK kc ->
+            if kc ^. keyCursorKeyL . to timestampNameCursorNull
+                then case timestampsCursorRemoveElem tsc of
+                         Nothing -> Deleted
+                         Just tsc' -> New tsc'
+                else case tsc &
+                          (timestampsCursorSelectedL . keyValueCursorKeyL)
+                              timestampNameCursorRemove of
+                         Nothing -> Unchanged
+                         Just tsc' -> New tsc'
+        KVV vc ->
+            if vc ^. valueCursorValueL . to timestampCursorNull
+                then case timestampsCursorRemoveElem tsc of
+                         Nothing -> Deleted
+                         Just tsc' -> New tsc'
+                else case tsc &
+                          (timestampsCursorSelectedL . keyValueCursorValueL)
+                              timestampCursorRemove of
+                         Nothing -> Unchanged
+                         Just tsc' -> New tsc'
+
+timestampsCursorDelete :: TimestampsCursor -> NOUOD TimestampsCursor
+timestampsCursorDelete tsc =
+    case tsc ^. timestampsCursorSelectedL of
+        KVK kc ->
+            if kc ^. keyCursorKeyL . to timestampNameCursorNull
+                then case timestampsCursorDeleteElem tsc of
+                         Nothing -> Deleted
+                         Just tsc' -> New tsc'
+                else case tsc &
+                          (timestampsCursorSelectedL . keyValueCursorKeyL)
+                              timestampNameCursorDelete of
+                         Nothing -> Unchanged
+                         Just tsc' -> New tsc'
+        KVV vc ->
+            if vc ^. valueCursorValueL . to timestampCursorNull
+                then case timestampsCursorDeleteElem tsc of
+                         Nothing -> Deleted
+                         Just tsc' -> New tsc'
+                else case tsc &
+                          (timestampsCursorSelectedL . keyValueCursorValueL)
+                              timestampCursorDelete of
+                         Nothing -> Unchanged
+                         Just tsc' -> New tsc'

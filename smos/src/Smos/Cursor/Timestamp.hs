@@ -4,6 +4,7 @@
 module Smos.Cursor.Timestamp
     ( TimestampCursor(..)
     , timestampCursorResolve
+    , timestampCursorNull
     , timestampCursorIndex
     , timestampCursorLeft
     , timestampCursorRight
@@ -44,6 +45,9 @@ timestampCursorTextCursorL ::
     -> f TimestampCursor
 timestampCursorTextCursorL =
     lens timestampCursorText (\ftc tc -> ftc {timestampCursorText = tc})
+
+timestampCursorNull :: TimestampCursor -> Bool
+timestampCursorNull = textCursorNull . timestampCursorText
 
 timestampCursorIndex :: TimestampCursor -> Int
 timestampCursorIndex = textCursorIndex . timestampCursorText
