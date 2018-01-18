@@ -55,7 +55,8 @@ drawNoContent :: Widget n
 drawNoContent =
     B.vCenterLayer $
     B.vBox $
-    map B.hCenterLayer
+    map
+        B.hCenterLayer
         [ str "SMOS"
         , str " "
         , str "version 0.0.0"
