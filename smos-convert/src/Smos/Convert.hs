@@ -6,7 +6,13 @@ module Smos.Convert
 
 import Import
 
+import Smos.Convert.Document
 import Smos.Convert.OptParse
+import Smos.Convert.SmosFile
+
+import Smos.Data
+
+import qualified Data.Text.IO as T
 
 smosConvert :: IO ()
 smosConvert = do
@@ -14,7 +20,13 @@ smosConvert = do
     execute disp sett
 
 execute :: Dispatch -> Settings -> IO ()
-execute (DispatchConvertFile DispatchConvertFileArgs {..}) _ = convert orgpath
+execute (DispatchConvertFile DispatchConvertFileArgs {..}) _ =
+    mapM_ convert dispatchConvertPaths
 
 convert :: Path Abs File -> IO ()
-convert _ = undefined
+convert path = do
+    text <- T.readFile $ toFilePath path
+    smosPath <- setFileExtension ".smos" path
+    case toSmosFile <$> getDocument text of
+        Left err -> die err
+        Right smosFile -> writeSmosFile smosPath =<< smosFile
