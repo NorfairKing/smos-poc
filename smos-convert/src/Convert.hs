@@ -26,6 +26,6 @@ convert :: Path Abs File -> IO ()
 convert path = do
     text <- T.readFile $ toFilePath path
     smosPath <- setFileExtension ".smos" path
-    case toSmosFile <$> getDocument text of
+    case getDocument text of
         Left err -> die err
-        Right smosFile -> writeSmosFile smosPath smosFile
+        Right document -> writeSmosFile smosPath =<< toSmosFile document
