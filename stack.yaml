@@ -31,4 +31,5 @@ extra-deps:
 - validity-uuid-0.0.0.0
 - vty-5.18.1
 - word-wrap-0.4.1
+- orgmode-parse-0.2.0
 resolver: lts-9.9

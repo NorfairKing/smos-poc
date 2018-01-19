@@ -45,12 +45,18 @@ dependencies:
 - validity-unordered-containers >=0.1 && <0.2
 - vty >=5.18 && <5.19
 - yaml >=0.8 && <0.9
+- orgmode-parse >=0.2 && <0.3
+- attoparsec >=0.13 && <0.14
 
 library:
   source-dirs: src
   ghc-options: -Wall
   exposed-modules:
   - Convert
+  - Convert.Document
+  - Convert.EntryTree
+  - Convert.OptParse
+  - Convert.SmosFile
 
 executables:
   smos-convert:
