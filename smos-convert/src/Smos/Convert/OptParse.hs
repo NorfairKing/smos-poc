@@ -3,14 +3,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Convert.OptParse
-    ( module Convert.OptParse
-    , module Convert.OptParse.Types
+module Smos.Convert.OptParse
+    ( module Smos.Convert.OptParse
+    , module Smos.Convert.OptParse.Types
     ) where
 
 import Import hiding (lookup)
 
-import Convert.OptParse.Types
+import Smos.Convert.OptParse.Types
 
 import Options.Applicative
 import System.Environment

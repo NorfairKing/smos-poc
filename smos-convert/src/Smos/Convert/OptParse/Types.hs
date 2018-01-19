@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Convert.OptParse.Types where
+module Smos.Convert.OptParse.Types where
 
 import Import
 

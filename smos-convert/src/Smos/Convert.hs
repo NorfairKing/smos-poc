@@ -1,15 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Convert
-    ( mainFunc
+module Smos.Convert
+    ( smosConvert
     ) where
 
 import Import
 
-import Convert.OptParse
+import Smos.Convert.OptParse
 
-mainFunc :: IO ()
-mainFunc = do
+smosConvert :: IO ()
+smosConvert = do
     (disp, sett) <- getInstructions
     execute disp sett
 

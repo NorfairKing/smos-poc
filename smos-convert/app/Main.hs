@@ -1,6 +1,6 @@
 module Main where
 
-import Convert
+import Smos.Convert
 
 main :: IO ()
-main = mainFunc
+main = smosConvert
