@@ -6,6 +6,7 @@ packages:
 - smos-data
 - smos-data-gen
 - smos-report
+- smos-convert
 extra-deps:
 - brick-0.28
 - genvalidity-0.4.0.1

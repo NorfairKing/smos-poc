@@ -126,7 +126,8 @@ instance FromJSON Entry where
 
 instance ToJSON Entry where
     toJSON Entry {..} =
-        if and [ isNothing entryContents
+        if and
+               [ isNothing entryContents
                , HM.null entryTimestamps
                , HM.null entryProperties
                , null $ unStateHistory entryStateHistory
