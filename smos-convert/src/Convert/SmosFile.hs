@@ -9,12 +9,12 @@ import Smos.Data.Types
 
 import Data.OrgMode.Types
 
-toSmosFile :: Document -> SmosFile
-toSmosFile Document {..} =
-    let forrest = toEntryTree <$> documentHeadlines
-    in SmosFile $
-       case documentText of
-           "" -> forrest
-           text ->
-               let tree = Node (newEntry $ Header text) []
-               in tree : forrest
+toSmosFile :: Document -> IO SmosFile
+toSmosFile Document {..} = do
+    forrest <- sequence $ toEntryTree <$> documentHeadlines
+    SmosFile <$>
+        case documentText of
+            "" -> pure forrest
+            text ->
+                let tree = Node (newEntry $ Header text) []
+                in pure $ tree : forrest
