@@ -21,16 +21,17 @@ data Settings =
     Settings
     deriving (Show, Eq)
 
-data Flags =
-    Flags
-    deriving (Show, Eq)
+newtype Flags = Flags
+    { flgTodoStates :: [Text]
+    } deriving (Show, Eq)
 
 data Configuration =
     Configuration
     deriving (Show, Eq)
 
-newtype DispatchConvertFileArgs = DispatchConvertFileArgs
+data DispatchConvertFileArgs = DispatchConvertFileArgs
     { dispatchConvertPaths :: [Path Abs File]
+    , dispatchTodoStates :: [Text]
     } deriving (Show, Eq)
 
 newtype Dispatch =

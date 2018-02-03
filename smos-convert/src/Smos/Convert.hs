@@ -21,12 +21,12 @@ smosConvert = do
 
 execute :: Dispatch -> Settings -> IO ()
 execute (DispatchConvertFile DispatchConvertFileArgs {..}) _ =
-    mapM_ convert dispatchConvertPaths
+    mapM_ (convert dispatchTodoStates) dispatchConvertPaths
 
-convert :: Path Abs File -> IO ()
-convert path = do
+convert :: [Text] -> Path Abs File -> IO ()
+convert statekeywords path = do
     text <- T.readFile $ toFilePath path
     smosPath <- setFileExtension ".smos" path
-    case toSmosFile <$> getDocument text of
+    case toSmosFile <$> getDocument statekeywords text of
         Left err -> die err
         Right smosFile -> writeSmosFile smosPath =<< smosFile

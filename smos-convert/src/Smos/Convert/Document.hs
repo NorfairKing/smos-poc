@@ -8,10 +8,10 @@ import Data.Attoparsec.Text
 import qualified Data.OrgMode.Parse.Attoparsec.Document as ORG
 import Data.OrgMode.Types
 
-parseDocument :: Parser Document
-parseDocument =
-    ORG.parseDocument
-        ["TODO", "WAITING", "SCHEDULED", "READY", "NEXT", "CANCELLED"]
+getDocument :: [Text] -> Text -> Either String Document
+getDocument statekeywords =
+    parseOnly $ ORG.parseDocument (statekeywords ++ standardStatekeywords)
 
-getDocument :: Text -> Either String Document
-getDocument = parseOnly parseDocument
+standardStatekeywords :: [Text]
+standardStatekeywords =
+    ["TODO", "WAITING", "SCHEDULED", "READY", "NEXT", "CANCELLED"]

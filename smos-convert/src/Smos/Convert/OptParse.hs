@@ -12,6 +12,8 @@ import Import hiding (lookup)
 
 import Smos.Convert.OptParse.Types
 
+import qualified Data.Text as T
+
 import Options.Applicative
 import System.Environment
 
@@ -35,9 +37,9 @@ getSettingsFromConfig :: Flags -> Configuration -> IO Settings
 getSettingsFromConfig _ _ = pure Settings
 
 getDispatch :: Command -> Flags -> IO Dispatch
-getDispatch (ConvertFile ConvertFileArgs {..}) _ =
-    DispatchConvertFile . DispatchConvertFileArgs <$>
-    sequence (parseAbsFile <$> convertArgsFiles)
+getDispatch (ConvertFile ConvertFileArgs {..}) Flags {..} = do
+    paths <- sequence (resolveFile' <$> convertArgsFiles)
+    pure . DispatchConvertFile $ DispatchConvertFileArgs paths flgTodoStates
 
 getConfig :: Flags -> IO Configuration
 getConfig _ = pure Configuration
@@ -71,5 +73,17 @@ parseOrgFilePath =
 parseCommand :: Parser Command
 parseCommand = ConvertFile . ConvertFileArgs <$> some parseOrgFilePath
 
+parseTodoStates :: Parser [Text]
+parseTodoStates =
+    many $
+    option
+        (T.pack <$> str)
+        (mconcat
+             [ long "state-keywords"
+             , short 's'
+             , help "Extra state keywords"
+             , metavar "TEXT"
+             ])
+
 parseFlags :: Parser Flags
-parseFlags = pure Flags
+parseFlags = Flags <$> parseTodoStates
