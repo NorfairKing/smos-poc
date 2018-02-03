@@ -36,7 +36,8 @@ getSettingsFromConfig _ _ = pure Settings
 
 getDispatch :: Command -> Flags -> IO Dispatch
 getDispatch (ConvertFile ConvertFileArgs {..}) _ =
-    DispatchConvertFile . DispatchConvertFileArgs <$> parseAbsFile orgfile
+    DispatchConvertFile . DispatchConvertFileArgs <$>
+    sequence (parseAbsFile <$> convertArgsFiles)
 
 getConfig :: Flags -> IO Configuration
 getConfig _ = pure Configuration
@@ -68,7 +69,7 @@ parseOrgFilePath =
     strArgument (mconcat [metavar "FILE", help "Orgfile to convert"])
 
 parseCommand :: Parser Command
-parseCommand = ConvertFile . ConvertFileArgs <$> parseOrgFilePath
+parseCommand = ConvertFile . ConvertFileArgs <$> some parseOrgFilePath
 
 parseFlags :: Parser Flags
 parseFlags = pure Flags

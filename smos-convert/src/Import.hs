@@ -7,6 +7,7 @@ import Prelude as X hiding (head, init, last, tail)
 import GHC.Generics as X (Generic)
 
 import Data.ByteString as X (ByteString)
+import Data.Char as X
 import Data.Function as X
 import Data.List as X
 import Data.Maybe as X
@@ -24,3 +25,5 @@ import Control.Monad.IO.Class as X
 
 import Path as X
 import Path.IO as X
+
+import System.Exit as X

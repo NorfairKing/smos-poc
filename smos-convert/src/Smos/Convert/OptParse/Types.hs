@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Smos.Convert.OptParse.Types where
 
@@ -11,7 +10,7 @@ type Arguments = (Command, Flags)
 type Instructions = (Dispatch, Settings)
 
 newtype ConvertFileArgs = ConvertFileArgs
-    { orgfile :: FilePath
+    { convertArgsFiles :: [FilePath]
     } deriving (Show, Eq)
 
 newtype Command =
@@ -31,7 +30,7 @@ data Configuration =
     deriving (Show, Eq)
 
 newtype DispatchConvertFileArgs = DispatchConvertFileArgs
-    { orgpath :: Path Abs File
+    { dispatchConvertPaths :: [Path Abs File]
     } deriving (Show, Eq)
 
 newtype Dispatch =
