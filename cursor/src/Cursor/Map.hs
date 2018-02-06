@@ -85,10 +85,8 @@ makeMapCursor :: NonEmpty (a, b) -> MapCursor a b
 makeMapCursor ne =
     let els =
             flip fmap ne $ \(a, b) ->
-                let lkc = KeyCursor {keyCursorKey = a, keyCursorValue = b}
-                in KVK lkc
-        mc = MapCursor $ makeListElemCursor els
-    in mc
+                KVK $ KeyCursor {keyCursorKey = a, keyCursorValue = b}
+    in MapCursor $ makeListElemCursor els
 
 makeMapCursorFromMap :: HashMap a b -> Maybe (MapCursor a b)
 makeMapCursorFromMap m =
