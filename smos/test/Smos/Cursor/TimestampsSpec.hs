@@ -58,9 +58,15 @@ spec = do
     describe "timestampsCursorDeleteElemAndSelectNext" $
         it "produces valid timestamp cursors" $
         producesValidsOnValids timestampsCursorDeleteElemAndSelectNext
-    describe "timestampsCursorRemove" $
+    describe "timestampsCursorRemoveElem" $
         it "produces valid timestamp cursors" $
         producesValidsOnValids timestampsCursorRemoveElem
     describe "timestampsCursorDeleteElem" $
         it "produces valid timestamp cursors" $
         producesValidsOnValids timestampsCursorDeleteElem
+    describe "timestampsCursorRemove" $
+        it "produces valid timestamp cursors" $
+        producesValidsOnValids timestampsCursorRemove
+    describe "timestampsCursorDelete" $
+        it "produces valid timestamp cursors" $
+        producesValidsOnValids timestampsCursorDelete

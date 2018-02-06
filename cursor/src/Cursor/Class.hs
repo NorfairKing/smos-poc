@@ -1,10 +1,10 @@
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Cursor.Class
-    ( Cursor
-    , View(..)
+    ( View(..)
     , Rebuild(..)
     , Build(..)
     , BuiltFrom(..)
@@ -14,8 +14,6 @@ module Cursor.Class
     ) where
 
 import Import
-
-type Cursor a = (Build a, Rebuild a)
 
 -- | The datastructure that represents what the cursor should look like.
 -- This structure should contain data about representation like, for example,
@@ -53,3 +51,6 @@ data NOUOD a
     = New a
     | Unchanged
     | Deleted
+    deriving (Show, Eq, Generic)
+
+instance Validity a => Validity( NOUOD a)
